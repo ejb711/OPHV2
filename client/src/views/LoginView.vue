@@ -1,4 +1,5 @@
 <script setup>
+import { useRouter } from 'vue-router';
 import { ref, onMounted } from "vue";
 import { auth } from "../auth";
 import {
@@ -13,6 +14,7 @@ const email = ref("");
 const password = ref("");
 const user = ref(null);
 const errorMsg = ref("");
+const router = useRouter();
 
 onMounted(() =>
   onAuthStateChanged(auth, (u) => { user.value = u; })
@@ -27,8 +29,12 @@ async function handleSubmit() {
       await signInWithEmailAndPassword(auth, email.value, password.value);
     }
     email.value = password.value = "";
+    router.push("/dash");
   } catch (err) {
     errorMsg.value = err.code.replace("auth/", "");
+    errorMsg.value = err.code
+      ? err.code.replace("auth/", "")
+      : err.message || "unknown-error";
   }
 }
 
