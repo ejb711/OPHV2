@@ -137,3 +137,15 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# --- Firebase & Vite -----------------
+.firebase/
+firebase-debug*.log
+.firebaserc        # local aliases; safe to ignore if you like
+.firestore/
+*.cache
+
+# Vite / environment secrets
+.env
+.env.*             # .env.local, .env.development, etc.
+# -----------------------------------
