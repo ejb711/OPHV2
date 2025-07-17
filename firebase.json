@@ -1,4 +1,5 @@
 {
+  
   "firestore": {
     "database": "(default)",
     "location": "us-central1",
@@ -7,16 +8,12 @@
   },
   "hosting": {
     "public": "client/dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [ { "source": "**", "destination": "/index.html" } ],
+    "predeploy": [ "npm --prefix client run build" ]
+  },
+  "functions": {
+    "source": "functions",     
+    "runtime": "nodejs20"  
   }
 }

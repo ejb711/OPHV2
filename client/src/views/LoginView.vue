@@ -1,92 +1,90 @@
 <script setup>
-import { useRouter } from 'vue-router';
-import { ref, onMounted } from "vue";
-import { auth } from "../auth";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
+import { ref, watch } from 'vue'          // ← watch is now imported
+import { useRouter }   from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
-const mode = ref("login");           // "login" | "signup"
-const email = ref("");
-const password = ref("");
-const user = ref(null);
-const errorMsg = ref("");
-const router = useRouter();
+/* ----- local state ------------------------------------------------------- */
+const mode      = ref('login')            // 'login' | 'signup'
+const email     = ref('')
+const password  = ref('')
+const errorMsg  = ref('')
 
-onMounted(() =>
-  onAuthStateChanged(auth, (u) => { user.value = u; })
-);
+/* ----- composables ------------------------------------------------------- */
+const router = useRouter()
+const auth   = useAuthStore()
 
-async function handleSubmit() {
-  errorMsg.value = "";
+/* ----- helpers ----------------------------------------------------------- */
+function toggleMode () {
+  mode.value = mode.value === 'login' ? 'signup' : 'login'
+}
+
+/* ----- submit ------------------------------------------------------------ */
+async function handleSubmit () {
+  errorMsg.value = ''
   try {
-    if (mode.value === "signup") {
-      await createUserWithEmailAndPassword(auth, email.value, password.value);
+    if (mode.value === 'signup') {
+      await auth.signup(email.value, password.value)
     } else {
-      await signInWithEmailAndPassword(auth, email.value, password.value);
+      await auth.login(email.value, password.value)
     }
-    email.value = password.value = "";
-    router.push("/dash");
+
+    /* wait until the store has fetched role ≠ null */
+    await new Promise(resolve => {
+      const stop = watch(
+        () => auth.role,
+        r => { if (r !== null) { stop(); resolve() } }
+      )
+    })
+
+    router.push(auth.role === 'pending' ? '/awaiting' : '/dash')
   } catch (err) {
-    errorMsg.value = err.code.replace("auth/", "");
-    errorMsg.value = err.code
-      ? err.code.replace("auth/", "")
-      : err.message || "unknown-error";
+    errorMsg.value = err.code?.replace('auth/', '') || err.message
   }
-}
-
-function toggleMode() {
-  mode.value = mode.value === "login" ? "signup" : "login";
-}
-
-function handleLogout() {
-  signOut(auth);
 }
 </script>
 
 <template>
-  <main class="flex flex-col items-center justify-center h-screen gap-6">
-    <h1 class="text-2xl font-bold">OPHV2</h1>
+  <main class="d-flex flex-column align-center justify-center fill-height ga-4">
+    <h1 class="text-h4 font-weight-bold">OPHV2</h1>
 
-    <!-- Signed-in -->
-    <div v-if="user" class="text-center">
-      <p class="mb-4">Welcome, {{ user.email }}</p>
-      <button @click="handleLogout" class="px-4 py-2 rounded bg-red-500 text-white">
-        Sign Out
-      </button>
+    <!-- signed-in (only visible if you browse back here) -->
+    <div v-if="auth.user && auth.role !== 'pending'">
+      <p class="mb-3">Welcome, {{ auth.user.email }}</p>
+      <v-btn color="accent" @click="auth.logout()">Sign&nbsp;Out</v-btn>
     </div>
 
-    <!-- Signed-out -->
-    <form v-else @submit.prevent="handleSubmit" class="flex flex-col gap-3 w-64">
-      <input
-        v-model="email"
-        type="email"
-        required
-        placeholder="Email"
-        class="border p-2 rounded"
-      />
-      <input
-        v-model="password"
-        type="password"
-        required
-        placeholder="Password"
-        class="border p-2 rounded"
-      />
+    <!-- sign-in / sign-up -->
+    <v-card v-else width="400" elevation="4" class="pa-4">
+      <v-text-field v-model="email"     label="Email"    type="email"    outlined required />
+      <v-text-field v-model="password"  label="Password" type="password" outlined required />
 
-      <button class="px-4 py-2 rounded bg-blue-600 text-white">
+      <v-btn
+        :color="mode === 'login' ? 'primary' : 'secondary'"
+        class="mt-4"
+        block
+        @click="handleSubmit"
+      >
         {{ mode === 'login' ? 'Log In' : 'Sign Up' }}
-      </button>
+      </v-btn>
 
-      <p v-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
+      <v-alert
+        v-if="errorMsg"
+        type="error"
+        variant="tonal"
+        class="mt-3"
+        dense
+      >
+        {{ errorMsg }}
+      </v-alert>
 
-      <p class="text-xs text-center cursor-pointer text-gray-500" @click="toggleMode">
+      <div
+        class="mt-2 text-caption text-end cursor-pointer"
+        @click="toggleMode"
+      >
         {{ mode === 'login'
             ? 'Need an account? Sign up'
             : 'Have an account? Log in' }}
-      </p>
-    </form>
+      </div>
+    </v-card>
   </main>
 </template>

@@ -1,14 +1,63 @@
-import './assets/main.css'
+// src/main.js
+import { createApp, watch }      from 'vue'
+import { createPinia }           from 'pinia'
+import App                       from './App.vue'
+import { router }                from './router'
+import { vuetify }               from './plugins/vuetify'
 
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { auth }                  from './firebase'
+import { onAuthStateChanged }    from 'firebase/auth'
+import { useAuthStore }          from './stores/auth'
 
-import App from './App.vue'
-import router from './router'
+/* ────────────────────────────────────────────────
+   1.  Hot-reload friendly singleton Vue instance
+   ─────────────────────────────────────────────── */
+let app = window.__ophv2
+if (!app) {
+  app = createApp(App)
+  app.use(createPinia())
+     .use(router)
+     .use(vuetify)
 
-const app = createApp(App)
+  // remember across Vite HMR swaps
+  window.__ophv2 = app
+}
 
-app.use(createPinia())
-app.use(router)
+/* ────────────────────────────────────────────────
+   2.  Only mount after the FIRST auth callback
+   ─────────────────────────────────────────────── */
+let booted = false
+onAuthStateChanged(auth, () => {
+  if (booted) return
+  booted = true
 
-app.mount('#app')
+  // install the role-watch once routing is ready
+  router.isReady().then(() => {
+    const store = useAuthStore()
+
+    watch(
+      () => store.role,
+      role => {
+        const cur = router.currentRoute.value
+
+        // waiting for approval → force '/awaiting'
+        if (role === 'pending' && cur.name !== 'Awaiting') {
+          router.replace('/awaiting')
+        }
+
+        // admin users landing on anything except admin start page
+        if (role === 'admin' && cur.name === 'Dashboard') {
+          router.replace('/admin')
+        }
+
+        // non-admin trying to hit admin page
+        if (role !== 'admin' && cur.name === 'Admin') {
+          router.replace('/dash')
+        }
+      },
+      { immediate: true }
+    )
+  })
+
+  app.mount('#app')    // exactly once
+})

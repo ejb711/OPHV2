@@ -1,34 +1,48 @@
+<!-- src/views/DashboardView.vue -->
 <script setup>
 import { computed }      from 'vue'
 import { useRouter }     from 'vue-router'
-import { useAuthStore }  from '../stores/auth'
 import AppLayout         from '../components/AppLayout.vue'
+import { useAuthStore }  from '../stores/auth'
 
 const router = useRouter()
 const auth   = useAuthStore()
 
-// 1️⃣ helper so the button both logs out AND routes home
-function handleLogout () {
-  auth.logout().then(() => router.push('/'))
+/* helper so we both sign-out and go back to the login page */
+async function handleLogout () {
+  await auth.logout()
+  router.push('/')
 }
 
-// 2️⃣ computed so Vue updates as soon as auth.user becomes non-null
-const userEmail = computed(() => auth.user?.email)
+/* show button only when current user is an admin */
+const isAdmin = computed(() => auth.role === 'admin')
 </script>
 
 <template>
   <AppLayout>
-    <!-- button lives in the app-bar actions slot -->
+    <!--  top-right actions slot  -->
     <template #actions>
-      <v-btn color="accent" variant="flat" @click="handleLogout">
-        Log Out
+      <v-btn
+        v-if="isAdmin"
+        class="mr-3"
+        color="secondary"
+        variant="flat"
+        @click="router.push('/admin')"
+      >
+        Admin
+      </v-btn>
+
+      <v-btn
+        color="accent"
+        variant="flat"
+        @click="handleLogout"
+      >
+        Log out
       </v-btn>
     </template>
 
-    <h1 class="text-h5 mb-4">Dashboard</h1>
-
-    <!-- show a tiny spinner until Firebase hydrates -->
-    <p v-if="!userEmail">Loading…</p>
-    <p v-else>Welcome, {{ userEmail }}</p>
+    <!--  main dashboard content  -->
+    <h1 class="text-h4 mb-4">Dashboard</h1>
+    <p>Welcome, {{ auth.user?.email }}</p>
   </AppLayout>
 </template>
