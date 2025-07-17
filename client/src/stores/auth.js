@@ -1,4 +1,4 @@
-// client/src/stores/auth.js - Enhanced with permissions
+// client/src/stores/auth.js - Enhanced with permissions + TEMPORARY FIX
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -45,6 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
   /* ---------- permission helpers ---------- */
   function hasPermission(permission) {
     if (role.value === 'owner') return true // owners have all permissions
+    
+   
     return effectivePermissions.value.includes(permission)
   }
 
@@ -95,9 +97,17 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Fetch role permissions if not pending
       if (role.value !== 'pending') {
-        const roleSnap = await getDoc(doc(db, 'roles', role.value))
-        if (roleSnap.exists()) {
-          rolePermissions.value = roleSnap.data().permissions ?? []
+        try {
+          const roleSnap = await getDoc(doc(db, 'roles', role.value))
+          if (roleSnap.exists()) {
+            rolePermissions.value = roleSnap.data().permissions ?? []
+          } else {
+            console.warn('[auth] ⚠️ Role document not found for:', role.value)
+            // This is expected during initial setup
+          }
+        } catch (roleError) {
+          console.warn('[auth] ⚠️ Error fetching role permissions:', roleError)
+          // This is expected if roles collection doesn't exist yet
         }
       }
 
@@ -106,7 +116,8 @@ export const useAuthStore = defineStore('auth', () => {
         role: role.value,
         rolePermissions: rolePermissions.value.length,
         customPermissions: customPermissions.value.length,
-        effectivePermissions: effectivePermissions.value.length
+        effectivePermissions: effectivePermissions.value.length,
+        usingFallback: role.value === 'admin' && effectivePermissions.value.length === 0
       })
     } catch (error) {
       console.error('Error loading user permissions:', error)
@@ -136,9 +147,13 @@ export const useAuthStore = defineStore('auth', () => {
       deniedPermissions.value = userData.deniedPermissions ?? []
 
       if (role.value !== 'pending') {
-        const roleSnap = await getDoc(doc(db, 'roles', role.value))
-        if (roleSnap.exists()) {
-          rolePermissions.value = roleSnap.data().permissions ?? []
+        try {
+          const roleSnap = await getDoc(doc(db, 'roles', role.value))
+          if (roleSnap.exists()) {
+            rolePermissions.value = roleSnap.data().permissions ?? []
+          }
+        } catch (error) {
+          console.warn('[auth] Error refreshing role permissions:', error)
         }
       }
     }

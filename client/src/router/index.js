@@ -104,11 +104,23 @@ router.beforeEach(async to => {
     return { name: 'Dashboard' }
   }
 
-  /* 4️⃣ Single permission requirement */
+ /* 4️⃣ Single permission requirement */
   if (to.meta.requiresPermission && !store.hasPermission(to.meta.requiresPermission)) {
-    console.warn(`Access denied: Missing permission '${to.meta.requiresPermission}'`)
-    return { name: 'Dashboard' }
-  }
+    
+    // 🚨 TEMPORARY FIX: Add fallback for admin users while permission system initializes
+    if (store.role === 'admin' && store.effectivePermissions.length === 0) {
+      const adminFallbackPermissions = [
+        'manage_users', 'view_users', 'access_admin', 'manage_roles', 'view_audit_logs'
+      ]
+      if (adminFallbackPermissions.includes(to.meta.requiresPermission)) {
+        console.log(`[router] 🔧 Admin fallback permission granted: ${to.meta.requiresPermission}`)
+        return true // Allow access with fallback
+      }
+    }
+  
+  console.warn(`Access denied: Missing permission '${to.meta.requiresPermission}'`)
+  return { name: 'Dashboard' }
+}
 
   /* 5️⃣ Any permission requirement (user needs at least one) */
   if (to.meta.requiresAnyPermission && !store.hasAnyPermission(to.meta.requiresAnyPermission)) {
