@@ -1,26 +1,74 @@
-// firestore.rules
+// firestore.rules - Enhanced with permission system
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
-    // user profiles -------------------------------------------------
+    // Helper functions for permission checking
+    function hasRole(role) {
+      return request.auth.token.role == role;
+    }
+    
+    function hasPermission(permission) {
+      return permission in request.auth.token.permissions;
+    }
+    
+    function isOwnerOrAdmin() {
+      return hasRole('owner') || hasRole('admin');
+    }
+
+    // User profiles
     match /users/{uid} {
-      // users can read their own profile
-      allow read  : if request.auth != null && request.auth.uid == uid;
+      // Users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == uid;
       
-      // admins can read any user document
-      allow read  : if request.auth.token.role == 'admin';
-
-      // admins can write to any user document
-      allow write : if request.auth.token.role == 'admin';
+      // Owners and admins can read any user
+      allow read: if isOwnerOrAdmin();
+      
+      // Only users with manage_users permission can write
+      allow write: if hasPermission('manage_users');
+      
+      // Users can update their own profile (limited fields)
+      allow update: if request.auth.uid == uid 
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.customPermissions == resource.data.customPermissions
+        && request.resource.data.deniedPermissions == resource.data.deniedPermissions;
     }
 
-    // Allow admins to list/query the users collection
+    // Allow listing users for those with permission
     match /users/{document=**} {
-      allow list : if request.auth.token.role == 'admin';
+      allow list: if hasPermission('manage_users') || hasPermission('view_users');
     }
 
-    // everything else stays locked-down for now
+    // Roles collection
+    match /roles/{roleId} {
+      allow read: if request.auth != null;
+      allow write: if hasPermission('manage_roles');
+    }
+
+    // Permissions collection  
+    match /permissions/{permissionId} {
+      allow read: if request.auth != null;
+      allow write: if hasPermission('manage_permissions');
+    }
+
+    // Role assignments audit log
+    match /roleChanges/{changeId} {
+      allow read: if hasPermission('view_audit_logs');
+      allow create: if hasPermission('manage_users');
+    }
+
+    // Future collections with permission gates
+    match /projects/{projectId} {
+      allow read: if hasPermission('view_projects');
+      allow write: if hasPermission('manage_projects');
+    }
+    
+    match /forums/{forumId} {
+      allow read: if hasPermission('view_forums');
+      allow write: if hasPermission('manage_forums');
+    }
+
+    // Everything else stays locked
     match /{document=**} {
       allow read, write: if false;
     }
