@@ -150,4 +150,6 @@ firebase-debug*.log
 .env.*             # .env.local, .env.development, etc.
 # -----------------------------------
 
-/workspaces/OPHV2/ophv2_key.json
+ophv2_key.json
+serviceAccountKey.json
+*_key.json
