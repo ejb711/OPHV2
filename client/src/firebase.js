@@ -1,7 +1,7 @@
 // client/src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getFirestore }  from 'firebase/firestore';
-import { getAuth }         from 'firebase/auth'
+import { getAuth, setPersistence, browserSessionPersistence }         from 'firebase/auth'
 import { getFunctions }    from 'firebase/functions'
 
 const firebaseConfig = {
@@ -15,8 +15,17 @@ const firebaseConfig = {
   // measurementId:   import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Export the ready-to-use Firebase instance
+// Initialize Firebase
 export const firebaseApp = initializeApp(firebaseConfig);
 export const db = getFirestore(firebaseApp);
 export const auth = getAuth(firebaseApp);
 export const functions = getFunctions(firebaseApp);
+
+// Set session persistence - users will be logged out when browser/tab closes
+setPersistence(auth, browserSessionPersistence)
+  .then(() => {
+    console.log('[firebase] Session persistence configured - users will be logged out on browser close')
+  })
+  .catch((error) => {
+    console.error('[firebase] Error setting session persistence:', error)
+  });
