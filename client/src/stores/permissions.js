@@ -93,10 +93,27 @@ export const usePermissionsStore = defineStore('permissions', () => {
 
   async function createRole(roleData) {
     try {
+      // Validate role data
+      if (!roleData.name) {
+        throw new Error('Role name is required')
+      }
+      
+      // Check if role name already exists
+      const existingRole = allRoles.value.find(
+        r => r.name.toLowerCase() === roleData.name.toLowerCase()
+      )
+      if (existingRole) {
+        throw new Error('A role with this name already exists')
+      }
+      
       const docRef = await addDoc(collection(db, 'roles'), {
-        ...roleData,
+        name: roleData.name,
+        description: roleData.description || '',
+        permissions: roleData.permissions || [],
+        hierarchy: roleData.hierarchy || 2,
+        isSystemRole: false,
         createdAt: serverTimestamp(),
-        isSystemRole: false
+        updatedAt: serverTimestamp()
       })
       
       // Add to local state

@@ -140,17 +140,27 @@ function setupRealtimeListeners() {
 }
 
 /* ---------- audit logging ---------- */
-async function logActivity(action, details) {
+async function logActivity(activity) {
   try {
+    // Ensure details object has no undefined values
+    const cleanDetails = {}
+    if (activity.details) {
+      Object.entries(activity.details).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          cleanDetails[key] = value
+        }
+      })
+    }
+    
     await addDoc(collection(db, 'audit_logs'), {
-      action,
-      details,
-      userId: auth.currentUser.uid,
-      userEmail: auth.currentUser.email,
-      timestamp: serverTimestamp()
+      ...activity,
+      details: cleanDetails, // Use cleaned details
+      timestamp: serverTimestamp(),
+      userId: authStore.user?.uid || 'unknown',
+      userEmail: authStore.user?.email || 'unknown'
     })
-  } catch (e) {
-    console.error('Error logging activity:', e)
+  } catch (err) {
+    console.error('Error logging activity:', err)
   }
 }
 
