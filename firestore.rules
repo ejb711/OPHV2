@@ -1,39 +1,114 @@
+// firestore.rules - Fixed syntax version
 rules_version = '2';
 service cloud.firestore {
-  match /databases/{db}/documents {
+  match /databases/{database}/documents {
     
-    // User profiles - allow users to read their own, admins to read all
-    match /users/{uid} {
-      allow read: if request.auth != null && 
-        (request.auth.uid == uid || 
-         resource.data.role == 'admin' || 
-         resource.data.role == 'owner');
-      allow write: if request.auth != null && request.auth.uid == uid;
-      allow write: if request.auth != null && 
-        (resource.data.role == 'admin' || resource.data.role == 'owner');
+    // Helper function to check if user has a specific permission
+    function hasPermission(permission) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Owner has all permissions
+      return userDoc.data.role == 'owner' ||
+        // Check role permissions
+        (exists(/databases/$(database)/documents/roles/$(userDoc.data.role)) && 
+         permission in get(/databases/$(database)/documents/roles/$(userDoc.data.role)).data.permissions) ||
+        // Check custom permissions (if not in denied list)
+        (permission in userDoc.data.customPermissions && 
+         !(permission in userDoc.data.deniedPermissions));
     }
-
-    // CRITICAL: Roles collection - allow ALL authenticated users to read
+    
+    // Helper function to check if user can manage another user's role
+    function canManageUserWithRole(targetRole) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      
+      // Owner can manage everyone
+      return userDoc.data.role == 'owner' ||
+        // Admin can manage non-admin/owner roles
+        (userDoc.data.role == 'admin' && 
+         targetRole != 'owner' && 
+         targetRole != 'admin');
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read users if they have view permission
+      allow read: if request.auth != null && 
+        (request.auth.uid == userId || hasPermission('view_users'));
+      
+      // Create users with proper permission
+      allow create: if request.auth != null && hasPermission('create_users');
+      
+      // Update users - more permissive approach
+      allow update: if request.auth != null && (
+        // Users can update their own limited fields
+        (request.auth.uid == userId && 
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['displayName', 'photoURL', 'lastActive', 'preferences'])) ||
+        // Users with edit_users permission can update others
+        (hasPermission('edit_users') && 
+         // Check if they can manage the target user's current role
+         canManageUserWithRole(resource.data.role) &&
+         // If role is being changed, check if they can assign the new role
+         (resource.data.role == request.resource.data.role || 
+          canManageUserWithRole(request.resource.data.role)))
+      );
+      
+      // Delete users with proper permission
+      allow delete: if request.auth != null && 
+        hasPermission('delete_users') && 
+        request.auth.uid != userId &&
+        canManageUserWithRole(resource.data.role);
+    }
+    
+    // Roles collection - authenticated users can read
     match /roles/{roleId} {
       allow read: if request.auth != null;
-      allow write: if false; // Only allow writes through admin interface later
-    }
-
-    // CRITICAL: Permissions collection - allow ALL authenticated users to read  
-    match /permissions/{permissionId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Only allow writes through admin interface later
+      allow write: if request.auth != null && hasPermission('manage_roles');
     }
     
-    // Allow admins to list users
-    match /users/{document=**} {
-      allow list: if request.auth != null;
-    }
-
-    // Temporary: Allow all reads for debugging (remove later)
-    match /{document=**} {
+    // Permissions collection - authenticated users can read
+    match /permissions/{permissionId} {
       allow read: if request.auth != null;
-      allow write: if false;
+      allow write: if request.auth != null && hasPermission('manage_permissions');
+    }
+    
+    // Audit logs - temporary direct write permission
+    match /audit_logs/{document} {
+      allow read: if request.auth != null && hasPermission('view_audit_logs');
+      // Temporary: Allow authenticated users to create audit logs
+      // TODO: Change to 'allow write: if false;' when Cloud Functions are set up
+      allow create: if request.auth != null;
+    }
+    
+    // Projects collection (future)
+    match /projects/{projectId} {
+      allow read: if request.auth != null && hasPermission('view_projects');
+      allow create: if request.auth != null && hasPermission('create_projects');
+      allow update: if request.auth != null && hasPermission('edit_projects');
+      allow delete: if request.auth != null && hasPermission('delete_projects');
+    }
+    
+    // Forums collection (future)
+    match /forums/{forumId} {
+      allow read: if request.auth != null && hasPermission('view_forums');
+      allow write: if request.auth != null && hasPermission('manage_forums');
+      
+      match /posts/{postId} {
+        allow read: if request.auth != null && hasPermission('view_forums');
+        allow create: if request.auth != null && hasPermission('create_posts');
+        allow update: if request.auth != null && 
+          (request.auth.uid == resource.data.authorId || hasPermission('edit_posts'));
+        allow delete: if request.auth != null && 
+          (request.auth.uid == resource.data.authorId || hasPermission('delete_posts'));
+      }
+    }
+    
+    // Calendar events collection (future)
+    match /events/{eventId} {
+      allow read: if request.auth != null && hasPermission('view_calendar');
+      allow create: if request.auth != null && hasPermission('create_events');
+      allow update: if request.auth != null && hasPermission('edit_events');
+      allow delete: if request.auth != null && hasPermission('delete_events');
     }
   }
 }
