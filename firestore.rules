@@ -5,11 +5,19 @@ service cloud.firestore {
 
     // user profiles -------------------------------------------------
     match /users/{uid} {
-      // admins can read everything
+      // users can read their own profile
+      allow read  : if request.auth != null && request.auth.uid == uid;
+      
+      // admins can read any user document
       allow read  : if request.auth.token.role == 'admin';
 
-      // only Cloud Function writes
-      allow write : if false;
+      // admins can write to any user document
+      allow write : if request.auth.token.role == 'admin';
+    }
+
+    // Allow admins to list/query the users collection
+    match /users/{document=**} {
+      allow list : if request.auth.token.role == 'admin';
     }
 
     // everything else stays locked-down for now
