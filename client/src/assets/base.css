@@ -1,86 +1,235 @@
-/* color palette from <https://github.com/vuejs/theme> */
+/* client/src/assets/base.css - LDH Brand Standards */
+
+/* LDH Color Palette - Based on Brand Guidelines */
 :root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
-
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
-
-  --vt-c-indigo: #2c3e50;
-
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
-
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+  /* Primary LDH Colors */
+  --ldh-navy:    #003057;   /* Primary navy */
+  --ldh-blue:    #426DA9;   /* Info blue */
+  --ldh-gold:    #B89D18;   /* Accent gold */
+  --ldh-aqua:    #63B1BC;   /* Secondary aqua */
+  --ldh-teal:    #00B7C2;   /* Teal accent */
+  
+  /* Supporting Colors */
+  --ldh-white:   #FFFFFF;
+  --ldh-gray-50: #F8F9FA;
+  --ldh-gray-100: #F1F3F4;
+  --ldh-gray-200: #E8EAED;
+  --ldh-gray-300: #DADCE0;
+  --ldh-gray-400: #BDC1C6;
+  --ldh-gray-500: #9AA0A6;
+  --ldh-gray-600: #80868B;
+  --ldh-gray-700: #5F6368;
+  --ldh-gray-800: #3C4043;
+  --ldh-gray-900: #202124;
+  
+  /* Status Colors */
+  --ldh-success: #34A853;
+  --ldh-warning: #FBBC04;
+  --ldh-error:   #EA4335;
+  --ldh-info:    var(--ldh-blue);
+  
+  /* Typography Variables */
+  --font-primary: 'ITC Franklin Gothic', 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  --font-secondary: 'Cambria', 'Times New Roman', Georgia, serif;
+  --font-monospace: 'Consolas', 'Monaco', 'Courier New', monospace;
+  
+  /* Layout Variables */
+  --header-height: 64px;
+  --sidebar-width: 280px;
+  --container-max-width: 1440px;
+  --border-radius: 12px;
+  --border-radius-sm: 8px;
+  --border-radius-lg: 16px;
+  
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  
+  /* Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* semantic color variables for this project */
-:root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
-
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
-
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
-
-  --section-gap: 160px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
-
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
-
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
-  }
-}
-
+/* CSS Reset and Base Styles */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   margin: 0;
-  font-weight: normal;
+  padding: 0;
+}
+
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
-  transition:
-    color 0.5s,
-    background-color 0.5s;
+  font-family: var(--font-secondary);
+  font-size: 16px;
   line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
-  font-size: 15px;
-  text-rendering: optimizeLegibility;
+  color: var(--ldh-gray-800);
+  background-color: var(--ldh-gray-50);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Typography Hierarchy - LDH Brand Standards */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-primary);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ldh-navy);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+h1 { font-size: 2.5rem; font-weight: 700; }    /* 40px */
+h2 { font-size: 2rem; font-weight: 600; }      /* 32px */
+h3 { font-size: 1.75rem; font-weight: 600; }   /* 28px */
+h4 { font-size: 1.5rem; font-weight: 600; }    /* 24px */
+h5 { font-size: 1.25rem; font-weight: 600; }   /* 20px */
+h6 { font-size: 1.125rem; font-weight: 600; }  /* 18px */
+
+p {
+  margin: 0 0 var(--spacing-md) 0;
+  font-family: var(--font-secondary);
+}
+
+/* Links */
+a {
+  color: var(--ldh-blue);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--ldh-navy);
+  text-decoration: underline;
+}
+
+/* Lists */
+ul, ol {
+  padding-left: var(--spacing-lg);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Code */
+code {
+  font-family: var(--font-monospace);
+  font-size: 0.875rem;
+  background-color: var(--ldh-gray-100);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+}
+
+pre {
+  font-family: var(--font-monospace);
+  background-color: var(--ldh-gray-100);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  overflow-x: auto;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+th, td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  border-bottom: 1px solid var(--ldh-gray-200);
+}
+
+th {
+  font-family: var(--font-primary);
+  font-weight: 600;
+  background-color: var(--ldh-gray-50);
+  color: var(--ldh-navy);
+}
+
+/* Form Elements */
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Utility Classes */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus Management */
+:focus {
+  outline: 2px solid var(--ldh-blue);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Selection Colors */
+::selection {
+  background-color: var(--ldh-blue);
+  color: white;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ldh-gray-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ldh-gray-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ldh-gray-500);
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.5rem; }
+  h4 { font-size: 1.25rem; }
+  h5 { font-size: 1.125rem; }
+  h6 { font-size: 1rem; }
 }

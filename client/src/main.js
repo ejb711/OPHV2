@@ -1,9 +1,12 @@
-// src/main.js
+// client/src/main.js - Updated with global CSS imports
 import { createApp, watch }      from 'vue'
 import { createPinia }           from 'pinia'
 import App                       from './App.vue'
 import { router }                from './router'
 import { vuetify }               from './plugins/vuetify'
+
+// Import global styles BEFORE any other imports
+import './assets/main.css'
 
 import { auth }                  from './firebase'
 import { onAuthStateChanged }    from 'firebase/auth'

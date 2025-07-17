@@ -1,4 +1,4 @@
-// firestore.rules - Enhanced with permission system
+// firestore.rules - Fixed with activity tracking support
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
@@ -24,14 +24,18 @@ service cloud.firestore {
       // Owners and admins can read any user
       allow read: if isOwnerOrAdmin();
       
-      // Only users with manage_users permission can write
+      // Only users with manage_users permission can write (full updates)
       allow write: if hasPermission('manage_users');
       
-      // Users can update their own profile (limited fields)
+      // Users can update their own profile (limited fields only)
       allow update: if request.auth.uid == uid 
         && request.resource.data.role == resource.data.role
         && request.resource.data.customPermissions == resource.data.customPermissions
         && request.resource.data.deniedPermissions == resource.data.deniedPermissions;
+        
+      // 🔧 FIX: Allow users to update their own lastActive field
+      allow update: if request.auth.uid == uid 
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActive']);
     }
 
     // Allow listing users for those with permission

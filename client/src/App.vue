@@ -4,6 +4,9 @@ const auth = useAuthStore()
 import { ref } from 'vue'
 const hideSplash = ref(false)
 import { watch } from 'vue'
+import { useActivityTracker } from './composables/useActivityTracker'
+
+useActivityTracker()
 
 watch(
   () => auth.ready,
