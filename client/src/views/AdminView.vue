@@ -1,10 +1,12 @@
-<!-- client/src/views/AdminView.vue - Simplified version without cloud functions -->
+<!-- client/src/views/AdminView.vue - Enhanced with debug components -->
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { db, auth } from '../firebase'
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
 import AppLayout from '../components/AppLayout.vue'
+import DebugPermissions from '../components/DebugPermissions.vue'
+import PermissionFixer from '../components/PermissionFixer.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -15,6 +17,10 @@ const pendingUsers = ref([])
 const allUsers = ref([])
 const loading = ref(true)
 const error = ref('')
+const selectedTab = ref('users')
+const editingUser = ref(null)
+const editDialog = ref(false)
+const userSearch = ref('')
 
 /* ---------- computed ---------- */
 const userStats = computed(() => {
@@ -22,13 +28,16 @@ const userStats = computed(() => {
     total: allUsers.value.length,
     pending: allUsers.value.filter(u => u.role === 'pending').length,
     active: allUsers.value.filter(u => u.role !== 'pending').length,
-    admins: allUsers.value.filter(u => ['admin', 'owner'].includes(u.role)).length
+    admins: allUsers.value.filter(u => ['admin', 'owner'].includes(u.role)).length,
+    users: allUsers.value.filter(u => u.role === 'user').length,
+    viewers: allUsers.value.filter(u => u.role === 'viewer').length
   }
   return stats
 })
 
 const isOwner = computed(() => authStore.role === 'owner')
 const isAdmin = computed(() => ['admin', 'owner'].includes(authStore.role))
+const hasDebugIssues = computed(() => authStore.role === 'admin' && authStore.effectivePermissions.length === 0)
 
 /* ---------- lifecycle ---------- */
 onMounted(async () => {
@@ -59,18 +68,25 @@ async function loadData() {
 }
 
 /* ---------- user management ---------- */
-async function approveUser(user, newRole = 'user') {
+async function approveUser(userId, newRole = 'user') {
   try {
-    await updateDoc(doc(db, 'users', user.id), { role: newRole })
+    await updateDoc(doc(db, 'users', userId), {
+      role: newRole,
+      approvedBy: authStore.user.uid,
+      approvedAt: new Date(),
+      updatedAt: new Date()
+    })
     
-    // Remove from pending list
-    pendingUsers.value = pendingUsers.value.filter(u => u.id !== user.id)
-    
-    // Update in all users list
-    const userIndex = allUsers.value.findIndex(u => u.id === user.id)
+    // Update local state
+    const userIndex = allUsers.value.findIndex(u => u.id === userId)
     if (userIndex !== -1) {
       allUsers.value[userIndex].role = newRole
+      allUsers.value[userIndex].approvedBy = authStore.user.uid
+      allUsers.value[userIndex].approvedAt = new Date()
     }
+    
+    // Remove from pending list
+    pendingUsers.value = pendingUsers.value.filter(u => u.id !== userId)
     
   } catch (err) {
     console.error('Error approving user:', err)
@@ -78,211 +94,381 @@ async function approveUser(user, newRole = 'user') {
   }
 }
 
-/* ---------- helpers ---------- */
-function getRoleBadgeColor(role) {
+async function updateUserRole(userId, newRole) {
+  try {
+    await updateDoc(doc(db, 'users', userId), {
+      role: newRole,
+      updatedBy: authStore.user.uid,
+      updatedAt: new Date()
+    })
+    
+    // Update local state
+    const userIndex = allUsers.value.findIndex(u => u.id === userId)
+    if (userIndex !== -1) {
+      allUsers.value[userIndex].role = newRole
+      allUsers.value[userIndex].updatedBy = authStore.user.uid
+      allUsers.value[userIndex].updatedAt = new Date()
+    }
+    
+    await loadData() // Refresh data
+    
+  } catch (err) {
+    console.error('Error updating user role:', err)
+    error.value = err.message
+  }
+}
+
+function editUser(user) {
+  editingUser.value = { ...user }
+  editDialog.value = true
+}
+
+async function saveUserEdit() {
+  try {
+    await updateDoc(doc(db, 'users', editingUser.value.id), {
+      role: editingUser.value.role,
+      customPermissions: editingUser.value.customPermissions || [],
+      deniedPermissions: editingUser.value.deniedPermissions || [],
+      updatedBy: authStore.user.uid,
+      updatedAt: new Date()
+    })
+    
+    editDialog.value = false
+    editingUser.value = null
+    await loadData()
+    
+  } catch (err) {
+    console.error('Error saving user edit:', err)
+    error.value = err.message
+  }
+}
+
+function getRoleColor(role) {
   switch (role) {
     case 'owner': return 'purple'
     case 'admin': return 'red'
     case 'user': return 'blue'
     case 'viewer': return 'green'
-    case 'pending': return 'orange'
+    case 'pending': return 'grey'
     default: return 'grey'
   }
 }
 
-function formatDate(timestamp) {
-  if (!timestamp) return 'Never'
-  return new Date(timestamp.toDate()).toLocaleDateString()
+function getRoleDisplayName(role) {
+  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 </script>
 
 <template>
   <AppLayout>
-    <template #actions>
-      <v-btn color="accent" variant="flat" @click="router.push('/dash')">
-        Back to Dashboard
-      </v-btn>
-    </template>
+    <v-container fluid>
+      <!-- Header with stats -->
+      <div class="d-flex justify-space-between align-center mb-6">
+        <div>
+          <h1 class="text-h4 font-weight-bold mb-2">System Administration</h1>
+          <p class="text-subtitle-1 text-grey-darken-1">
+            Manage users, roles, and system permissions
+          </p>
+        </div>
+        <v-btn
+          @click="loadData"
+          :loading="loading"
+          variant="outlined"
+          prepend-icon="mdi-refresh"
+        >
+          Refresh
+        </v-btn>
+      </div>
 
-    <div class="d-flex justify-space-between align-center mb-6">
-      <h1 class="text-h4">Admin Dashboard</h1>
-      <v-btn color="primary" @click="loadData" :loading="loading">
-        <v-icon start>mdi-refresh</v-icon>
-        Refresh
-      </v-btn>
-    </div>
+      <!-- Debug Components (when needed) -->
+      <div v-if="hasDebugIssues" class="mb-6">
+        <v-alert type="warning" variant="tonal" class="mb-4">
+          <v-icon>mdi-alert</v-icon>
+          <strong>Permission Issue Detected!</strong><br>
+          Your admin account has 0 effective permissions. Use the tools below to fix this.
+        </v-alert>
+        
+        <DebugPermissions />
+        <PermissionFixer />
+      </div>
 
-    <!-- Loading State -->
-    <v-card v-if="loading" class="text-center pa-8">
-      <v-progress-circular indeterminate size="50" />
-      <div class="mt-4">Loading admin data...</div>
-    </v-card>
-
-    <!-- Error Alert -->
-    <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = ''">
-      {{ error }}
-    </v-alert>
-
-    <!-- Admin Dashboard Content -->
-    <div v-if="!loading">
-      <!-- Stats Cards -->
+      <!-- Statistics Cards -->
       <v-row class="mb-6">
         <v-col cols="12" sm="6" md="3">
-          <v-card>
-            <v-card-text>
-              <div class="d-flex align-center">
-                <div class="flex-grow-1">
-                  <div class="text-h5 font-weight-bold">{{ userStats.total }}</div>
-                  <div class="text-caption text-grey">Total Users</div>
-                </div>
-                <v-icon size="large" color="blue">mdi-account-group</v-icon>
-              </div>
+          <v-card class="statistics-card">
+            <v-card-text class="text-center">
+              <div class="text-h3 font-weight-bold">{{ userStats.total }}</div>
+              <div class="text-subtitle-1">Total Users</div>
             </v-card-text>
           </v-card>
         </v-col>
-        
         <v-col cols="12" sm="6" md="3">
-          <v-card>
-            <v-card-text>
-              <div class="d-flex align-center">
-                <div class="flex-grow-1">
-                  <div class="text-h5 font-weight-bold">{{ userStats.pending }}</div>
-                  <div class="text-caption text-grey">Pending Approval</div>
-                </div>
-                <v-icon size="large" color="orange">mdi-clock-outline</v-icon>
-              </div>
+          <v-card class="statistics-card">
+            <v-card-text class="text-center">
+              <div class="text-h3 font-weight-bold">{{ userStats.pending }}</div>
+              <div class="text-subtitle-1">Pending Approval</div>
             </v-card-text>
           </v-card>
         </v-col>
-        
         <v-col cols="12" sm="6" md="3">
-          <v-card>
-            <v-card-text>
-              <div class="d-flex align-center">
-                <div class="flex-grow-1">
-                  <div class="text-h5 font-weight-bold">{{ userStats.active }}</div>
-                  <div class="text-caption text-grey">Active Users</div>
-                </div>
-                <v-icon size="large" color="green">mdi-account-check</v-icon>
-              </div>
+          <v-card class="statistics-card">
+            <v-card-text class="text-center">
+              <div class="text-h3 font-weight-bold">{{ userStats.active }}</div>
+              <div class="text-subtitle-1">Active Users</div>
             </v-card-text>
           </v-card>
         </v-col>
-        
         <v-col cols="12" sm="6" md="3">
-          <v-card>
-            <v-card-text>
-              <div class="d-flex align-center">
-                <div class="flex-grow-1">
-                  <div class="text-h5 font-weight-bold">{{ userStats.admins }}</div>
-                  <div class="text-caption text-grey">Administrators</div>
-                </div>
-                <v-icon size="large" color="red">mdi-shield-account</v-icon>
-              </div>
+          <v-card class="statistics-card">
+            <v-card-text class="text-center">
+              <div class="text-h3 font-weight-bold">{{ userStats.admins }}</div>
+              <div class="text-subtitle-1">Administrators</div>
             </v-card-text>
           </v-card>
         </v-col>
       </v-row>
 
-      <!-- Pending Users Section -->
-      <v-card class="mb-6">
-        <v-card-title>
-          <v-icon start>mdi-clock-outline</v-icon>
-          Pending User Approvals
-        </v-card-title>
-        
-        <v-card-text>
-          <div v-if="pendingUsers.length === 0" class="text-center pa-4">
-            <v-icon size="48" color="green">mdi-check-circle</v-icon>
-            <div class="mt-2">No pending users</div>
-          </div>
-          
-          <v-list v-else>
-            <v-list-item
-              v-for="user in pendingUsers"
-              :key="user.id"
-              class="mb-2"
-            >
-              <template #prepend>
-                <v-avatar color="orange">
-                  <v-icon>mdi-account</v-icon>
-                </v-avatar>
-              </template>
-              
-              <v-list-item-title>{{ user.email }}</v-list-item-title>
-              <v-list-item-subtitle>
-                Registered: {{ formatDate(user.createdAt) }}
-              </v-list-item-subtitle>
-              
-              <template #append>
-                <div class="d-flex ga-2">
-                  <v-btn
-                    color="blue"
-                    variant="flat"
-                    size="small"
-                    @click="approveUser(user, 'user')"
-                  >
-                    Approve as User
-                  </v-btn>
-                  <v-btn
-                    color="green"
-                    variant="flat"
-                    size="small"
-                    @click="approveUser(user, 'viewer')"
-                  >
-                    Approve as Viewer
-                  </v-btn>
-                  <v-btn
-                    v-if="isOwner"
-                    color="red"
-                    variant="flat"
-                    size="small"
-                    @click="approveUser(user, 'admin')"
-                  >
-                    Approve as Admin
-                  </v-btn>
-                </div>
-              </template>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-      </v-card>
+      <!-- Error Display -->
+      <v-alert v-if="error" type="error" class="mb-4" dismissible @click:close="error = ''">
+        {{ error }}
+      </v-alert>
 
-      <!-- All Users Section -->
+      <!-- Main Content Tabs -->
       <v-card>
-        <v-card-title>
-          <v-icon start>mdi-account-group</v-icon>
-          All Users
-        </v-card-title>
-        
+        <v-tabs v-model="selectedTab" bg-color="primary">
+          <v-tab value="users">
+            <v-icon class="mr-2">mdi-account-group</v-icon>
+            User Management
+          </v-tab>
+          <v-tab value="pending">
+            <v-icon class="mr-2">mdi-account-clock</v-icon>
+            Pending Approval ({{ userStats.pending }})
+          </v-tab>
+          <v-tab value="system" v-if="isOwner">
+            <v-icon class="mr-2">mdi-cog</v-icon>
+            System Tools
+          </v-tab>
+        </v-tabs>
+
         <v-card-text>
-          <v-data-table
-            :items="allUsers"
-            :headers="[
-              { title: 'Email', key: 'email' },
-              { title: 'Role', key: 'role' },
-              { title: 'Created', key: 'createdAt' },
-              { title: 'Last Active', key: 'lastActive' }
-            ]"
-            item-value="id"
-            density="compact"
-          >
-            <template #item.role="{ item }">
-              <v-chip :color="getRoleBadgeColor(item.role)" size="small">
-                {{ item.role }}
-              </v-chip>
-            </template>
+          <v-window v-model="selectedTab">
+            <!-- User Management Tab -->
+            <v-window-item value="users">
+              <div class="d-flex justify-space-between align-center mb-4">
+                <h3 class="text-h6">All Users ({{ userStats.total }})</h3>
+                <v-text-field
+                  v-model="userSearch"
+                  prepend-inner-icon="mdi-magnify"
+                  label="Search users..."
+                  variant="outlined"
+                  density="compact"
+                  style="max-width: 300px;"
+                />
+              </div>
 
-            <template #item.createdAt="{ item }">
-              {{ formatDate(item.createdAt) }}
-            </template>
+              <v-data-table
+                :items="allUsers"
+                :loading="loading"
+                :headers="[
+                  { title: 'Email', key: 'email' },
+                  { title: 'Role', key: 'role' },
+                  { title: 'Created', key: 'createdAt' },
+                  { title: 'Last Active', key: 'lastActive' },
+                  { title: 'Actions', key: 'actions', sortable: false }
+                ]"
+                class="elevation-1"
+              >
+                <template #item.role="{ item }">
+                  <v-chip :color="getRoleColor(item.role)" size="small" variant="elevated">
+                    {{ getRoleDisplayName(item.role) }}
+                  </v-chip>
+                </template>
 
-            <template #item.lastActive="{ item }">
-              {{ formatDate(item.lastActive) }}
-            </template>
-          </v-data-table>
+                <template #item.createdAt="{ item }">
+                  {{ item.createdAt ? new Date(item.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown' }}
+                </template>
+
+                <template #item.lastActive="{ item }">
+                  {{ item.lastActive ? new Date(item.lastActive.seconds * 1000).toLocaleDateString() : 'Never' }}
+                </template>
+
+                <template #item.actions="{ item }">
+                  <v-btn
+                    @click="editUser(item)"
+                    icon="mdi-pencil"
+                    size="small"
+                    variant="text"
+                    color="primary"
+                  />
+                  <v-btn
+                    v-if="item.role !== 'owner' && authStore.canManageRole(item.role)"
+                    icon="mdi-account-cog"
+                    size="small"
+                    variant="text"
+                    color="orange"
+                  />
+                </template>
+              </v-data-table>
+            </v-window-item>
+
+            <!-- Pending Approval Tab -->
+            <v-window-item value="pending">
+              <div class="mb-4">
+                <h3 class="text-h6">Users Awaiting Approval ({{ userStats.pending }})</h3>
+                <p class="text-body-2 text-grey-darken-1">
+                  Review and approve new user accounts
+                </p>
+              </div>
+
+              <div v-if="pendingUsers.length === 0" class="text-center py-8">
+                <v-icon size="64" color="grey">mdi-account-check</v-icon>
+                <h3 class="text-h6 mt-4">No Pending Users</h3>
+                <p class="text-body-2">All users have been approved!</p>
+              </div>
+
+              <v-row v-else>
+                <v-col v-for="user in pendingUsers" :key="user.id" cols="12" md="6" lg="4">
+                  <v-card variant="outlined">
+                    <v-card-title class="d-flex align-center">
+                      <v-avatar class="mr-3" color="grey">
+                        <v-icon>mdi-account</v-icon>
+                      </v-avatar>
+                      <div class="text-truncate">
+                        {{ user.email }}
+                      </div>
+                    </v-card-title>
+                    
+                    <v-card-text>
+                      <div class="mb-2">
+                        <strong>Joined:</strong> 
+                        {{ user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown' }}
+                      </div>
+                      <div class="mb-2">
+                        <strong>Display Name:</strong> {{ user.displayName || 'Not provided' }}
+                      </div>
+                    </v-card-text>
+                    
+                    <v-card-actions>
+                      <v-btn
+                        @click="approveUser(user.id, 'user')"
+                        color="success"
+                        variant="elevated"
+                        size="small"
+                        prepend-icon="mdi-check"
+                      >
+                        Approve as User
+                      </v-btn>
+                      <v-menu>
+                        <template #activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            color="primary"
+                            variant="outlined"
+                            size="small"
+                            append-icon="mdi-chevron-down"
+                          >
+                            Other Role
+                          </v-btn>
+                        </template>
+                        <v-list>
+                          <v-list-item @click="approveUser(user.id, 'admin')" v-if="isOwner">
+                            <v-list-item-title>Approve as Admin</v-list-item-title>
+                          </v-list-item>
+                          <v-list-item @click="approveUser(user.id, 'viewer')">
+                            <v-list-item-title>Approve as Viewer</v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                    </v-card-actions>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- System Tools Tab (Owner only) -->
+            <v-window-item value="system" v-if="isOwner">
+              <div class="mb-4">
+                <h3 class="text-h6">System Administration Tools</h3>
+                <p class="text-body-2 text-grey-darken-1">
+                  Advanced system management and debugging tools
+                </p>
+              </div>
+
+              <DebugPermissions />
+              <PermissionFixer />
+              
+              <!-- Additional System Tools -->
+              <v-card class="mt-4" variant="outlined">
+                <v-card-title>
+                  <v-icon class="mr-2">mdi-database</v-icon>
+                  Database Management
+                </v-card-title>
+                <v-card-text>
+                  <v-row>
+                    <v-col cols="12" md="6">
+                      <v-btn
+                        block
+                        variant="outlined"
+                        color="info"
+                        prepend-icon="mdi-export"
+                      >
+                        Export User Data
+                      </v-btn>
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-btn
+                        block
+                        variant="outlined"
+                        color="warning"
+                        prepend-icon="mdi-backup-restore"
+                      >
+                        Backup System
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+            </v-window-item>
+          </v-window>
         </v-card-text>
       </v-card>
-    </div>
+
+      <!-- User Edit Dialog -->
+      <v-dialog v-model="editDialog" max-width="600">
+        <v-card v-if="editingUser">
+          <v-card-title>
+            <span class="text-h5">Edit User: {{ editingUser.email }}</span>
+          </v-card-title>
+          
+          <v-card-text>
+            <v-select
+              v-model="editingUser.role"
+              :items="['viewer', 'user', 'admin'].filter(role => authStore.canManageRole(role))"
+              label="Role"
+              variant="outlined"
+            />
+            
+            <!-- Custom permissions would go here -->
+          </v-card-text>
+          
+          <v-card-actions>
+            <v-spacer />
+            <v-btn @click="editDialog = false">Cancel</v-btn>
+            <v-btn @click="saveUserEdit" color="primary">Save Changes</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </v-container>
   </AppLayout>
 </template>
+
+<style scoped>
+.statistics-card {
+  background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%) !important;
+  color: white !important;
+}
+
+.statistics-card .v-card-text {
+  color: white !important;
+}
+</style>
