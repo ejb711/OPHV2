@@ -1,5 +1,4 @@
-// client/src/router/index.js - Enhanced with Permission-Based Routing
-// FOUNDATION COMPLETE - Project Management on hold for later development
+// client/src/router/index.js - Updated with Profile Route
 import { createRouter, createWebHistory } from 'vue-router'
 
 import LoginView from '../views/LoginView.vue'
@@ -40,26 +39,17 @@ export const router = createRouter({
         requiresPermission: 'manage_users'
       } 
     },
-    // 🔮 FUTURE ROUTES (Phase 2 & 3) - Commented out until implemented
-    // { 
-    //   path: '/projects', 
-    //   name: 'Projects', 
-    //   component: () => import('../views/ProjectView.vue'),
-    //   meta: { 
-    //     requiresAuth: true, 
-    //     requiresPermission: 'view_projects'
-    //   } 
-    // },
-    // Role Management - Create this view component when needed
-    // { 
-    //   path: '/admin/roles', 
-    //   name: 'RoleManagement', 
-    //   component: () => import('../views/RoleManagementView.vue'),
-    //   meta: { 
-    //     requiresAuth: true, 
-    //     requiresAnyPermission: ['manage_users', 'manage_roles', 'manage_permissions']
-    //   } 
-    // },
+    
+    // 🆕 PHASE 2: User Profile Management
+    { 
+      path: '/profile', 
+      name: 'Profile', 
+      component: () => import('../views/ProfileView.vue'),
+      meta: { 
+        requiresAuth: true
+        // Note: Will add 'view_own_profile' permission after creating profile permissions
+      } 
+    },
     
     // 🔮 FUTURE ROUTES (Phase 2 & 3) - Commented out until components are implemented
     // PHASE 2: Core Features
