@@ -371,3 +371,40 @@
     border: 1px solid var(--ldh-gray-300) !important;
   }
 }
+
+/* ========================================
+   VISIBILITY FIX FOR ICONS & CONTROLS
+   ======================================== */
+/*
+  This fix addresses an issue where icons inside buttons and checkboxes
+  may not be visible due to theme color conflicts or CSS specificity.
+*/
+
+/* Ensure icons inside text/plain buttons have a visible default state */
+.v-btn--variant-text .v-icon,
+.v-btn--variant-plain .v-icon {
+  opacity: 0.7;
+}
+
+/* Ensure icons are fully opaque on hover */
+.v-btn--variant-text:hover .v-icon,
+.v-btn--variant-plain:hover .v-icon {
+  opacity: 1;
+}
+
+/* Ensure the icon for checkboxes and radio buttons is visible in an INACTIVE state */
+.v-selection-control .v-icon {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+  opacity: 1 !important;
+}
+
+/* Ensure the icon for a SELECTED control uses the theme's primary color */
+.v-selection-control--dirty .v-icon {
+  color: rgb(var(--v-theme-primary));
+}
+
+/* Ensure disabled controls are visibly muted */
+.v-btn--disabled,
+.v-selection-control--disabled {
+    opacity: 0.5 !important;
+}

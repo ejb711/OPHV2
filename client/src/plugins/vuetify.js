@@ -115,6 +115,10 @@ export const vuetify = createVuetify({
         }
       ],
     },
+
+    VCheckbox: {
+      color: 'primary',
+    },
     
     VTextField: {
       variant: 'outlined',
