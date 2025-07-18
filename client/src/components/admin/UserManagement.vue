@@ -516,34 +516,47 @@ function getStatusColor(status) {
       </template>
 
       <!-- Actions -->
-      <template v-slot:item.actions="{ item }">
-        <div class="d-flex justify-end">
-          <PermissionGuard permissions="edit_users">
-            <v-btn
-              icon="mdi-pencil"
-              size="small"
-              variant="text"
-              @click="editUser(item)"
-              :disabled="!canEditUser(item)"
-            >
-              <v-tooltip activator="parent" location="top">Edit User</v-tooltip>
-            </v-btn>
-          </PermissionGuard>
+<template v-slot:item.actions="{ item }">
+  <div class="d-flex justify-end ga-1">
+    <PermissionGuard permissions="edit_users">
+      <v-tooltip text="Edit User" location="top">
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            icon
+            size="small"
+            variant="flat"
+            color="primary"
+            @click="editUser(item)"
+            :disabled="!canEditUser(item)"
+            density="comfortable"
+          >
+            <v-icon size="small">mdi-pencil</v-icon>
+          </v-btn>
+        </template>
+      </v-tooltip>
+    </PermissionGuard>
 
-          <PermissionGuard permissions="delete_users">
-            <v-btn
-              icon="mdi-delete"
-              size="small"
-              variant="text"
-              color="error"
-              @click="confirmDeleteUser(item)"
-              :disabled="item.id === auth.currentUser.uid"
-            >
-              <v-tooltip activator="parent" location="top">Delete User</v-tooltip>
-            </v-btn>
-          </PermissionGuard>
-        </div>
-      </template>
+    <PermissionGuard permissions="delete_users">
+      <v-tooltip text="Delete User" location="top">
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            icon
+            size="small"
+            variant="flat"
+            color="error"
+            @click="confirmDeleteUser(item)"
+            :disabled="item.id === auth.currentUser.uid"
+            density="comfortable"
+          >
+            <v-icon size="small">mdi-delete</v-icon>
+          </v-btn>
+        </template>
+      </v-tooltip>
+    </PermissionGuard>
+  </div>
+</template>
     </v-data-table>
 
     <!-- Edit User Dialog -->

@@ -73,85 +73,31 @@
 
 .v-btn:hover {
   box-shadow: var(--shadow-md) !important;
-  transform: translateY(-1px);
+  transform: translateY(-1px) !important;
 }
 
 .v-btn--variant-elevated {
-  box-shadow: var(--shadow-md) !important;
+  background-color: var(--ldh-blue) !important;
+  color: white !important;
 }
 
-.v-btn--variant-flat {
-  box-shadow: none !important;
+.v-btn--variant-tonal {
+  background-color: rgba(66, 109, 169, 0.12) !important;
+  color: var(--ldh-blue) !important;
 }
 
-/* Chips */
-.v-chip {
-  border-radius: var(--border-radius-sm) !important;
-  font-family: var(--font-primary) !important;
-  font-weight: 500 !important;
-  font-size: 0.875rem !important;
+.v-btn--variant-outlined {
+  border-color: var(--ldh-gray-300) !important;
+  color: var(--ldh-gray-700) !important;
 }
 
-.v-chip-group {
-  overflow: visible !important;
-  flex-wrap: wrap !important;
-}
-
-/* Data Tables */
-.v-data-table {
-  border-radius: var(--border-radius) !important;
-  border: 1px solid var(--ldh-gray-200) !important;
-  overflow-x: auto !important;
-  background-color: white !important;
-}
-
-.v-data-table-header {
-  background-color: var(--ldh-gray-50) !important;
-}
-
-.v-data-table-header__content {
-  font-family: var(--font-primary) !important;
-  font-weight: 600 !important;
-  color: var(--ldh-navy) !important;
-}
-
-.v-data-table__td {
-  font-family: var(--font-secondary) !important;
-  border-bottom: 1px solid var(--ldh-gray-200) !important;
-}
-
-.v-data-table__tr:hover {
-  background-color: var(--ldh-gray-50) !important;
-}
-
-/* Forms */
-.v-text-field, .v-select, .v-textarea {
-  margin-bottom: var(--spacing-md) !important;
-}
-
-.v-field {
-  border-radius: var(--border-radius-sm) !important;
-  font-family: var(--font-secondary) !important;
-}
-
-.v-field--focused {
-  box-shadow: 0 0 0 2px var(--ldh-blue) !important;
-}
-
-/* Dialogs */
-.v-dialog {
-  margin: var(--spacing-md) !important;
-}
-
-.v-dialog > .v-card {
-  max-width: calc(100vw - 32px) !important;
-  border-radius: var(--border-radius) !important;
-  box-shadow: var(--shadow-xl) !important;
+.v-btn--variant-text {
+  color: var(--ldh-blue) !important;
 }
 
 /* Tabs */
 .v-tabs {
-  border-bottom: 1px solid var(--ldh-gray-200) !important;
+  background-color: transparent !important;
 }
 
 .v-tab {
@@ -159,153 +105,172 @@
   font-weight: 500 !important;
   text-transform: none !important;
   letter-spacing: 0 !important;
+  color: var(--ldh-gray-700) !important;
 }
 
 .v-tab--selected {
-  color: var(--ldh-navy) !important;
+  color: var(--ldh-blue) !important;
+}
+
+/* Data Tables */
+.v-data-table {
+  background-color: white !important;
+  border-radius: var(--border-radius) !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.v-data-table__th {
+  font-family: var(--font-primary) !important;
   font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: var(--ldh-gray-700) !important;
+  background-color: var(--ldh-gray-50) !important;
+  border-bottom: 2px solid var(--ldh-gray-200) !important;
+}
+
+.v-data-table__td {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-800) !important;
+  border-bottom: 1px solid var(--ldh-gray-100) !important;
+}
+
+/* Dialogs */
+.v-dialog > .v-overlay__content > .v-card {
+  border-radius: var(--border-radius-lg) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+/* Chips */
+.v-chip {
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  border-radius: var(--border-radius-sm) !important;
+}
+
+/* Text Fields & Form Controls */
+.v-field {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-field--variant-outlined .v-field__outline {
+  color: var(--ldh-gray-300) !important;
+}
+
+.v-field--focused .v-field__outline {
+  color: var(--ldh-blue) !important;
+}
+
+.v-label {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+/* Progress Indicators */
+.v-progress-linear {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-progress-circular {
+  color: var(--ldh-blue) !important;
 }
 
 /* Alerts */
 .v-alert {
-  border-radius: var(--border-radius-sm) !important;
+  border-radius: var(--border-radius) !important;
   font-family: var(--font-secondary) !important;
-  border-left: 4px solid currentColor !important;
 }
 
 .v-alert--variant-tonal {
-  border-left-color: currentColor !important;
+  border: 1px solid currentColor !important;
+  border-left-width: 4px !important;
 }
 
-/* Navigation */
+/* Navigation Drawer */
+.v-navigation-drawer {
+  background-color: var(--ldh-gray-50) !important;
+  border-right: 1px solid var(--ldh-gray-200) !important;
+}
+
+.v-list-item {
+  border-radius: var(--border-radius-sm) !important;
+  margin: 0 var(--spacing-sm) !important;
+}
+
+.v-list-item--active {
+  background-color: rgba(66, 109, 169, 0.12) !important;
+  color: var(--ldh-blue) !important;
+}
+
+/* App Bar */
 .v-app-bar {
   box-shadow: var(--shadow-md) !important;
-  border-bottom: 1px solid var(--ldh-gray-200) !important;
 }
 
-.v-app-bar-title {
-  font-family: var(--font-primary) !important;
-  font-weight: 700 !important;
-  font-size: 1.5rem !important;
+/* Tooltips */
+.v-tooltip > .v-overlay__content {
+  background-color: var(--ldh-gray-900) !important;
   color: white !important;
-}
-
-/* ========================================
-   LAYOUT FIXES
-   ======================================== */
-
-/* Fix container overflow and responsive issues */
-@media (max-width: 1264px) {
-  .v-container {
-    padding: var(--spacing-sm) !important;
-  }
-}
-
-@media (max-width: 960px) {
-  .v-container {
-    padding: var(--spacing-sm) !important;
-  }
-  
-  .v-card-title {
-    font-size: 1.1rem !important;
-    line-height: 1.3 !important;
-    padding: var(--spacing-md) !important;
-  }
-  
-  .v-card-text {
-    padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md) !important;
-  }
-  
-  .v-card-actions {
-    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md) var(--spacing-md) !important;
-  }
-  
-  /* Stack cards on mobile */
-  .v-row .v-col {
-    flex: 1 1 100% !important;
-    max-width: 100% !important;
-  }
-  
-  /* Better mobile table */
-  .v-data-table {
-    font-size: 0.875rem !important;
-  }
-  
-  .v-data-table__td {
-    padding: var(--spacing-sm) !important;
-  }
-}
-
-@media (max-width: 600px) {
-  .v-container {
-    padding: var(--spacing-xs) !important;
-  }
-  
-  .v-dialog {
-    margin: var(--spacing-xs) !important;
-  }
-  
-  .v-dialog > .v-card {
-    max-width: calc(100vw - 16px) !important;
-  }
+  font-family: var(--font-secondary) !important;
+  font-size: 0.875rem !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  border-radius: var(--border-radius-sm) !important;
 }
 
 /* ========================================
    COMPONENT-SPECIFIC STYLES
    ======================================== */
 
-/* Statistics Cards */
-.statistics-card {
-  background: linear-gradient(135deg, var(--ldh-blue) 0%, var(--ldh-navy) 100%) !important;
-  color: white !important;
-  border: none !important;
+/* Role Cards */
+.role-card {
+  transition: all 0.3s ease !important;
+  cursor: pointer;
 }
 
-.statistics-card .v-card-text {
-  color: white !important;
+.role-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
 
-/* Debug Components */
-.debug-section {
-  border: 2px dashed var(--ldh-warning) !important;
-  background: rgba(251, 188, 4, 0.1) !important;
-  margin-bottom: var(--spacing-md) !important;
+.role-card.role-owner {
+  border-top: 4px solid var(--ldh-navy) !important;
 }
 
-.debug-section .v-card-title {
+.role-card.role-admin {
+  border-top: 4px solid var(--ldh-blue) !important;
+}
+
+.role-card.role-user {
+  border-top: 4px solid var(--ldh-aqua) !important;
+}
+
+.role-card.role-viewer {
+  border-top: 4px solid var(--ldh-gold) !important;
+}
+
+.role-card.role-pending {
+  border-top: 4px solid var(--ldh-gray-400) !important;
+  opacity: 0.7;
+}
+
+/* Status Indicators */
+.status-active {
+  color: var(--ldh-success) !important;
+}
+
+.status-pending {
   color: var(--ldh-warning) !important;
 }
 
+.status-inactive {
+  color: var(--ldh-error) !important;
+}
+
 /* Permission Chips */
-.permission-chip-granted {
-  background-color: var(--ldh-success) !important;
-  color: white !important;
-}
-
-.permission-chip-denied {
-  background-color: var(--ldh-error) !important;
-  color: white !important;
-}
-
-.permission-chip-pending {
-  background-color: var(--ldh-warning) !important;
-  color: var(--ldh-gray-900) !important;
-}
-
-/* Role Badges */
-.role-owner { background-color: var(--ldh-navy) !important; color: white !important; }
-.role-admin { background-color: var(--ldh-error) !important; color: white !important; }
-.role-user { background-color: var(--ldh-blue) !important; color: white !important; }
-.role-viewer { background-color: var(--ldh-success) !important; color: white !important; }
-.role-pending { background-color: var(--ldh-gray-400) !important; color: white !important; }
-
-/* Loading States */
-.v-progress-linear {
-  border-radius: var(--border-radius-sm) !important;
-}
-
-.v-skeleton-loader {
-  border-radius: var(--border-radius) !important;
+.permission-chip {
+  margin: 2px !important;
+  height: 28px !important;
+  font-size: 0.75rem !important;
 }
 
 /* ========================================
@@ -313,17 +278,42 @@
    ======================================== */
 
 /* Spacing Utilities */
-.p-xs { padding: var(--spacing-xs) !important; }
-.p-sm { padding: var(--spacing-sm) !important; }
-.p-md { padding: var(--spacing-md) !important; }
-.p-lg { padding: var(--spacing-lg) !important; }
-.p-xl { padding: var(--spacing-xl) !important; }
+.pa-xs { padding: var(--spacing-xs) !important; }
+.pa-sm { padding: var(--spacing-sm) !important; }
+.pa-md { padding: var(--spacing-md) !important; }
+.pa-lg { padding: var(--spacing-lg) !important; }
+.pa-xl { padding: var(--spacing-xl) !important; }
 
-.m-xs { margin: var(--spacing-xs) !important; }
-.m-sm { margin: var(--spacing-sm) !important; }
-.m-md { margin: var(--spacing-md) !important; }
-.m-lg { margin: var(--spacing-lg) !important; }
-.m-xl { margin: var(--spacing-xl) !important; }
+.ma-xs { margin: var(--spacing-xs) !important; }
+.ma-sm { margin: var(--spacing-sm) !important; }
+.ma-md { margin: var(--spacing-md) !important; }
+.ma-lg { margin: var(--spacing-lg) !important; }
+.ma-xl { margin: var(--spacing-xl) !important; }
+
+/* Directional Spacing */
+.pt-xs { padding-top: var(--spacing-xs) !important; }
+.pt-sm { padding-top: var(--spacing-sm) !important; }
+.pt-md { padding-top: var(--spacing-md) !important; }
+.pt-lg { padding-top: var(--spacing-lg) !important; }
+.pt-xl { padding-top: var(--spacing-xl) !important; }
+
+.pb-xs { padding-bottom: var(--spacing-xs) !important; }
+.pb-sm { padding-bottom: var(--spacing-sm) !important; }
+.pb-md { padding-bottom: var(--spacing-md) !important; }
+.pb-lg { padding-bottom: var(--spacing-lg) !important; }
+.pb-xl { padding-bottom: var(--spacing-xl) !important; }
+
+.mt-xs { margin-top: var(--spacing-xs) !important; }
+.mt-sm { margin-top: var(--spacing-sm) !important; }
+.mt-md { margin-top: var(--spacing-md) !important; }
+.mt-lg { margin-top: var(--spacing-lg) !important; }
+.mt-xl { margin-top: var(--spacing-xl) !important; }
+
+.mb-xs { margin-bottom: var(--spacing-xs) !important; }
+.mb-sm { margin-bottom: var(--spacing-sm) !important; }
+.mb-md { margin-bottom: var(--spacing-md) !important; }
+.mb-lg { margin-bottom: var(--spacing-lg) !important; }
+.mb-xl { margin-bottom: var(--spacing-xl) !important; }
 
 /* Text Utilities */
 .text-ldh-navy { color: var(--ldh-navy) !important; }
@@ -352,6 +342,138 @@
 .shadow-ldh-xl { box-shadow: var(--shadow-xl) !important; }
 
 /* ========================================
+   CRITICAL VISIBILITY FIXES
+   ======================================== */
+
+/* Fix for all button visibility issues */
+.v-btn {
+  /* Ensure minimum contrast for all button variants */
+  min-height: 36px !important;
+}
+
+/* Text/Plain button visibility fix */
+.v-btn--variant-text,
+.v-btn--variant-plain {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+.v-btn--variant-text:hover,
+.v-btn--variant-plain:hover {
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+/* Icon button visibility */
+.v-btn--icon {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-btn--icon:hover {
+  color: var(--ldh-blue) !important;
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+/* Ensure all icons in buttons are visible */
+.v-btn .v-icon {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+/* Checkbox visibility fix */
+.v-checkbox .v-selection-control__wrapper {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-checkbox .v-selection-control__input > .v-icon {
+  opacity: 1 !important;
+  color: var(--ldh-gray-600) !important;
+}
+
+/* Checked state */
+.v-checkbox .v-selection-control--dirty .v-selection-control__input > .v-icon {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+/* Hover state for checkboxes */
+.v-selection-control:hover .v-selection-control__input:not(.v-selection-control--dirty) > .v-icon {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+/* Radio button visibility */
+.v-radio .v-selection-control__wrapper {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-radio .v-selection-control__input > .v-icon {
+  opacity: 1 !important;
+  color: var(--ldh-gray-600) !important;
+}
+
+.v-radio .v-selection-control--dirty .v-selection-control__input > .v-icon {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+/* Switch visibility */
+.v-switch .v-selection-control__wrapper {
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control__input {
+  color: var(--ldh-gray-400) !important;
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control--dirty .v-selection-control__input {
+  color: var(--ldh-blue) !important;
+}
+
+/* Form label visibility */
+.v-label {
+  opacity: 1 !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+/* Input field visibility */
+.v-field__input {
+  color: var(--ldh-gray-900) !important;
+  opacity: 1 !important;
+}
+
+/* Disabled state for all controls */
+.v-btn--disabled {
+  opacity: 0.5 !important;
+  color: var(--ldh-gray-500) !important;
+}
+
+.v-selection-control--disabled {
+  opacity: 0.5 !important;
+}
+
+.v-field--disabled {
+  opacity: 0.5 !important;
+}
+
+/* Ensure proper contrast in dark backgrounds */
+.v-theme--dark .v-btn--variant-text,
+.v-theme--dark .v-btn--variant-plain {
+  color: white !important;
+}
+
+.v-theme--dark .v-btn--icon {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.v-theme--dark .v-btn--icon:hover {
+  color: white !important;
+}
+
+/* ========================================
    PRINT STYLES
    ======================================== */
 
@@ -373,38 +495,85 @@
 }
 
 /* ========================================
-   VISIBILITY FIX FOR ICONS & CONTROLS
+   DATA TABLE ACTION BUTTONS
    ======================================== */
-/*
-  This fix addresses an issue where icons inside buttons and checkboxes
-  may not be visible due to theme color conflicts or CSS specificity.
-*/
 
-/* Ensure icons inside text/plain buttons have a visible default state */
-.v-btn--variant-text .v-icon,
-.v-btn--variant-plain .v-icon {
-  opacity: 0.7;
+/* Action buttons in data tables */
+.v-data-table .v-btn {
+  transition: all 0.2s ease !important;
 }
 
-/* Ensure icons are fully opaque on hover */
-.v-btn--variant-text:hover .v-icon,
-.v-btn--variant-plain:hover .v-icon {
-  opacity: 1;
+.v-data-table .v-btn--variant-tonal {
+  background-color: rgba(var(--v-theme-on-surface), 0.08) !important;
 }
 
-/* Ensure the icon for checkboxes and radio buttons is visible in an INACTIVE state */
-.v-selection-control .v-icon {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-  opacity: 1 !important;
+.v-data-table .v-btn--variant-tonal:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
-/* Ensure the icon for a SELECTED control uses the theme's primary color */
-.v-selection-control--dirty .v-icon {
-  color: rgb(var(--v-theme-primary));
+/* Ensure proper icon spacing in buttons */
+.v-btn__prepend {
+  margin-inline-end: 4px !important;
 }
 
-/* Ensure disabled controls are visibly muted */
-.v-btn--disabled,
-.v-selection-control--disabled {
-    opacity: 0.5 !important;
+/* Action column specific styling */
+td[data-v-col="actions"] {
+  white-space: nowrap !important;
+}
+
+/* ========================================
+   RESPONSIVE OVERRIDES
+   ======================================== */
+
+@media (max-width: 600px) {
+  .v-container {
+    padding: var(--spacing-sm) !important;
+  }
+  
+  .v-card-title {
+    font-size: 1.25rem !important;
+    padding: var(--spacing-md) !important;
+  }
+  
+  .v-card-text {
+    padding: var(--spacing-md) !important;
+  }
+  
+  .v-data-table {
+    font-size: 0.875rem !important;
+  }
+}
+
+/* ========================================
+   ANIMATION UTILITIES
+   ======================================== */
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(20px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
 }

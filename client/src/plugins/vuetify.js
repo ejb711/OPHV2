@@ -2,9 +2,19 @@
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import { md3 } from 'vuetify/blueprints'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
 
 export const vuetify = createVuetify({
   blueprint: md3,
+  
+  // Icon configuration
+  icons: {
+    defaultSet: 'mdi',
+    aliases,
+    sets: {
+      mdi,
+    },
+  },
   
   theme: {
     defaultTheme: 'ldhTheme',
@@ -76,6 +86,7 @@ export const vuetify = createVuetify({
           'border-radius': '8px',
         }
       ],
+      class: 'opacity-100',
     },
     
     VCard: {
@@ -118,11 +129,29 @@ export const vuetify = createVuetify({
 
     VCheckbox: {
       color: 'primary',
+      baseColor: 'grey-darken-3',
+      class: 'opacity-100',
+      density: 'comfortable',
+    },
+    
+    VRadio: {
+      color: 'primary',
+      baseColor: 'grey-darken-3',
+      class: 'opacity-100',
+      density: 'comfortable',
+    },
+    
+    VSwitch: {
+      color: 'primary',
+      baseColor: 'grey-darken-1',
+      class: 'opacity-100',
+      density: 'comfortable',
     },
     
     VTextField: {
       variant: 'outlined',
       color: 'primary',
+      density: 'comfortable',
       style: [
         {
           'font-family': 'Cambria, Times New Roman, serif',
@@ -133,6 +162,7 @@ export const vuetify = createVuetify({
     VSelect: {
       variant: 'outlined',
       color: 'primary',
+      density: 'comfortable',
       style: [
         {
           'font-family': 'Cambria, Times New Roman, serif',
@@ -143,6 +173,7 @@ export const vuetify = createVuetify({
     VTextarea: {
       variant: 'outlined',
       color: 'primary',
+      density: 'comfortable',
       style: [
         {
           'font-family': 'Cambria, Times New Roman, serif',
@@ -239,6 +270,11 @@ export const vuetify = createVuetify({
           'border-radius': '12px',
         }
       ],
+    },
+    
+    // Icon visibility fix
+    VIcon: {
+      class: 'opacity-100',
     },
   },
   
