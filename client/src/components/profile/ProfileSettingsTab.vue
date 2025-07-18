@@ -1,4 +1,4 @@
-<!-- ProfileSettingsTab.vue -->
+<!-- ProfileSettingsTab.vue - Complete Fixed Version -->
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { updateDoc, doc, serverTimestamp } from 'firebase/firestore'
@@ -47,6 +47,20 @@ const snackbar = ref({
 // Computed
 const currentUser = computed(() => authStore.user)
 const isFormDirty = ref(false)
+
+// Computed property for phone with automatic formatting
+const formattedPhone = computed({
+  get() {
+    return form.value.phone
+  },
+  set(value) {
+    console.log('Phone setter called with:', value, typeof value)
+    const formatted = formatPhoneNumber(value)
+    console.log('Setting formatted phone:', formatted)
+    form.value.phone = formatted
+    markFormDirty()
+  }
+})
 
 // Email validation rules
 const emailRules = [
@@ -163,18 +177,24 @@ const saveProfile = async () => {
   }
 }
 
+// Phone formatting function
 const formatPhoneNumber = (value) => {
-  if (!value) return value
+  if (!value) return ''
   
-  // Remove all non-numeric characters
-  const numeric = value.replace(/\D/g, '')
+  // Convert to string and remove all non-numeric characters
+  const numericOnly = String(value).replace(/\D/g, '')
   
-  // Format as (XXX) XXX-XXXX
-  if (numeric.length >= 10) {
-    return `(${numeric.slice(0, 3)}) ${numeric.slice(3, 6)}-${numeric.slice(6, 10)}`
+  // Apply progressive formatting
+  if (numericOnly.length === 0) return ''
+  if (numericOnly.length <= 3) return numericOnly
+  if (numericOnly.length <= 6) {
+    return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3)}`
   }
-  
-  return value
+  if (numericOnly.length <= 10) {
+    return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3, 6)}-${numericOnly.slice(6)}`
+  }
+  // Limit to 10 digits
+  return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3, 6)}-${numericOnly.slice(6, 10)}`
 }
 
 // Watch for form changes
@@ -232,13 +252,14 @@ onMounted(() => {
                 />
               </v-col>
               <v-col cols="12" md="6">
+                <!-- PHONE NUMBER FIELD - USING COMPUTED WITH SETTER -->
                 <v-text-field
-                  v-model="form.phone"
+                  v-model="formattedPhone"
                   label="Phone Number"
                   variant="outlined"
                   placeholder="(XXX) XXX-XXXX"
                   :rules="phoneRules"
-                  @input="form.phone = formatPhoneNumber($event); markFormDirty()"
+                  maxlength="14"
                 />
               </v-col>
               <v-col cols="12" md="6">
@@ -260,18 +281,19 @@ onMounted(() => {
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="form.location"
-                  label="Office Location"
+                  label="Location"
                   variant="outlined"
+                  placeholder="City, State"
                   @input="markFormDirty"
                 />
               </v-col>
               <v-col cols="12">
                 <v-textarea
                   v-model="form.bio"
-                  label="Bio/Description"
+                  label="Bio"
                   variant="outlined"
+                  placeholder="Tell us about yourself..."
                   rows="3"
-                  counter="500"
                   @input="markFormDirty"
                 />
               </v-col>
@@ -296,7 +318,7 @@ onMounted(() => {
                   @change="markFormDirty"
                 />
                 <p class="text-caption text-medium-emphasis ml-8">
-                  Receive notifications about project updates, forum posts, and system announcements via email
+                  Receive notifications via email about important updates
                 </p>
               </v-col>
               <v-col cols="12">
@@ -308,7 +330,7 @@ onMounted(() => {
                   @change="markFormDirty"
                 />
                 <p class="text-caption text-medium-emphasis ml-8">
-                  Show desktop notifications when the application is open
+                  Show push notifications in your browser
                 </p>
               </v-col>
               <v-col cols="12">
@@ -317,11 +339,10 @@ onMounted(() => {
                   label="Mobile Notifications"
                   color="primary"
                   inset
-                  disabled
                   @change="markFormDirty"
                 />
                 <p class="text-caption text-medium-emphasis ml-8">
-                  Mobile app notifications (coming soon)
+                  Send notifications to your mobile device (coming soon)
                 </p>
               </v-col>
             </v-row>
@@ -409,18 +430,22 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* LDH Brand Standards Typography */
 .profile-settings h2 {
   font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-weight: 600;
 }
 
 .v-card-title {
   font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-weight: 500;
 }
 
 .v-card-text {
   font-family: 'Cambria', Georgia, serif;
 }
 
+/* Button spacing utility */
 .gap-3 {
   gap: 0.75rem;
 }
