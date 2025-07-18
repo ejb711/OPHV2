@@ -159,6 +159,31 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function getUserDocument() {
+  if (!user.value) return null
+  
+  try {
+    const userDoc = await getDoc(doc(db, 'users', user.value.uid))
+    return userDoc.exists() ? userDoc.data() : null
+  } catch (error) {
+    console.error('Error fetching user document:', error)
+    return null
+  }
+}
+
+  async function refreshCurrentUser() {
+    if (!user.value) return
+    
+    try {
+      // Refresh the Firebase Auth user object
+      await auth.currentUser.reload()
+      
+      // The onAuthStateChanged listener will automatically update
+      // the user ref and trigger permission refresh
+    } catch (error) {
+      console.error('Error refreshing current user:', error)
+    }
+  }
   return {
     // State
     user,
@@ -184,6 +209,9 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     signup,
     logout,
-    refreshPermissions
+    refreshPermissions,
+
+    getUserDocument,
+    refreshCurrentUser,
   }
 })

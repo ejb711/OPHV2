@@ -1,9 +1,12 @@
-<!-- client/src/views/ProfileView.vue -->
+<!-- Updated ProfileView.vue with new tab components -->
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import PermissionGuard from '../components/PermissionGuard.vue'
+import ProfileSettingsTab from '../components/profile/ProfileSettingsTab.vue'
+import ProfileActivityTab from '../components/profile/ProfileActivityTab.vue'
+import ProfileSecurityTab from '../components/profile/ProfileSecurityTab.vue'
 import { useAuthStore } from '../stores/auth'
 import { usePermissionsStore } from '../stores/permissions'
 
@@ -207,7 +210,7 @@ onMounted(async () => {
       </div>
 
       <!-- Debug Panel (temporary for troubleshooting) -->
-      <v-expansion-panels class="mb-4" v-if="true">
+      <v-expansion-panels class="mb-4" v-if="false">
         <v-expansion-panel>
           <v-expansion-panel-title>
             Debug Information
@@ -306,46 +309,35 @@ onMounted(async () => {
                         <v-col cols="12" sm="6">
                           <div class="mb-3">
                             <label class="text-subtitle-2 font-weight-bold">Account Created</label>
-                            <p class="text-body-1">
-                              {{ formatDate(currentUser.metadata?.creationTime) }}
-                            </p>
+                            <p class="text-body-1">{{ formatDate(currentUser.metadata?.creationTime) }}</p>
                           </div>
                         </v-col>
                         <v-col cols="12" sm="6">
                           <div class="mb-3">
                             <label class="text-subtitle-2 font-weight-bold">Last Sign In</label>
-                            <p class="text-body-1">
-                              {{ formatDate(currentUser.metadata?.lastSignInTime) }}
-                            </p>
+                            <p class="text-body-1">{{ formatDate(currentUser.metadata?.lastSignInTime) }}</p>
                           </div>
                         </v-col>
                       </v-row>
                     </v-card-text>
                   </v-card>
                 </v-col>
-                
-                <!-- Profile Photo -->
                 <v-col cols="12" md="4">
                   <v-card variant="outlined">
                     <v-card-title class="text-h6 font-weight-bold">
                       Profile Photo
                     </v-card-title>
                     <v-card-text class="text-center">
-                      <v-avatar size="120" color="grey-lighten-2">
-                        <v-icon size="60" color="grey">mdi-account</v-icon>
+                      <v-avatar size="120" color="primary" class="mb-4">
+                        <v-img 
+                          v-if="currentUser.photoURL" 
+                          :src="currentUser.photoURL" 
+                          :alt="currentUser.displayName || 'Profile Photo'"
+                        />
+                        <v-icon v-else size="60">mdi-account</v-icon>
                       </v-avatar>
-                      <div v-if="authStore.isOwner || authStore.hasPermission('upload_avatar')">
-                        <v-btn 
-                          class="mt-4" 
-                          color="primary" 
-                          variant="outlined"
-                          size="small"
-                          block
-                        >
-                          <v-icon left>mdi-camera</v-icon>
-                          Change Photo
-                        </v-btn>
-                        <p class="text-caption text-medium-emphasis mt-2">
+                      <div>
+                        <p class="text-body-2 text-medium-emphasis">
                           Photo upload coming soon
                         </p>
                       </div>
@@ -356,28 +348,31 @@ onMounted(async () => {
             </div>
 
             <!-- Settings Tab -->
-            <div v-else-if="selectedTab === 'settings' && (authStore.isOwner || authStore.hasPermission('edit_own_profile'))">
-              <h2 class="text-h5 font-weight-bold mb-4">Profile Settings</h2>
-              <p class="text-body-1 text-medium-emphasis">
-                Profile editing functionality coming soon...
-              </p>
-            </div>
+            <PermissionGuard 
+              v-else-if="selectedTab === 'settings'" 
+              :permissions="['edit_own_profile']"
+              :fallback-check="authStore.isOwner"
+            >
+              <ProfileSettingsTab />
+            </PermissionGuard>
 
             <!-- Activity Tab -->
-            <div v-else-if="selectedTab === 'activity' && (authStore.isOwner || authStore.hasPermission('view_own_activity'))">
-              <h2 class="text-h5 font-weight-bold mb-4">Activity History</h2>
-              <p class="text-body-1 text-medium-emphasis">
-                Activity tracking functionality coming soon...
-              </p>
-            </div>
+            <PermissionGuard 
+              v-else-if="selectedTab === 'activity'" 
+              :permissions="['view_own_activity']"
+              :fallback-check="authStore.isOwner"
+            >
+              <ProfileActivityTab />
+            </PermissionGuard>
 
             <!-- Security Tab -->
-            <div v-else-if="selectedTab === 'security' && (authStore.isOwner || authStore.hasPermission('manage_own_security'))">
-              <h2 class="text-h5 font-weight-bold mb-4">Security Settings</h2>
-              <p class="text-body-1 text-medium-emphasis">
-                Security management functionality coming soon...
-              </p>
-            </div>
+            <PermissionGuard 
+              v-else-if="selectedTab === 'security'" 
+              :permissions="['manage_own_security']"
+              :fallback-check="authStore.isOwner"
+            >
+              <ProfileSecurityTab />
+            </PermissionGuard>
           </v-card-text>
         </v-card>
       </div>
