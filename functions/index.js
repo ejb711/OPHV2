@@ -1,4 +1,4 @@
-// functions/index.js - Enhanced with permission system
+// functions/index.js - Enhanced with permission system and audit log retention
 const functions = require('firebase-functions/v1')
 const admin = require('firebase-admin')
 
@@ -99,6 +99,21 @@ const DEFAULT_ROLES = [
   }
 ]
 
+/* ---------- Audit Log Retention Configuration ---------- */
+const RETENTION_CONFIG = {
+  FULL_RETENTION_DAYS: 90,
+  COMPRESSED_RETENTION_DAYS: 365,
+  COMPLIANCE_ACTIONS: [
+    'user_deleted',
+    'role_changed', 
+    'permission_granted',
+    'permission_revoked',
+    'security_alert',
+    'unauthorized_access'
+  ],
+  CLEANUP_BATCH_SIZE: 500 // Larger batches in Cloud Function
+}
+
 /* ---------- Helper Functions ---------- */
 
 async function getUserEffectivePermissions(user) {
@@ -136,6 +151,186 @@ async function updateUserCustomClaims(uid, userData) {
   
   await admin.auth().setCustomUserClaims(uid, customClaims)
   console.log(`Updated custom claims for ${uid}:`, customClaims)
+}
+
+/* ---------- Audit Log Retention Helper Functions ---------- */
+
+/**
+ * Compress logs older than retention period
+ */
+async function compressOldLogs(now) {
+  const db = admin.firestore()
+  let compressedCount = 0
+  
+  const compressionDate = new admin.firestore.Timestamp(
+    now.seconds - (RETENTION_CONFIG.FULL_RETENTION_DAYS * 24 * 60 * 60),
+    now.nanoseconds
+  )
+  
+  // Process in batches to avoid timeouts
+  let hasMore = true
+  while (hasMore) {
+    const query = db.collection('audit_logs')
+      .where('timestamp', '<', compressionDate)
+      .where('compressed', '!=', true)
+      .limit(RETENTION_CONFIG.CLEANUP_BATCH_SIZE)
+    
+    const snapshot = await query.get()
+    hasMore = snapshot.docs.length === RETENTION_CONFIG.CLEANUP_BATCH_SIZE
+    
+    if (snapshot.docs.length === 0) break
+    
+    const batch = db.batch()
+    
+    snapshot.docs.forEach(doc => {
+      const data = doc.data()
+      
+      // Create compressed version
+      const compressedData = {
+        ...data,
+        details: createCompressedDetails(data),
+        compressed: true,
+        compressedAt: admin.firestore.FieldValue.serverTimestamp(),
+        originalSize: JSON.stringify(data.details || {}).length
+      }
+      
+      batch.update(doc.ref, compressedData)
+    })
+    
+    await batch.commit()
+    compressedCount += snapshot.docs.length
+    
+    console.log(`Compressed batch of ${snapshot.docs.length} logs`)
+  }
+  
+  return compressedCount
+}
+
+/**
+ * Delete logs past their retention period
+ */
+async function deleteExpiredLogs(now) {
+  const db = admin.firestore()
+  let deletedCount = 0
+  
+  const deletionDate = new admin.firestore.Timestamp(
+    now.seconds - (RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS * 24 * 60 * 60),
+    now.nanoseconds
+  )
+  
+  // Process in batches
+  let hasMore = true
+  while (hasMore) {
+    const query = db.collection('audit_logs')
+      .where('timestamp', '<', deletionDate)
+      .limit(RETENTION_CONFIG.CLEANUP_BATCH_SIZE)
+    
+    const snapshot = await query.get()
+    hasMore = snapshot.docs.length === RETENTION_CONFIG.CLEANUP_BATCH_SIZE
+    
+    if (snapshot.docs.length === 0) break
+    
+    const batch = db.batch()
+    
+    snapshot.docs.forEach(doc => {
+      const data = doc.data()
+      
+      // Don't delete compliance logs - just mark them as archived
+      if (RETENTION_CONFIG.COMPLIANCE_ACTIONS.includes(data.action)) {
+        batch.update(doc.ref, {
+          archived: true,
+          archivedAt: admin.firestore.FieldValue.serverTimestamp()
+        })
+      } else {
+        batch.delete(doc.ref)
+        deletedCount++
+      }
+    })
+    
+    await batch.commit()
+    console.log(`Processed batch of ${snapshot.docs.length} expired logs`)
+  }
+  
+  return deletedCount
+}
+
+/**
+ * Create compressed details object
+ */
+function createCompressedDetails(logData) {
+  const { action, details = {} } = logData
+  
+  // Keep only essential information
+  const compressed = {
+    action,
+    summary: createSummary(action, details)
+  }
+  
+  // Keep critical fields for certain actions
+  if (RETENTION_CONFIG.COMPLIANCE_ACTIONS.includes(action)) {
+    compressed.originalDetails = details
+  }
+  
+  return compressed
+}
+
+/**
+ * Create human-readable summary
+ */
+function createSummary(action, details) {
+  switch (action) {
+    case 'user_updated':
+      return `User ${details.userEmail || 'unknown'} updated`
+    case 'user_deleted':
+      return `User ${details.userEmail || 'unknown'} deleted`
+    case 'role_changed':
+      return `Role changed: ${details.fromRole} → ${details.toRole}`
+    case 'permission_granted':
+      return `Permission granted: ${details.permission}`
+    case 'permission_revoked':
+      return `Permission revoked: ${details.permission}`
+    case 'admin_tab_viewed':
+      return `Admin viewed ${details.tab} tab`
+    case 'bulk_operation':
+      return `Bulk ${details.operation}: ${details.userCount} users`
+    default:
+      return action.replace(/_/g, ' ')
+  }
+}
+
+/**
+ * Log cleanup results for monitoring
+ */
+async function logCleanupResults(stats) {
+  const db = admin.firestore()
+  
+  await db.collection('audit_logs').add({
+    action: 'retention_cleanup',
+    details: {
+      ...stats,
+      endTime: new Date().toISOString(),
+      duration: Date.now() - new Date(stats.startTime).getTime()
+    },
+    userId: 'system',
+    userEmail: 'system@ophv2.app',
+    timestamp: admin.firestore.FieldValue.serverTimestamp()
+  })
+}
+
+/**
+ * Determine retention health status
+ */
+function getRetentionHealth(total, compressed, recent) {
+  if (total === 0) return 'unknown'
+  
+  const compressionRate = compressed / total
+  const recentRate = recent / total
+  
+  if (compressionRate > 0.8) return 'poor' // Too many old logs
+  if (compressionRate > 0.5) return 'warning'
+  if (recentRate > 0.7) return 'good' // Healthy mix
+  
+  return 'excellent'
 }
 
 /* ---------- Initialization Function ---------- */
@@ -196,6 +391,15 @@ exports.onNewUser = functions.auth.user().onCreate(async (user) => {
       permissions: []
     })
     
+    // Log the new user creation
+    await admin.firestore().collection('audit_logs').add({
+      action: 'user_created',
+      details: { userEmail: user.email },
+      userId: 'system',
+      userEmail: 'system@ophv2.app',
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    })
+    
     console.log(`New user created: ${user.email} (${user.uid})`)
   } catch (error) {
     console.error('Error creating new user:', error)
@@ -218,7 +422,23 @@ exports.onUserRoleChange = functions.firestore
       try {
         await updateUserCustomClaims(uid, after)
         
-        // Log the change
+        // Log the change to audit logs
+        if (roleChanged) {
+          await admin.firestore().collection('audit_logs').add({
+            action: 'role_changed',
+            details: {
+              userId: uid,
+              userEmail: after.email,
+              fromRole: before.role,
+              toRole: after.role
+            },
+            userId: context.auth?.uid || 'system',
+            userEmail: context.auth?.token?.email || 'system@ophv2.app',
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+          })
+        }
+        
+        // Log the change for monitoring
         await admin.firestore().collection('roleChanges').add({
           userId: uid,
           changes: {
@@ -316,5 +536,134 @@ exports.validatePermission = functions.https.onCall(async (data, context) => {
   return { 
     hasPermission,
     reason: hasPermission ? null : `Missing permission: ${permission}`
+  }
+})
+
+/* ---------- Audit Log Functions ---------- */
+
+/**
+ * Scheduled function to clean up audit logs
+ * Runs daily at 2 AM Central Time
+ */
+exports.cleanupAuditLogs = functions.pubsub
+  .schedule('0 2 * * *') // Daily at 2 AM UTC
+  .timeZone('America/Chicago') // Central Time
+  .onRun(async (context) => {
+    console.log('🧹 Starting scheduled audit log cleanup...')
+    
+    try {
+      const now = admin.firestore.Timestamp.now()
+      const stats = {
+        compressed: 0,
+        deleted: 0,
+        errors: 0,
+        startTime: new Date().toISOString()
+      }
+
+      // Step 1: Compress old logs
+      stats.compressed = await compressOldLogs(now)
+      
+      // Step 2: Delete expired logs  
+      stats.deleted = await deleteExpiredLogs(now)
+      
+      // Step 3: Log cleanup results
+      await logCleanupResults(stats)
+      
+      console.log('✅ Cleanup completed:', stats)
+      return { success: true, stats }
+      
+    } catch (error) {
+      console.error('❌ Cleanup failed:', error)
+      
+      // Log the error for monitoring
+      await admin.firestore().collection('audit_logs').add({
+        action: 'system_error',
+        details: {
+          error: error.message,
+          context: 'scheduled_cleanup',
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        },
+        userId: 'system',
+        userEmail: 'system@ophv2.app',
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      })
+      
+      throw error
+    }
+  })
+
+/**
+ * HTTP function to manually trigger cleanup (for testing/admin use)
+ */
+exports.manualCleanupAuditLogs = functions.https.onCall(async (data, context) => {
+  // Verify admin access
+  if (!context.auth || !context.auth.token.role || !['admin', 'owner'].includes(context.auth.token.role)) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin access required')
+  }
+  
+  console.log('🧹 Manual cleanup triggered by:', context.auth.token.email)
+  
+  try {
+    const now = admin.firestore.Timestamp.now()
+    const stats = {
+      compressed: await compressOldLogs(now),
+      deleted: await deleteExpiredLogs(now),
+      triggeredBy: context.auth.token.email,
+      startTime: new Date().toISOString()
+    }
+    
+    await logCleanupResults(stats)
+    
+    return { success: true, stats }
+  } catch (error) {
+    console.error('Manual cleanup failed:', error)
+    throw new functions.https.HttpsError('internal', 'Cleanup failed: ' + error.message)
+  }
+})
+
+/**
+ * Get retention statistics for admin monitoring
+ */
+exports.getRetentionStats = functions.https.onCall(async (data, context) => {
+  // Verify admin access
+  if (!context.auth || !context.auth.token.role || !['admin', 'owner'].includes(context.auth.token.role)) {
+    throw new functions.https.HttpsError('permission-denied', 'Admin access required')
+  }
+  
+  try {
+    const db = admin.firestore()
+    const now = new Date()
+    
+    // Get total logs count
+    const totalQuery = await db.collection('audit_logs').count().get()
+    const totalLogs = totalQuery.data().count
+    
+    // Get compressed logs count
+    const compressedQuery = await db.collection('audit_logs')
+      .where('compressed', '==', true)
+      .count()
+      .get()
+    const compressedLogs = compressedQuery.data().count
+    
+    // Get logs by age
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+    const recentQuery = await db.collection('audit_logs')
+      .where('timestamp', '>', admin.firestore.Timestamp.fromDate(thirtyDaysAgo))
+      .count()
+      .get()
+    const recentLogs = recentQuery.data().count
+    
+    return {
+      totalLogs,
+      compressedLogs,
+      recentLogs: recentLogs,
+      compressionRate: totalLogs > 0 ? (compressedLogs / totalLogs * 100).toFixed(1) : 0,
+      retentionHealth: getRetentionHealth(totalLogs, compressedLogs, recentLogs),
+      lastUpdated: now.toISOString()
+    }
+    
+  } catch (error) {
+    console.error('Error getting retention stats:', error)
+    throw new functions.https.HttpsError('internal', 'Failed to get stats: ' + error.message)
   }
 })

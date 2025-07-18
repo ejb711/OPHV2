@@ -50,19 +50,13 @@ const totalPages = computed(() =>
 )
 
 const availableActions = computed(() => {
-  const actions = [...new Set(logs.value
-    .map(log => log.action)
-    .filter(action => action && typeof action === 'string')
-  )]
+  const actions = [...new Set(logs.value.map(log => log.action))]
   return actions.sort()
 })
 
 const availableUsers = computed(() => {
-  const users = [...new Set(logs.value
-    .map(log => log.userEmail)
-    .filter(user => user && user !== 'unknown' && user !== 'unknown@system' && typeof user === 'string')
-  )]
-  return users.sort()
+  const users = [...new Set(logs.value.map(log => log.userEmail))]
+  return users.filter(user => user && user !== 'unknown').sort()
 })
 
 /* ---------- watchers ---------- */
@@ -95,25 +89,14 @@ function setupRealtimeListener() {
   )
   
   unsubscribe = onSnapshot(q, (snapshot) => {
-    logs.value = snapshot.docs.map(doc => {
-      const data = doc.data()
-      
-      // Ensure required fields exist and are valid
-      return {
-        id: doc.id,
-        action: data.action || 'unknown_action',
-        userEmail: data.userEmail || 'unknown@system',
-        userId: data.userId || 'unknown',
-        details: data.details || {},
-        timestamp: data.timestamp?.toDate() || new Date()
-      }
-    }).filter(log => log.action && log.timestamp) // Filter out invalid entries
+    logs.value = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().timestamp?.toDate() || new Date()
+    }))
     
     // Apply current filters
     applyFilters()
-    loading.value = false
-  }, (error) => {
-    console.error('Error in audit logs listener:', error)
     loading.value = false
   })
 }
@@ -128,13 +111,13 @@ function applyFilters() {
   if (filters.value.dateRange.start) {
     const startDate = new Date(filters.value.dateRange.start)
     startDate.setHours(0, 0, 0, 0)
-    filtered = filtered.filter(log => log.timestamp && log.timestamp >= startDate)
+    filtered = filtered.filter(log => log.timestamp >= startDate)
   }
   
   if (filters.value.dateRange.end) {
     const endDate = new Date(filters.value.dateRange.end)
     endDate.setHours(23, 59, 59, 999)
-    filtered = filtered.filter(log => log.timestamp && log.timestamp <= endDate)
+    filtered = filtered.filter(log => log.timestamp <= endDate)
   }
   
   // Action filter
@@ -151,7 +134,7 @@ function applyFilters() {
   if (filters.value.search) {
     const searchTerm = filters.value.search.toLowerCase()
     filtered = filtered.filter(log => {
-      const action = (log.action || '').toLowerCase()
+      const action = log.action.toLowerCase()
       const email = (log.userEmail || '').toLowerCase()
       const details = JSON.stringify(log.details || {}).toLowerCase()
       
@@ -194,9 +177,9 @@ async function exportToCSV() {
     // Use filtered logs for export
     const dataToExport = filteredLogs.value.map(log => ({
       timestamp: formatDateForExport(log.timestamp),
-      action: log.action || 'unknown_action',
-      user_email: log.userEmail || 'unknown@system',
-      user_id: log.userId || 'unknown',
+      action: log.action,
+      user_email: log.userEmail,
+      user_id: log.userId,
       details: JSON.stringify(log.details || {})
     }))
     
@@ -223,7 +206,6 @@ async function exportToCSV() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(url) // Clean up memory
     
   } catch (error) {
     console.error('Export failed:', error)
@@ -250,32 +232,23 @@ function formatDateForExport(date) {
 }
 
 function formatAction(action) {
-  if (!action || typeof action !== 'string') {
-    return 'Unknown Action'
-  }
   return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 function formatDetails(details) {
-  if (!details || typeof details !== 'object' || Object.keys(details).length === 0) {
-    return 'No details'
-  }
+  if (!details || Object.keys(details).length === 0) return 'No details'
   
-  try {
-    // Create a more readable format for details
-    const formatted = Object.entries(details)
-      .map(([key, value]) => {
-        if (typeof value === 'object' && value !== null) {
-          return `${key}: ${JSON.stringify(value)}`
-        }
-        return `${key}: ${value || 'N/A'}`
-      })
-      .join(', ')
-    
-    return formatted.length > 100 ? formatted.substring(0, 100) + '...' : formatted
-  } catch (error) {
-    return 'Invalid details format'
-  }
+  // Create a more readable format for details
+  const formatted = Object.entries(details)
+    .map(([key, value]) => {
+      if (typeof value === 'object') {
+        return `${key}: ${JSON.stringify(value)}`
+      }
+      return `${key}: ${value}`
+    })
+    .join(', ')
+  
+  return formatted.length > 100 ? formatted.substring(0, 100) + '...' : formatted
 }
 
 const actionIcons = {
@@ -295,17 +268,10 @@ const actionIcons = {
 }
 
 function getActionIcon(action) {
-  if (!action || typeof action !== 'string') {
-    return actionIcons.default
-  }
   return actionIcons[action] || actionIcons.default
 }
 
 function getActionColor(action) {
-  if (!action || typeof action !== 'string') {
-    return 'grey'
-  }
-  
   const colorMap = {
     user_deleted: 'error',
     security_alert: 'error',

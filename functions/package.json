@@ -1,16 +1,51 @@
 {
-  "name": "functions",
+  "name": "ophv2-functions",
   "version": "1.0.0",
-  "description": "",
+  "description": "Cloud Functions for OPHV2 - User management, audit logging, and retention system",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "engines": {
+    "node": "20"
   },
-  "keywords": [],
-  "author": "",
+  "scripts": {
+    "build": "echo 'No build step required'",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "deploy:quick": "firebase deploy --only functions --force",
+    "logs": "firebase functions:log",
+    "logs:cleanup": "firebase functions:log --only cleanupAuditLogs",
+    "logs:retention": "firebase functions:log --only manualCleanupAuditLogs,getRetentionStats",
+    "test": "echo 'Tests coming soon' && exit 0",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [
+    "firebase",
+    "cloud-functions",
+    "audit-logging",
+    "user-management",
+    "retention",
+    "ophv2"
+  ],
+  "author": "OPHV2 Development Team",
   "license": "ISC",
   "dependencies": {
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^5.1.1"
-  }
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-promise": "^6.1.1"
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/ophv2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ophv2/issues"
+  },
+  "homepage": "https://github.com/yourusername/ophv2#readme"
 }

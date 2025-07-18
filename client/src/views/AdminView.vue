@@ -1,20 +1,23 @@
-<!-- client/src/views/AdminView.vue - Enhanced Admin Panel with Tabs -->
+<!-- client/src/views/AdminView.vue - Enhanced Admin Panel with Fixed Audit Logging -->
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { db, auth } from '../firebase'
-import { collection, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 import AppLayout from '../components/AppLayout.vue'
 import UserManagement from '../components/admin/UserManagement.vue'
 import RoleManagement from '../components/admin/RoleManagement.vue'
 import PermissionMatrix from '../components/admin/PermissionMatrix.vue'
 import SystemLogs from '../components/admin/SystemLogs.vue'
+import RetentionMonitor from '../components/admin/RetentionMonitor.vue'
 import { useAuthStore } from '../stores/auth'
 import { usePermissionsStore } from '../stores/permissions'
+import { useAudit } from '../composables/useAudit'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const permissionsStore = usePermissionsStore()
+const { log } = useAudit()
 
 /* ---------- state ---------- */
 const selectedTab = ref('users')
@@ -62,6 +65,13 @@ const tabs = computed(() => [
     icon: 'mdi-history',
     permission: 'view_audit_logs',
     description: 'View system activity and audit trails'
+  },
+  { 
+    value: 'retention', 
+    title: 'Retention Monitor', 
+    icon: 'mdi-database-cog',
+    permission: 'view_audit_logs',
+    description: 'Monitor audit log retention and cleanup'
   }
 ])
 
@@ -139,35 +149,28 @@ function setupRealtimeListeners() {
   )
 }
 
-/* ---------- audit logging ---------- */
-async function logActivity(activity) {
-  try {
-    // Ensure details object has no undefined values
-    const cleanDetails = {}
-    if (activity.details) {
-      Object.entries(activity.details).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          cleanDetails[key] = value
-        }
-      })
-    }
-    
-    await addDoc(collection(db, 'audit_logs'), {
-      ...activity,
-      details: cleanDetails, // Use cleaned details
-      timestamp: serverTimestamp(),
-      userId: authStore.user?.uid || 'unknown',
-      userEmail: authStore.user?.email || 'unknown'
-    })
-  } catch (err) {
-    console.error('Error logging activity:', err)
-  }
-}
-
 /* ---------- navigation ---------- */
 function handleTabChange(value) {
   selectedTab.value = value
-  logActivity('admin_tab_viewed', { tab: value })
+  // Use the proper audit logging method
+  log.adminTabViewed(value)
+}
+
+/* ---------- audit event handler ---------- */
+function handleActivityEvent(eventData) {
+  // Handle audit events from child components
+  // Child components should emit properly structured events
+  if (eventData && eventData.action) {
+    // If it's a structured event with action and details
+    if (eventData.details) {
+      log.custom(eventData.action, eventData.details)
+    } else {
+      log.custom(eventData.action, {})
+    }
+  } else {
+    // Legacy format - try to handle gracefully
+    console.warn('Received legacy audit event format:', eventData)
+  }
 }
 </script>
 
@@ -300,24 +303,29 @@ function handleTabChange(value) {
           <!-- User Management Tab -->
           <UserManagement 
             v-if="selectedTab === 'users'"
-            @activity="logActivity"
+            @activity="handleActivityEvent"
           />
           
           <!-- Role Management Tab -->
           <RoleManagement 
             v-else-if="selectedTab === 'roles'"
-            @activity="logActivity"
+            @activity="handleActivityEvent"
           />
           
           <!-- Permission Matrix Tab -->
           <PermissionMatrix 
             v-else-if="selectedTab === 'permissions'"
-            @activity="logActivity"
+            @activity="handleActivityEvent"
           />
           
           <!-- System Logs Tab -->
           <SystemLogs 
             v-else-if="selectedTab === 'logs'"
+          />
+          
+          <!-- Retention Monitor Tab -->
+          <RetentionMonitor 
+            v-else-if="selectedTab === 'retention'"
           />
         </v-card-text>
       </v-card>
