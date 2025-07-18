@@ -1,6 +1,6 @@
 <!-- client/src/views/ProfileView.vue -->
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import PermissionGuard from '../components/PermissionGuard.vue'
@@ -26,7 +26,19 @@ const snackbar = ref({
 /* ---------- computed ---------- */
 const currentUser = computed(() => authStore.user)
 const userRole = computed(() => authStore.role)
-const permissions = computed(() => authStore.permissions || [])
+const permissions = computed(() => authStore.effectivePermissions || [])
+
+// Debug computed to see permission state
+const debugInfo = computed(() => ({
+  role: userRole.value,
+  isOwner: authStore.isOwner,
+  permissions: permissions.value,
+  hasViewProfile: authStore.hasPermission('view_own_profile'),
+  hasEditProfile: authStore.hasPermission('edit_own_profile'),
+  hasViewActivity: authStore.hasPermission('view_own_activity'),
+  hasManageSecurity: authStore.hasPermission('manage_own_security'),
+  authReady: authStore.ready
+}))
 
 // Available tabs based on permissions
 const availableTabs = computed(() => {
@@ -57,11 +69,36 @@ const availableTabs = computed(() => {
     }
   ]
   
-  // Filter tabs based on user permissions
-  return tabs.filter(tab => {
-    return permissions.value.includes(tab.permission)
+  // Special handling for owners - always show all tabs
+  if (userRole.value === 'owner') {
+    console.log('User is owner (role check), showing all tabs')
+    return tabs
+  }
+  
+  // For other users, filter by permissions
+  const filteredTabs = tabs.filter(tab => {
+    const hasPermission = authStore.hasPermission(tab.permission)
+    console.log(`Tab ${tab.title}: permission ${tab.permission} = ${hasPermission}`)
+    return hasPermission
   })
+  
+  // If no tabs after filtering, but user has a valid role, show at least the profile tab
+  if (filteredTabs.length === 0 && userRole.value && userRole.value !== 'pending') {
+    console.log('No tabs found, showing profile tab as fallback')
+    return [tabs[0]] // Show at least the profile tab
+  }
+  
+  return filteredTabs
 })
+
+// Watch for changes in permissions
+watch(permissions, (newPerms) => {
+  console.log('Permissions updated:', newPerms)
+})
+
+watch(debugInfo, (info) => {
+  console.log('Debug info updated:', info)
+}, { immediate: true })
 
 /* ---------- methods ---------- */
 const showSnackbar = (message, color = 'success') => {
@@ -72,20 +109,67 @@ const showSnackbar = (message, color = 'success') => {
   }
 }
 
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+const getRoleColor = (role) => {
+  const colors = {
+    owner: 'purple',
+    admin: 'blue',
+    user: 'green',
+    viewer: 'orange',
+    pending: 'grey'
+  }
+  return colors[role] || 'grey'
+}
+
+const refreshPermissions = async () => {
+  console.log('Manually refreshing permissions...')
+  try {
+    await authStore.refreshPermissions()
+    showSnackbar('Permissions refreshed', 'success')
+    console.log('After refresh:', debugInfo.value)
+  } catch (error) {
+    console.error('Error refreshing permissions:', error)
+    showSnackbar('Failed to refresh permissions', 'error')
+  }
+}
+
 /* ---------- lifecycle ---------- */
 onMounted(async () => {
   loading.value = true
+  console.log('ProfileView mounting...')
+  
   try {
     // Ensure user data is loaded
     if (!currentUser.value) {
+      console.log('No user found, redirecting to login')
       router.push('/login')
       return
     }
     
     // Ensure permissions are loaded
     if (!authStore.ready) {
-      await authStore.waitForAuth()
+      console.log('Waiting for auth to be ready...')
+      await new Promise(resolve => {
+        const interval = setInterval(() => {
+          if (authStore.ready) {
+            clearInterval(interval)
+            resolve()
+          }
+        }, 100)
+      })
     }
+    
+    console.log('Auth ready, checking permissions...')
+    console.log('Available tabs:', availableTabs.value.length)
+    console.log('Debug info:', debugInfo.value)
     
     loading.value = false
   } catch (error) {
@@ -122,6 +206,27 @@ onMounted(async () => {
         </p>
       </div>
 
+      <!-- Debug Panel (temporary for troubleshooting) -->
+      <v-expansion-panels class="mb-4" v-if="true">
+        <v-expansion-panel>
+          <v-expansion-panel-title>
+            Debug Information
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <pre>{{ JSON.stringify(debugInfo, null, 2) }}</pre>
+            <p class="mt-2">Available tabs: {{ availableTabs.length }}</p>
+            <v-btn 
+              color="primary" 
+              @click="refreshPermissions"
+              class="mt-2"
+              size="small"
+            >
+              Refresh Permissions
+            </v-btn>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+
       <!-- Loading State -->
       <div v-if="loading" class="text-center py-8">
         <v-progress-circular
@@ -135,7 +240,7 @@ onMounted(async () => {
       <!-- Profile Content -->
       <div v-else-if="currentUser">
         <!-- Tab Navigation -->
-        <v-card class="mb-6">
+        <v-card v-if="availableTabs.length > 0" class="mb-6">
           <v-tabs
             v-model="selectedTab"
             bg-color="transparent"
@@ -153,130 +258,125 @@ onMounted(async () => {
           </v-tabs>
         </v-card>
 
+        <!-- No Tabs Available Message -->
+        <v-alert
+          v-else
+          type="warning"
+          variant="outlined"
+          class="mb-6"
+        >
+          <v-alert-title>Limited Access</v-alert-title>
+          Profile features are being set up. Please check back later or contact an administrator.
+        </v-alert>
+
         <!-- Tab Content -->
         <v-card>
           <v-card-text>
             <!-- Profile Tab -->
-            <div v-if="selectedTab === 'profile'">
-              <PermissionGuard permission="view_own_profile">
-                <h2 class="text-h5 font-weight-bold mb-4">Profile Information</h2>
+            <div v-if="selectedTab === 'profile' && (authStore.isOwner || authStore.hasPermission('view_own_profile'))">
+              <h2 class="text-h5 font-weight-bold mb-4">Profile Information</h2>
+              
+              <!-- Basic User Info -->
+              <v-row>
+                <v-col cols="12" md="8">
+                  <v-card variant="outlined" class="mb-4">
+                    <v-card-title class="text-h6 font-weight-bold">
+                      Account Details
+                    </v-card-title>
+                    <v-card-text>
+                      <v-row>
+                        <v-col cols="12" sm="6">
+                          <div class="mb-3">
+                            <label class="text-subtitle-2 font-weight-bold">Email</label>
+                            <p class="text-body-1">{{ currentUser.email }}</p>
+                          </div>
+                        </v-col>
+                        <v-col cols="12" sm="6">
+                          <div class="mb-3">
+                            <label class="text-subtitle-2 font-weight-bold">Role</label>
+                            <v-chip 
+                              :color="getRoleColor(userRole)" 
+                              size="small"
+                              class="ml-0"
+                            >
+                              {{ userRole }}
+                            </v-chip>
+                          </div>
+                        </v-col>
+                        <v-col cols="12" sm="6">
+                          <div class="mb-3">
+                            <label class="text-subtitle-2 font-weight-bold">Account Created</label>
+                            <p class="text-body-1">
+                              {{ formatDate(currentUser.metadata?.creationTime) }}
+                            </p>
+                          </div>
+                        </v-col>
+                        <v-col cols="12" sm="6">
+                          <div class="mb-3">
+                            <label class="text-subtitle-2 font-weight-bold">Last Sign In</label>
+                            <p class="text-body-1">
+                              {{ formatDate(currentUser.metadata?.lastSignInTime) }}
+                            </p>
+                          </div>
+                        </v-col>
+                      </v-row>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
                 
-                <!-- Basic User Info -->
-                <v-row>
-                  <v-col cols="12" md="8">
-                    <v-card variant="outlined" class="mb-4">
-                      <v-card-title class="text-h6 font-weight-bold">
-                        Account Details
-                      </v-card-title>
-                      <v-card-text>
-                        <v-row>
-                          <v-col cols="12" sm="6">
-                            <div class="mb-3">
-                              <label class="text-subtitle-2 font-weight-bold">Email</label>
-                              <p class="text-body-1">{{ currentUser.email }}</p>
-                            </div>
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <div class="mb-3">
-                              <label class="text-subtitle-2 font-weight-bold">Role</label>
-                              <v-chip 
-                                :color="getRoleColor(userRole)" 
-                                size="small"
-                                class="ml-0"
-                              >
-                                {{ userRole }}
-                              </v-chip>
-                            </div>
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <div class="mb-3">
-                              <label class="text-subtitle-2 font-weight-bold">Account Created</label>
-                              <p class="text-body-1">
-                                {{ formatDate(currentUser.metadata?.creationTime) }}
-                              </p>
-                            </div>
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <div class="mb-3">
-                              <label class="text-subtitle-2 font-weight-bold">Last Sign In</label>
-                              <p class="text-body-1">
-                                {{ formatDate(currentUser.metadata?.lastSignInTime) }}
-                              </p>
-                            </div>
-                          </v-col>
-                        </v-row>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                  
-                  <!-- Profile Photo Section -->
-                  <v-col cols="12" md="4">
-                    <v-card variant="outlined" class="text-center">
-                      <v-card-title class="text-h6 font-weight-bold">
-                        Profile Photo
-                      </v-card-title>
-                      <v-card-text>
-                        <v-avatar
-                          size="120"
-                          class="mb-4"
+                <!-- Profile Photo -->
+                <v-col cols="12" md="4">
+                  <v-card variant="outlined">
+                    <v-card-title class="text-h6 font-weight-bold">
+                      Profile Photo
+                    </v-card-title>
+                    <v-card-text class="text-center">
+                      <v-avatar size="120" color="grey-lighten-2">
+                        <v-icon size="60" color="grey">mdi-account</v-icon>
+                      </v-avatar>
+                      <div v-if="authStore.isOwner || authStore.hasPermission('upload_avatar')">
+                        <v-btn 
+                          class="mt-4" 
+                          color="primary" 
+                          variant="outlined"
+                          size="small"
+                          block
                         >
-                          <v-img
-                            v-if="currentUser.photoURL"
-                            :src="currentUser.photoURL"
-                            :alt="currentUser.email"
-                          />
-                          <v-icon v-else size="60">mdi-account</v-icon>
-                        </v-avatar>
-                        
-                        <PermissionGuard permission="upload_avatar">
-                          <v-btn
-                            color="primary"
-                            variant="outlined"
-                            block
-                            disabled
-                          >
-                            <v-icon left>mdi-camera</v-icon>
-                            Change Photo
-                          </v-btn>
-                          <p class="text-caption mt-2 text-medium-emphasis">
-                            Photo upload coming soon
-                          </p>
-                        </PermissionGuard>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
-              </PermissionGuard>
+                          <v-icon left>mdi-camera</v-icon>
+                          Change Photo
+                        </v-btn>
+                        <p class="text-caption text-medium-emphasis mt-2">
+                          Photo upload coming soon
+                        </p>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
             </div>
 
             <!-- Settings Tab -->
-            <div v-else-if="selectedTab === 'settings'">
-              <PermissionGuard permission="edit_own_profile">
-                <h2 class="text-h5 font-weight-bold mb-4">Profile Settings</h2>
-                <p class="text-body-1 text-medium-emphasis">
-                  Profile editing functionality coming soon...
-                </p>
-              </PermissionGuard>
+            <div v-else-if="selectedTab === 'settings' && (authStore.isOwner || authStore.hasPermission('edit_own_profile'))">
+              <h2 class="text-h5 font-weight-bold mb-4">Profile Settings</h2>
+              <p class="text-body-1 text-medium-emphasis">
+                Profile editing functionality coming soon...
+              </p>
             </div>
 
             <!-- Activity Tab -->
-            <div v-else-if="selectedTab === 'activity'">
-              <PermissionGuard permission="view_own_activity">
-                <h2 class="text-h5 font-weight-bold mb-4">Activity History</h2>
-                <p class="text-body-1 text-medium-emphasis">
-                  Activity tracking functionality coming soon...
-                </p>
-              </PermissionGuard>
+            <div v-else-if="selectedTab === 'activity' && (authStore.isOwner || authStore.hasPermission('view_own_activity'))">
+              <h2 class="text-h5 font-weight-bold mb-4">Activity History</h2>
+              <p class="text-body-1 text-medium-emphasis">
+                Activity tracking functionality coming soon...
+              </p>
             </div>
 
             <!-- Security Tab -->
-            <div v-else-if="selectedTab === 'security'">
-              <PermissionGuard permission="manage_own_security">
-                <h2 class="text-h5 font-weight-bold mb-4">Security Settings</h2>
-                <p class="text-body-1 text-medium-emphasis">
-                  Security management functionality coming soon...
-                </p>
-              </PermissionGuard>
+            <div v-else-if="selectedTab === 'security' && (authStore.isOwner || authStore.hasPermission('manage_own_security'))">
+              <h2 class="text-h5 font-weight-bold mb-4">Security Settings</h2>
+              <p class="text-body-1 text-medium-emphasis">
+                Security management functionality coming soon...
+              </p>
             </div>
           </v-card-text>
         </v-card>
@@ -289,14 +389,6 @@ onMounted(async () => {
         <p class="text-body-1 text-medium-emphasis">
           Please try refreshing the page or contact support if the problem persists.
         </p>
-        <v-btn
-          color="primary"
-          variant="flat"
-          class="mt-4"
-          @click="router.push('/dashboard')"
-        >
-          Return to Dashboard
-        </v-btn>
       </div>
     </div>
 
@@ -304,55 +396,12 @@ onMounted(async () => {
     <v-snackbar
       v-model="snackbar.show"
       :color="snackbar.color"
-      timeout="5000"
+      :timeout="3000"
     >
       {{ snackbar.message }}
-      <template #actions>
-        <v-btn
-          variant="text"
-          @click="snackbar.show = false"
-        >
-          Close
-        </v-btn>
-      </template>
     </v-snackbar>
   </AppLayout>
 </template>
-
-<script>
-// Helper methods for component
-export default {
-  methods: {
-    getRoleColor(role) {
-      const colors = {
-        owner: 'purple',
-        admin: 'red',
-        user: 'blue',
-        viewer: 'green',
-        pending: 'orange'
-      }
-      return colors[role] || 'grey'
-    },
-    
-    formatDate(dateString) {
-      if (!dateString) return 'Not available'
-      
-      try {
-        const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      } catch (error) {
-        return 'Invalid date'
-      }
-    }
-  }
-}
-</script>
 
 <style scoped>
 .profile-container {
@@ -360,36 +409,19 @@ export default {
   margin: 0 auto;
 }
 
-.page-header {
-  text-align: center;
-}
-
-/* Brand-compliant typography */
-.text-h4 {
-  font-family: 'Franklin Gothic', 'Arial', sans-serif;
-  font-weight: 600;
-}
-
-.text-h5, .text-h6 {
-  font-family: 'Franklin Gothic', 'Arial', sans-serif;
-  font-weight: 500;
-}
-
-.text-body-1, .text-subtitle-1, .text-subtitle-2 {
-  font-family: 'Cambria', serif;
-}
-
-/* Card styling */
-.v-card {
-  border-radius: 8px;
+.page-header h1 {
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
 }
 
 .v-card-title {
-  padding-bottom: 8px;
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
 }
 
-/* Avatar styling */
-.v-avatar {
-  border: 3px solid rgba(var(--v-theme-primary), 0.1);
+.v-card-text {
+  font-family: 'Cambria', Georgia, serif;
+}
+
+label {
+  color: rgba(0, 0, 0, 0.6);
 }
 </style>
