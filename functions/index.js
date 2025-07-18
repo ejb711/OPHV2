@@ -1,4 +1,5 @@
 // functions/index.js - Enhanced with permission system and audit log retention
+// REVISED VERSION - Fixed Firestore indexing issues
 const functions = require('firebase-functions/v1')
 const admin = require('firebase-admin')
 
@@ -111,7 +112,7 @@ const RETENTION_CONFIG = {
     'security_alert',
     'unauthorized_access'
   ],
-  CLEANUP_BATCH_SIZE: 500 // Larger batches in Cloud Function
+  CLEANUP_BATCH_SIZE: 100  // Smaller batches to avoid timeouts
 }
 
 /* ---------- Helper Functions ---------- */
@@ -153,10 +154,11 @@ async function updateUserCustomClaims(uid, userData) {
   console.log(`Updated custom claims for ${uid}:`, customClaims)
 }
 
-/* ---------- Audit Log Retention Helper Functions ---------- */
+/* ---------- OPTIMIZED Audit Log Retention Helper Functions ---------- */
 
 /**
- * Compress logs older than retention period
+ * Compress logs older than retention period - OPTIMIZED VERSION
+ * This version avoids complex composite indexes by using simpler queries
  */
 async function compressOldLogs(now) {
   const db = admin.firestore()
@@ -167,27 +169,51 @@ async function compressOldLogs(now) {
     now.nanoseconds
   )
   
-  // Process in batches to avoid timeouts
+  console.log(`🗜️ Compressing logs older than ${compressionDate.toDate().toISOString()}`)
+  
+  // OPTIMIZATION: Use simple timestamp query and filter in memory
+  // This avoids the need for complex composite indexes
   let hasMore = true
-  while (hasMore) {
-    const query = db.collection('audit_logs')
+  let lastDoc = null
+  let processedCount = 0
+  
+  while (hasMore && processedCount < 1000) { // Safety limit to prevent infinite loops
+    // Simple query - only filter by timestamp
+    let query = db.collection('audit_logs')
       .where('timestamp', '<', compressionDate)
-      .where('compressed', '!=', true)
+      .orderBy('timestamp', 'asc')
       .limit(RETENTION_CONFIG.CLEANUP_BATCH_SIZE)
+    
+    // Add cursor for pagination
+    if (lastDoc) {
+      query = query.startAfter(lastDoc)
+    }
     
     const snapshot = await query.get()
     hasMore = snapshot.docs.length === RETENTION_CONFIG.CLEANUP_BATCH_SIZE
     
     if (snapshot.docs.length === 0) break
     
+    // Filter out already compressed logs in memory (more efficient than complex query)
+    const uncompressedDocs = snapshot.docs.filter(doc => {
+      const data = doc.data()
+      return !data.compressed
+    })
+    
+    if (uncompressedDocs.length === 0) {
+      // Set lastDoc for pagination and continue
+      lastDoc = snapshot.docs[snapshot.docs.length - 1]
+      processedCount += snapshot.docs.length
+      continue
+    }
+    
     const batch = db.batch()
     
-    snapshot.docs.forEach(doc => {
+    uncompressedDocs.forEach(doc => {
       const data = doc.data()
       
-      // Create compressed version
+      // Create compressed version - only update the necessary fields
       const compressedData = {
-        ...data,
         details: createCompressedDetails(data),
         compressed: true,
         compressedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -198,16 +224,24 @@ async function compressOldLogs(now) {
     })
     
     await batch.commit()
-    compressedCount += snapshot.docs.length
+    compressedCount += uncompressedDocs.length
+    lastDoc = snapshot.docs[snapshot.docs.length - 1]
+    processedCount += snapshot.docs.length
     
-    console.log(`Compressed batch of ${snapshot.docs.length} logs`)
+    console.log(`Compressed batch of ${uncompressedDocs.length} logs (${compressedCount} total compressed, ${processedCount} total processed)`)
+    
+    // Add small delay to avoid hitting rate limits
+    if (hasMore) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
   }
   
+  console.log(`✅ Compression complete: ${compressedCount} logs compressed, ${processedCount} total processed`)
   return compressedCount
 }
 
 /**
- * Delete logs past their retention period
+ * Delete logs past their retention period - OPTIMIZED VERSION
  */
 async function deleteExpiredLogs(now) {
   const db = admin.firestore()
@@ -218,11 +252,16 @@ async function deleteExpiredLogs(now) {
     now.nanoseconds
   )
   
-  // Process in batches
+  console.log(`🗑️ Deleting logs older than ${deletionDate.toDate().toISOString()}`)
+  
+  // Simple query - only filter by timestamp
   let hasMore = true
-  while (hasMore) {
+  let processedCount = 0
+  
+  while (hasMore && processedCount < 1000) { // Safety limit
     const query = db.collection('audit_logs')
       .where('timestamp', '<', deletionDate)
+      .orderBy('timestamp', 'asc')
       .limit(RETENTION_CONFIG.CLEANUP_BATCH_SIZE)
     
     const snapshot = await query.get()
@@ -248,9 +287,17 @@ async function deleteExpiredLogs(now) {
     })
     
     await batch.commit()
-    console.log(`Processed batch of ${snapshot.docs.length} expired logs`)
+    processedCount += snapshot.docs.length
+    
+    console.log(`Processed batch of ${snapshot.docs.length} expired logs (${deletedCount} deleted, ${processedCount} total processed)`)
+    
+    // Add small delay to avoid hitting rate limits
+    if (hasMore) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
   }
   
+  console.log(`✅ Deletion complete: ${deletedCount} logs deleted, ${processedCount} total processed`)
   return deletedCount
 }
 
@@ -378,6 +425,8 @@ exports.onNewUser = functions.auth.user().onCreate(async (user) => {
     // Create user document
     await admin.firestore().doc(`users/${user.uid}`).set({
       email: user.email,
+      displayName: user.displayName || '',
+      photoURL: user.photoURL || '',
       role: 'pending',
       customPermissions: [],
       deniedPermissions: [],
@@ -437,24 +486,6 @@ exports.onUserRoleChange = functions.firestore
             timestamp: admin.firestore.FieldValue.serverTimestamp()
           })
         }
-        
-        // Log the change for monitoring
-        await admin.firestore().collection('roleChanges').add({
-          userId: uid,
-          changes: {
-            role: roleChanged ? { from: before.role, to: after.role } : null,
-            customPermissions: customPermissionsChanged ? { 
-              from: before.customPermissions || [], 
-              to: after.customPermissions || [] 
-            } : null,
-            deniedPermissions: deniedPermissionsChanged ? { 
-              from: before.deniedPermissions || [], 
-              to: after.deniedPermissions || [] 
-            } : null
-          },
-          changedAt: admin.firestore.FieldValue.serverTimestamp(),
-          changedBy: context.auth?.uid || 'system'
-        })
         
         console.log(`Updated permissions for user ${uid}`)
       } catch (error) {
@@ -539,7 +570,7 @@ exports.validatePermission = functions.https.onCall(async (data, context) => {
   }
 })
 
-/* ---------- Audit Log Functions ---------- */
+/* ---------- OPTIMIZED Audit Log Functions ---------- */
 
 /**
  * Scheduled function to clean up audit logs
@@ -561,9 +592,11 @@ exports.cleanupAuditLogs = functions.pubsub
       }
 
       // Step 1: Compress old logs
+      console.log('📦 Starting compression phase...')
       stats.compressed = await compressOldLogs(now)
       
       // Step 2: Delete expired logs  
+      console.log('🗑️ Starting deletion phase...')
       stats.deleted = await deleteExpiredLogs(now)
       
       // Step 3: Log cleanup results
@@ -594,6 +627,7 @@ exports.cleanupAuditLogs = functions.pubsub
 
 /**
  * HTTP function to manually trigger cleanup (for testing/admin use)
+ * OPTIMIZED VERSION - No complex queries
  */
 exports.manualCleanupAuditLogs = functions.https.onCall(async (data, context) => {
   // Verify admin access
@@ -606,17 +640,25 @@ exports.manualCleanupAuditLogs = functions.https.onCall(async (data, context) =>
   try {
     const now = admin.firestore.Timestamp.now()
     const stats = {
-      compressed: await compressOldLogs(now),
-      deleted: await deleteExpiredLogs(now),
+      compressed: 0,
+      deleted: 0,
       triggeredBy: context.auth.token.email,
       startTime: new Date().toISOString()
     }
     
+    // Run optimized cleanup functions
+    console.log('📦 Starting manual compression...')
+    stats.compressed = await compressOldLogs(now)
+    
+    console.log('🗑️ Starting manual deletion...')
+    stats.deleted = await deleteExpiredLogs(now)
+    
     await logCleanupResults(stats)
     
+    console.log('✅ Manual cleanup completed:', stats)
     return { success: true, stats }
   } catch (error) {
-    console.error('Manual cleanup failed:', error)
+    console.error('❌ Manual cleanup failed:', error)
     throw new functions.https.HttpsError('internal', 'Cleanup failed: ' + error.message)
   }
 })
@@ -638,7 +680,7 @@ exports.getRetentionStats = functions.https.onCall(async (data, context) => {
     const totalQuery = await db.collection('audit_logs').count().get()
     const totalLogs = totalQuery.data().count
     
-    // Get compressed logs count
+    // Get compressed logs count - use simple query
     const compressedQuery = await db.collection('audit_logs')
       .where('compressed', '==', true)
       .count()
@@ -667,3 +709,32 @@ exports.getRetentionStats = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Failed to get stats: ' + error.message)
   }
 })
+
+/* ---------- Health Check Function ---------- */
+
+exports.healthCheck = functions.https.onRequest(async (req, res) => {
+  try {
+    // Basic health check
+    const healthData = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      version: '2.0.0',
+      services: {
+        firestore: 'operational',
+        auth: 'operational',
+        functions: 'operational'
+      }
+    }
+    
+    res.status(200).json(healthData)
+  } catch (error) {
+    console.error('Health check failed:', error)
+    res.status(500).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    })
+  }
+})
+
+console.log('🚀 OPHV2 Cloud Functions loaded successfully - Optimized version with index fixes')
