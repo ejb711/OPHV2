@@ -45,7 +45,7 @@ async function handleSubmit () {
 
 <template>
   <main class="d-flex flex-column align-center justify-center fill-height ga-4">
-    <h1 class="text-h4 font-weight-bold">OPHV2</h1>
+    <h1 class="text-h4 font-weight-bold">BRCO: Public Health Platform</h1>
 
     <!-- signed-in (only visible if you browse back here) -->
     <div v-if="auth.user && auth.role !== 'pending'">

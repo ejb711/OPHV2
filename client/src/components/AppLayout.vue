@@ -15,7 +15,7 @@ const router = useRouter()
         class="text-button font-weight-bold"
         @click="router.push('/dash')"
       >
-        OPHV2
+        BRCO
       </v-btn>
 
       <v-spacer />

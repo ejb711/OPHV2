@@ -69,7 +69,7 @@ function goToAdmin() {
     <div class="dashboard-container">
       <!-- Welcome Section -->
       <div class="text-center mb-8">
-        <h1 class="text-h4 font-weight-bold mb-2">Welcome to OPHV2</h1>
+        <h1 class="text-h4 font-weight-bold mb-2">Welcome to BRCO</h1>
         <p class="text-h6 text-medium-emphasis">
           Hello, {{ auth.user?.email }}
         </p>

@@ -578,110 +578,121 @@ td[data-v-col="actions"] {
   opacity: 0;
 }
 
-/* ADD THESE TO YOUR client/src/assets/main.css FILE */
+/* REPLACE YOUR EXISTING TEXT FIELD CSS IN main.css WITH THIS STRONGER VERSION */
 
 /* ═══════════════════════════════════════════════════════════════
-   VUETIFY TEXT FIELD FIXES - Prevent Label/Content Overlap
+   AGGRESSIVE VUETIFY TEXT FIELD FIXES - Maximum Specificity
    ═══════════════════════════════════════════════════════════════ */
 
-/* Fix label positioning to prevent overlap */
-.v-field .v-label {
-  position: absolute !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  transition: all 0.2s ease-in-out !important;
-  z-index: 2 !important;
-  opacity: 1 !important;
-  pointer-events: none !important;
+/* Force proper input field structure */
+.v-field .v-field__input,
+.v-text-field .v-field .v-field__input,
+.v-textarea .v-field .v-field__input {
+  min-height: 56px !important;
+  padding: 20px 16px 8px 16px !important;
+  line-height: 1.5 !important;
+  font-size: 16px !important;
 }
 
-/* Active/focused/dirty state label positioning */
+/* Force label positioning - MAXIMUM SPECIFICITY */
+.v-field .v-field__label,
+.v-text-field .v-field .v-field__label,
+.v-textarea .v-field .v-field__label,
+.v-field .v-label,
+.v-text-field .v-field .v-label,
+.v-textarea .v-field .v-label {
+  position: absolute !important;
+  top: 50% !important;
+  left: 16px !important;
+  transform: translateY(-50%) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 10 !important;
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+  font-size: 16px !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Active/dirty/focused states - MAXIMUM SPECIFICITY */
+.v-field--active .v-field__label,
+.v-field--dirty .v-field__label,
+.v-field--focused .v-field__label,
 .v-field--active .v-label,
 .v-field--dirty .v-label,
-.v-field--focused .v-label {
+.v-field--focused .v-label,
+.v-text-field .v-field--active .v-label,
+.v-text-field .v-field--dirty .v-label,
+.v-text-field .v-field--focused .v-label {
   top: 12px !important;
   transform: translateY(0) scale(0.75) !important;
   transform-origin: top left !important;
-}
-
-/* Ensure proper input field height and padding */
-.v-field__input {
-  min-height: 56px !important;
-  padding-top: 16px !important;
-  padding-bottom: 8px !important;
-  line-height: 1.5 !important;
   opacity: 1 !important;
+  color: rgb(66, 109, 169) !important;
 }
 
-/* Ensure input text doesn't overlap with label */
-.v-field--active .v-field__input,
-.v-field--dirty .v-field__input,
-.v-field--focused .v-field__input {
-  padding-top: 24px !important;
-}
-
-/* Fix for outlined variant specifically */
+/* Outlined variant specific fixes */
+.v-field--variant-outlined .v-field__label,
 .v-field--variant-outlined .v-label {
   background-color: white !important;
   padding: 0 4px !important;
   margin-left: -4px !important;
 }
 
-/* Fix for textarea fields */
-.v-textarea .v-field__input {
+/* Textarea specific fixes */
+.v-textarea .v-field .v-field__input {
   padding-top: 28px !important;
   min-height: 80px !important;
 }
 
+.v-textarea.v-field--active .v-field__label,
+.v-textarea.v-field--dirty .v-field__label,
+.v-textarea.v-field--focused .v-field__label,
 .v-textarea.v-field--active .v-label,
 .v-textarea.v-field--dirty .v-label,
 .v-textarea.v-field--focused .v-label {
   top: -6px !important;
-}
-
-/* Ensure proper z-index stacking */
-.v-field__overlay {
-  z-index: 0 !important;
-}
-
-.v-field__outline {
-  z-index: 1 !important;
-}
-
-.v-field__input {
-  z-index: 1 !important;
-  position: relative !important;
+  background-color: white !important;
 }
 
 /* Input text styling */
 .v-field__input input,
-.v-field__input textarea {
+.v-field__input textarea,
+.v-text-field .v-field__input input,
+.v-textarea .v-field__input textarea {
   color: rgba(0, 0, 0, 0.87) !important;
-  font-family: 'Cambria', Georgia, serif !important;
   opacity: 1 !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
 }
 
-/* Placeholder text styling */
+/* Placeholder styling */
 .v-field__input input::placeholder,
 .v-field__input textarea::placeholder {
   color: rgba(0, 0, 0, 0.38) !important;
   opacity: 1 !important;
 }
 
-/* Focus state improvements */
-.v-field--focused .v-field__outline {
-  border-width: 2px !important;
+/* Ensure proper z-index stacking */
+.v-field__overlay {
+  z-index: 1 !important;
 }
 
-/* Form validation messages */
-.v-messages {
-  margin-top: 4px !important;
-  min-height: 14px !important;
+.v-field__outline {
+  z-index: 2 !important;
 }
 
-/* Responsive adjustments */
-@media (max-width: 600px) {
-  .v-field__input input {
-    font-size: 16px !important; /* Prevents zoom on iOS */
-  }
+.v-field__input {
+  z-index: 3 !important;
+}
+
+.v-field__label,
+.v-label {
+  z-index: 10 !important;
+}
+
+/* Profile specific overrides if needed */
+.profile-settings .v-field .v-label,
+.profile-settings .v-text-field .v-label,
+.profile-settings .v-textarea .v-label {
+  font-family: 'Cambria', Georgia, serif !important;
 }
