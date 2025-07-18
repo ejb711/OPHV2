@@ -1,5 +1,5 @@
 // functions/index.js - Enhanced with permission system and audit log retention
-// REVISED VERSION - Fixed Firestore indexing issues
+// REVISED VERSION - Fixed Firestore indexing issues + Profile Permissions
 const functions = require('firebase-functions/v1')
 const admin = require('firebase-admin')
 
@@ -44,7 +44,14 @@ const DEFAULT_PERMISSIONS = [
   // System Management
   { id: 'manage_system', name: 'Manage System', description: 'System administration access', category: 'system_management' },
   { id: 'view_analytics', name: 'View Analytics', description: 'View system analytics and reports', category: 'system_management' },
-  { id: 'manage_settings', name: 'Manage Settings', description: 'Configure system settings', category: 'system_management' }
+  { id: 'manage_settings', name: 'Manage Settings', description: 'Configure system settings', category: 'system_management' },
+  
+  // 🆕 Profile Management - PHASE 2 ADDITION
+  { id: 'view_own_profile', name: 'View Own Profile', description: 'View own profile information', category: 'profile' },
+  { id: 'edit_own_profile', name: 'Edit Own Profile', description: 'Edit own profile information', category: 'profile' },
+  { id: 'view_own_activity', name: 'View Own Activity', description: 'View own activity history', category: 'profile' },
+  { id: 'manage_own_security', name: 'Manage Own Security', description: 'Change password and security settings', category: 'profile' },
+  { id: 'upload_avatar', name: 'Upload Avatar', description: 'Upload and change profile photo', category: 'profile' }
 ]
 
 const DEFAULT_ROLES = [
@@ -65,7 +72,9 @@ const DEFAULT_ROLES = [
       'manage_projects', 'view_projects', 'create_projects', 'edit_projects', 'delete_projects',
       'manage_forums', 'view_forums', 'create_posts', 'edit_posts', 'delete_posts', 'moderate_posts',
       'manage_calendar', 'view_calendar', 'create_events', 'edit_events', 'delete_events',
-      'view_analytics', 'manage_settings'
+      'view_analytics', 'manage_settings',
+      // 🆕 Profile permissions for admin
+      'view_own_profile', 'edit_own_profile', 'view_own_activity', 'manage_own_security', 'upload_avatar'
     ],
     isSystemRole: true
   },
@@ -76,7 +85,9 @@ const DEFAULT_ROLES = [
     permissions: [
       'view_projects', 'create_projects', 'edit_projects',
       'view_forums', 'create_posts', 'edit_posts',
-      'view_calendar', 'create_events', 'edit_events'
+      'view_calendar', 'create_events', 'edit_events',
+      // 🆕 Profile permissions for user
+      'view_own_profile', 'edit_own_profile', 'view_own_activity', 'manage_own_security', 'upload_avatar'
     ],
     isSystemRole: true
   },
@@ -87,7 +98,9 @@ const DEFAULT_ROLES = [
     permissions: [
       'view_projects',
       'view_forums',
-      'view_calendar'
+      'view_calendar',
+      // 🆕 Profile permissions for viewer (limited)
+      'view_own_profile', 'view_own_activity'
     ],
     isSystemRole: true
   },
@@ -737,4 +750,4 @@ exports.healthCheck = functions.https.onRequest(async (req, res) => {
   }
 })
 
-console.log('🚀 OPHV2 Cloud Functions loaded successfully - Optimized version with index fixes')
+console.log('🚀 OPHV2 Cloud Functions loaded successfully - Optimized version with index fixes + Profile permissions')

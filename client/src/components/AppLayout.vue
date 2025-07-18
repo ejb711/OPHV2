@@ -13,7 +13,7 @@ const router = useRouter()
       <v-btn
         text
         class="text-button font-weight-bold"
-        @click="router.push('/')"
+        @click="router.push('/dash')"
       >
         OPHV2
       </v-btn>

@@ -103,7 +103,7 @@ onMounted(async () => {
       <v-btn
         color="primary"
         variant="flat"
-        @click="router.push('/dashboard')"
+        @click="router.push('/dash')"
       >
         <v-icon left>mdi-arrow-left</v-icon>
         Dashboard
