@@ -33,62 +33,71 @@
         </div>
 
         <form @submit.prevent="handleSubmit" class="auth-form-fields">
-          <div class="field-group">
-            <v-text-field
-              v-model="email"
-              label="Email Address"
-              type="email"
-              variant="outlined"
-              density="comfortable"
-              required
-              class="auth-field"
-              :rules="[rules.required, rules.email]"
-            />
-          </div>
+        <!-- Email Field -->
+        <div class="field-group">
+          <label class="field-label">Email Address</label>
+          <v-text-field
+            v-model="email"
+            type="email"
+            variant="solo-filled"
+            density="comfortable"
+            flat
+            required
+            placeholder="Enter your email"
+            class="auth-field"
+            :rules="[rules.required, rules.email]"
+            hide-details="auto"
+          />
+        </div>
 
-          <div class="field-group">
-            <v-text-field
-              v-model="password"
-              label="Password"
-              type="password"
-              variant="outlined"
-              density="comfortable"
-              required
-              class="auth-field"
-              :rules="[rules.required, rules.minLength]"
-            />
-          </div>
+        <!-- Password Field -->
+        <div class="field-group">
+          <label class="field-label">Password</label>
+          <v-text-field
+            v-model="password"
+            type="password"
+            variant="solo-filled"
+            density="comfortable"
+            flat
+            required
+            placeholder="Enter your password"
+            class="auth-field"
+            :rules="[rules.required, rules.minLength]"
+            hide-details="auto"
+          />
+        </div>
 
-          <v-btn
-            type="submit"
-            :color="mode === 'login' ? 'primary' : 'secondary'"
-            variant="elevated"
-            size="large"
-            block
-            class="submit-btn"
-            :loading="loading"
-          >
-            {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
-          </v-btn>
+        <!-- Keep the rest of the form unchanged -->
+        <v-btn
+          type="submit"
+          :color="mode === 'login' ? 'primary' : 'secondary'"
+          variant="elevated"
+          size="large"
+          block
+          class="submit-btn"
+          :loading="loading"
+        >
+          {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
+        </v-btn>
 
-          <!-- Error Alert -->
-          <v-alert
-            v-if="errorMsg"
-            type="error"
-            variant="tonal"
-            density="compact"
-            class="error-alert"
-          >
-            {{ errorMsg }}
-          </v-alert>
+        <!-- Error Alert -->
+        <v-alert
+          v-if="errorMsg"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="error-alert"
+        >
+          {{ errorMsg }}
+        </v-alert>
 
-          <!-- Mode Toggle -->
-          <div class="mode-toggle" @click="toggleMode">
-            {{ mode === 'login'
-                ? 'New to BRCO? Create an account'
-                : 'Already have an account? Sign in' }}
-          </div>
-        </form>
+        <!-- Mode Toggle -->
+        <div class="mode-toggle" @click="toggleMode">
+          {{ mode === 'login'
+              ? 'New to BRCO? Create an account'
+              : 'Already have an account? Sign in' }}
+        </div>
+      </form>
       </div>
 
       <!-- Subtle Wave Animation (matching LoadingScreen) -->
@@ -308,6 +317,72 @@ async function handleSubmit() {
   color: #426DA9;
   margin: 0;
   opacity: 0.8;
+}
+
+/* Add these styles to LoginView.vue <style scoped> section */
+
+/* Field Group with Separate Labels */
+.field-group {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.field-label {
+  display: block;
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #003057;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.25px;
+}
+
+/* Updated field styling for solo-filled variant */
+.auth-field :deep(.v-field) {
+  background: #f8f9fa;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.auth-field :deep(.v-field:hover) {
+  background: #f0f2f5;
+  border-color: rgba(66, 109, 169, 0.2);
+}
+
+.auth-field :deep(.v-field--focused) {
+  background: white;
+  border-color: #426DA9;
+  box-shadow: 0 0 0 4px rgba(66, 109, 169, 0.1);
+}
+
+.auth-field :deep(.v-field__input) {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 1rem;
+  color: #003057;
+  padding: 0.75rem 1rem !important;
+  min-height: 48px !important;
+}
+
+.auth-field :deep(.v-field__input::placeholder) {
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+/* Remove any label from the v-text-field since we're using external labels */
+.auth-field :deep(.v-label) {
+  display: none !important;
+}
+
+/* Error message styling */
+.auth-field :deep(.v-messages) {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Update submit button spacing */
+.submit-btn {
+  margin-top: 2rem;
 }
 
 .auth-form-fields {
