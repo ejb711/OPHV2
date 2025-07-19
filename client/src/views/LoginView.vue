@@ -21,83 +21,72 @@
         <p class="platform-subtitle">Public Health Platform</p>
       </div>
 
-      <!-- Login/Signup Form -->
+      <!-- Login Form -->
       <div class="auth-form">
         <div class="form-header">
-          <h2 class="form-title">{{ mode === 'login' ? 'Sign In' : 'Create Account' }}</h2>
-          <p class="form-subtitle">
-            {{ mode === 'login' 
-                ? 'Access your BRCO dashboard' 
-                : 'Join the BRCO platform' }}
-          </p>
+          <h2 class="form-title">Sign In</h2>
+          <p class="form-subtitle">Access your BRCO dashboard</p>
         </div>
 
         <form @submit.prevent="handleSubmit" class="auth-form-fields">
-        <!-- Email Field -->
-        <div class="field-group">
-          <label class="field-label">Email Address</label>
-          <v-text-field
-            v-model="email"
-            type="email"
-            variant="solo-filled"
-            density="comfortable"
-            flat
-            required
-            placeholder="Enter your email"
-            class="auth-field"
-            :rules="[rules.required, rules.email]"
-            hide-details="auto"
-          />
-        </div>
+          <!-- Email Field -->
+          <div class="field-group">
+            <label class="field-label">Email Address</label>
+            <v-text-field
+              v-model="email"
+              type="email"
+              variant="solo-filled"
+              density="comfortable"
+              flat
+              required
+              placeholder="Enter your email"
+              class="auth-field"
+              :rules="[rules.required, rules.email]"
+              hide-details="auto"
+            />
+          </div>
 
-        <!-- Password Field -->
-        <div class="field-group">
-          <label class="field-label">Password</label>
-          <v-text-field
-            v-model="password"
-            type="password"
-            variant="solo-filled"
-            density="comfortable"
-            flat
-            required
-            placeholder="Enter your password"
-            class="auth-field"
-            :rules="[rules.required, rules.minLength]"
-            hide-details="auto"
-          />
-        </div>
+          <!-- Password Field -->
+          <div class="field-group">
+            <label class="field-label">Password</label>
+            <v-text-field
+              v-model="password"
+              type="password"
+              variant="solo-filled"
+              density="comfortable"
+              flat
+              required
+              placeholder="Enter your password"
+              class="auth-field"
+              :rules="[rules.required, rules.minLength]"
+              hide-details="auto"
+            />
+          </div>
 
-        <!-- Keep the rest of the form unchanged -->
-        <v-btn
-          type="submit"
-          :color="mode === 'login' ? 'primary' : 'secondary'"
-          variant="elevated"
-          size="large"
-          block
-          class="submit-btn"
-          :loading="loading"
-        >
-          {{ mode === 'login' ? 'Sign In' : 'Create Account' }}
-        </v-btn>
+          <!-- Sign In Button -->
+          <v-btn
+            type="submit"
+            color="primary"
+            variant="elevated"
+            size="large"
+            block
+            class="submit-btn"
+            :loading="loading"
+          >
+            Sign In
+          </v-btn>
 
-        <!-- Error Alert -->
-        <v-alert
-          v-if="errorMsg"
-          type="error"
-          variant="tonal"
-          density="compact"
-          class="error-alert"
-        >
-          {{ errorMsg }}
-        </v-alert>
-
-        <!-- Mode Toggle -->
-        <div class="mode-toggle" @click="toggleMode">
-          {{ mode === 'login'
-              ? 'New to BRCO? Create an account'
-              : 'Already have an account? Sign in' }}
-        </div>
-      </form>
+          <!-- Error Alert -->
+          <v-alert
+            v-if="errorMsg"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="error-alert"
+          >
+            {{ errorMsg }}
+          </v-alert>
+        </form>
       </div>
 
       <!-- Subtle Wave Animation (matching LoadingScreen) -->
@@ -116,7 +105,6 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 /* ----- Local State ------------------------------------------------------- */
-const mode = ref('login')
 const email = ref('')
 const password = ref('')
 const errorMsg = ref('')
@@ -137,21 +125,12 @@ const rules = {
 }
 
 /* ----- Methods ----------------------------------------------------------- */
-function toggleMode() {
-  mode.value = mode.value === 'login' ? 'signup' : 'login'
-  errorMsg.value = ''
-}
-
 async function handleSubmit() {
   errorMsg.value = ''
   loading.value = true
   
   try {
-    if (mode.value === 'signup') {
-      await auth.signup(email.value, password.value)
-    } else {
-      await auth.login(email.value, password.value)
-    }
+    await auth.login(email.value, password.value)
 
     // Wait until the store has fetched role ≠ null
     await new Promise(resolve => {
@@ -319,7 +298,11 @@ async function handleSubmit() {
   opacity: 0.8;
 }
 
-/* Add these styles to LoginView.vue <style scoped> section */
+.auth-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 
 /* Field Group with Separate Labels */
 .field-group {
@@ -382,45 +365,11 @@ async function handleSubmit() {
 
 /* Update submit button spacing */
 .submit-btn {
-  margin-top: 2rem;
-}
-
-.auth-form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.field-group {
-  position: relative;
-}
-
-/* Custom styling for form fields */
-.auth-field :deep(.v-field) {
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 12px;
-}
-
-.auth-field :deep(.v-field__outline) {
-  border-color: rgba(66, 109, 169, 0.3);
-}
-
-.auth-field :deep(.v-field--focused .v-field__outline) {
-  border-color: #426DA9;
-  border-width: 2px;
-}
-
-.auth-field :deep(.v-label) {
-  font-family: 'Cambria', Georgia, serif;
-  color: #426DA9;
-}
-
-.submit-btn {
   font-family: 'ITC Franklin Gothic', Arial, sans-serif;
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0.5px;
-  margin-top: 0.5rem;
+  margin-top: 2rem;
   height: 56px;
   border-radius: 12px;
 }
@@ -428,23 +377,6 @@ async function handleSubmit() {
 .error-alert {
   margin-top: 1rem;
   border-radius: 12px;
-}
-
-.mode-toggle {
-  margin-top: 1.5rem;
-  font-family: 'Cambria', Georgia, serif;
-  font-size: 0.9rem;
-  color: #426DA9;
-  cursor: pointer;
-  transition: color 0.2s ease;
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  transition: all 0.2s ease;
-}
-
-.mode-toggle:hover {
-  color: #003057;
-  text-decoration-color: #003057;
 }
 
 /* Wave Animation (matching LoadingScreen) */

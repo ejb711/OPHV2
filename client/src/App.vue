@@ -22,7 +22,7 @@ watch(
       setTimeout(() => {
         console.log('[App.vue] Hiding splash screen')
         hideSplash.value = true
-      }, 5000) 
+      }, 2750) 
     }
   },
   { immediate: true }
