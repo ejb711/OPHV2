@@ -1,37 +1,85 @@
-// functions/src/auth/triggers.js - Authentication Event Handlers
-// Handles Firebase Auth user lifecycle events
+// functions/src/auth/triggers.js
+// OPHV2 Authentication Event Triggers - FIXED
+// Handles Firebase Auth user lifecycle events without overwriting admin-created users
 
 const functions = require('firebase-functions/v1')
 const admin = require('firebase-admin')
-const { getRetentionTier, getCompressionDate, getDeletionDate } = require('../config/audit')
 
 /* ---------- User Creation Handler ---------- */
 
 /**
  * Handle new user creation in Firebase Auth
- * Creates corresponding user document in Firestore
+ * Creates user document ONLY if it doesn't already exist
+ * This prevents overwriting admin-created users with profile data
  */
 exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
   try {
-    console.log(`New user created: ${user.email} (${user.uid})`)
+    console.log(`Auth trigger: New user detected: ${user.email} (${user.uid})`)
     
-    // Create user document with default pending role
+    // CRITICAL FIX: Check if user document already exists
+    const existingDoc = await admin.firestore().collection('users').doc(user.uid).get()
+    
+    if (existingDoc.exists) {
+      console.log(`✅ User document already exists for ${user.email}, preserving existing data`)
+      
+      // Just update the auth-related fields without overwriting profile data
+      await admin.firestore().collection('users').doc(user.uid).update({
+        lastActive: admin.firestore.FieldValue.serverTimestamp(),
+        'metadata.emailVerified': user.emailVerified || false,
+        'metadata.lastSignInTime': user.metadata?.lastSignInTime || null
+      })
+      
+      // Create audit log for existing user
+      await createSimpleAuditLog({
+        action: 'user_auth_linked',
+        userId: 'system',
+        userEmail: 'system@ophv2.app',
+        targetUserId: user.uid,
+        details: {
+          email: user.email,
+          documentExisted: true,
+          creationMethod: 'admin_panel'
+        }
+      })
+      
+      return
+    }
+    
+    // Only create new document if it doesn't exist (self-registration flow)
+    console.log(`Creating new user document for self-registered user: ${user.email}`)
+    
     const userData = {
       email: user.email,
       displayName: user.displayName || null,
       photoURL: user.photoURL || null,
       role: 'pending',
       status: 'pending',
+      
+      // Initialize profile fields as empty strings (matching admin creation)
+      phone: '',
+      department: '',
+      title: '',
+      region: '',
+      location: '',
+      bio: '',
+      
+      // Permission arrays
       customPermissions: [],
       deniedPermissions: [],
+      
+      // Metadata
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastActive: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: 'system',
+      
+      // Preferences
       preferences: {
         theme: 'light',
         notifications: true,
         language: 'en'
       },
+      
+      // Auth metadata
       metadata: {
         provider: user.providerData[0]?.providerId || 'unknown',
         emailVerified: user.emailVerified || false,
@@ -42,7 +90,7 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
     await admin.firestore().collection('users').doc(user.uid).set(userData)
     
     // Create audit log entry
-    await createAuditLog({
+    await createSimpleAuditLog({
       action: 'user_created',
       userId: 'system',
       userEmail: 'system@ophv2.app',
@@ -51,18 +99,18 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
         email: user.email,
         provider: user.providerData[0]?.providerId || 'unknown',
         emailVerified: user.emailVerified || false,
-        creationMethod: 'firebase_auth'
+        creationMethod: 'self_registration'
       }
     })
 
-    console.log(`✅ User document created for: ${user.email}`)
+    console.log(`✅ User document created for self-registered user: ${user.email}`)
     
   } catch (error) {
     console.error('❌ Error in onUserCreated:', error)
     
     // Try to create a minimal audit log even if user creation failed
     try {
-      await createAuditLog({
+      await createSimpleAuditLog({
         action: 'user_creation_failed',
         userId: 'system',
         userEmail: 'system@ophv2.app',
@@ -131,7 +179,7 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
     }
     
     // Create comprehensive audit log
-    await createAuditLog({
+    await createSimpleAuditLog({
       action: 'user_auth_deleted',
       userId: 'system',
       userEmail: 'system@ophv2.app',
@@ -153,7 +201,7 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
     
     // Create audit log for the failure
     try {
-      await createAuditLog({
+      await createSimpleAuditLog({
         action: 'user_deletion_cleanup_failed',
         userId: 'system',
         userEmail: 'system@ophv2.app',
@@ -173,61 +221,18 @@ exports.onUserDeleted = functions.auth.user().onDelete(async (user) => {
 /* ---------- Helper Functions ---------- */
 
 /**
- * Create audit log entry with proper retention settings
+ * Create simple audit log entry directly to Firestore
  * @param {Object} logData - Audit log data
  */
-async function createAuditLog(logData) {
+async function createSimpleAuditLog(logData) {
   try {
-    const auditEntry = {
+    await admin.firestore().collection('audit_logs').add({
       ...logData,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      retentionTier: getRetentionTier(logData.action),
-      compressAfter: getCompressionDate(logData.action),
-      deleteAfter: getDeletionDate(logData.action),
-      userAgent: 'cloud-function',
-      ipAddress: 'internal',
-      sessionId: 'system'
-    }
-    
-    await admin.firestore().collection('audit_logs').add(auditEntry)
-    
+      source: 'auth_trigger'
+    })
   } catch (error) {
-    console.error('Failed to create audit log:', error)
-    // Don't re-throw - audit log failures shouldn't break main functionality
+    console.error('Error creating audit log:', error)
+    // Don't throw - audit logging shouldn't break main functionality
   }
-}
-
-/**
- * Validate user data before creation
- * @param {Object} userData - User data to validate
- * @returns {Object} Validated and sanitized user data
- */
-function validateUserData(userData) {
-  const sanitized = {
-    email: userData.email?.toLowerCase()?.trim(),
-    displayName: userData.displayName?.trim() || null,
-    photoURL: userData.photoURL?.trim() || null,
-    role: 'pending', // Always start as pending
-    status: 'pending',
-    customPermissions: [],
-    deniedPermissions: []
-  }
-  
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!sanitized.email || !emailRegex.test(sanitized.email)) {
-    throw new Error('Invalid email format')
-  }
-  
-  // Sanitize display name
-  if (sanitized.displayName && sanitized.displayName.length > 100) {
-    sanitized.displayName = sanitized.displayName.substring(0, 100)
-  }
-  
-  return sanitized
-}
-
-module.exports = {
-  onUserCreated: exports.onUserCreated,
-  onUserDeleted: exports.onUserDeleted
 }
