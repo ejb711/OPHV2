@@ -1,4 +1,4 @@
-// client/src/router/index.js - Enhanced with better permission handling
+// client/src/router/index.js - Updated with Profile Route
 import { createRouter, createWebHistory } from 'vue-router'
 
 import LoginView from '../views/LoginView.vue'
@@ -36,172 +36,162 @@ export const router = createRouter({
       component: AdminView,
       meta: { 
         requiresAuth: true, 
-        requiresPermission: 'access_admin'  // Changed to more generic permission
+        requiresPermission: 'manage_users'
       } 
     },
     
-    // PHASE 2: User Profile Management
+    // 🆕 PHASE 2: User Profile Management
     { 
       path: '/profile', 
       name: 'Profile', 
       component: () => import('../views/ProfileView.vue'),
       meta: { 
-        requiresAuth: true,
-        requiresPermission: 'view_own_profile'
+        requiresAuth: true
+        // Note: Will add 'view_own_profile' permission after creating profile permissions
       } 
     },
     
-    // Catch-all 404
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('../views/NotFoundView.vue')
-    }
+    // 🔮 FUTURE ROUTES (Phase 2 & 3) - Commented out until components are implemented
+    // PHASE 2: Core Features
+    // { 
+    //   path: '/projects', 
+    //   name: 'Projects', 
+    //   component: () => import('../views/ProjectView.vue'),
+    //   meta: { 
+    //     requiresAuth: true, 
+    //     requiresPermission: 'view_projects'
+    //   } 
+    // },
+    // { 
+    //   path: '/forums', 
+    //   name: 'Forums', 
+    //   component: () => import('../views/ForumView.vue'),
+    //   meta: { 
+    //     requiresAuth: true, 
+    //     requiresPermission: 'view_forums'
+    //   } 
+    // },
+    // { 
+    //   path: '/calendar', 
+    //   name: 'Calendar', 
+    //   component: () => import('../views/CalendarView.vue'),
+    //   meta: { 
+    //     requiresAuth: true, 
+    //     requiresPermission: 'view_calendar'
+    //   } 
+    // }
   ],
 })
 
-/* Helper – wait for first auth callback with timeout */
-function waitForAuth(timeout = 5000) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error('Auth timeout'))
-    }, timeout)
-    
-    const off = onAuthStateChanged(auth, () => { 
-      clearTimeout(timer)
-      off()
-      resolve() 
-    })
+/* helper – wait exactly once for first auth callback */
+function waitForAuth() {
+  return new Promise(resolve => {
+    const off = onAuthStateChanged(auth, () => { off(); resolve() })
   })
 }
 
-/* Enhanced permission check helper */
-async function waitForPermissions(store, maxAttempts = 50) {
-  if (store.ready) return true
-  
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise(resolve => setTimeout(resolve, 100))
-    if (store.ready) return true
-  }
-  
-  console.warn('[router] Permissions loading timeout')
-  return false
-}
-
-/* Navigation guard with improved permission handling */
-router.beforeEach(async (to, from) => {
+router.beforeEach(async to => {
   const store = useAuthStore()
   
-  try {
-    // 1. Wait for auth state if not loaded
-    if (store.user === null) {
-      await waitForAuth()
-    }
-    
-    // 2. Allow non-auth routes
-    if (!to.meta.requiresAuth) {
-      return true
-    }
-    
-    // 3. Require authentication
-    if (!store.user) {
-      return { name: 'Login' }
-    }
-    
-    // 4. Wait for permissions to load
-    const permissionsLoaded = await waitForPermissions(store)
-    if (!permissionsLoaded) {
-      console.error('[router] Failed to load permissions')
-      return { name: 'Login' }
-    }
-    
-    // 5. Handle pending users
-    if (store.role === 'pending') {
-      if (to.name === 'Awaiting') return true
-      return { name: 'Awaiting' }
-    }
-    
-    // 6. Redirect approved users away from awaiting page
-    if (store.role !== 'pending' && to.name === 'Awaiting') {
-      return { name: 'Dashboard' }
-    }
-    
-    // 7. Check single permission requirement
-    if (to.meta.requiresPermission && !store.hasPermission(to.meta.requiresPermission)) {
-      console.warn(`[router] Access denied: Missing permission '${to.meta.requiresPermission}'`)
-      return { name: 'Dashboard' }
-    }
-    
-    // 8. Check multiple permissions (any)
-    if (to.meta.requiresAnyPermission && !store.hasAnyPermission(to.meta.requiresAnyPermission)) {
-      console.warn(`[router] Access denied: Missing any of permissions:`, to.meta.requiresAnyPermission)
-      return { name: 'Dashboard' }
-    }
-    
-    // 9. Check multiple permissions (all)
-    if (to.meta.requiresAllPermissions && !store.hasAllPermissions(to.meta.requiresAllPermissions)) {
-      console.warn(`[router] Access denied: Missing required permissions:`, to.meta.requiresAllPermissions)
-      return { name: 'Dashboard' }
-    }
-    
-    // 10. Role requirement (backwards compatibility)
-    if (to.meta.requiresRole) {
-      const hasRole = checkRoleAccess(store.role, to.meta.requiresRole)
-      if (!hasRole) {
-        console.warn(`[router] Access denied: Role '${store.role}' cannot access '${to.meta.requiresRole}' content`)
-        return { name: 'Dashboard' }
-      }
-    }
-    
-    return true
-    
-  } catch (error) {
-    console.error('[router] Navigation guard error:', error)
+  // Wait for auth state if not already loaded
+  if (store.user === null) await waitForAuth()
+  
+  // Wait for permissions to load
+  if (store.user && !store.ready) {
+    await new Promise(resolve => {
+      const interval = setInterval(() => {
+        if (store.ready) {
+          clearInterval(interval)
+          resolve()
+        }
+      }, 100)
+    })
+  }
+
+  /* 1️⃣ Authentication required */
+  if (to.meta.requiresAuth && !store.user) {
     return { name: 'Login' }
   }
+
+  /* 2️⃣ Pending users confined to awaiting page */
+  if (store.role === 'pending' && to.name !== 'Awaiting') {
+    return { name: 'Awaiting' }
+  }
+
+  /* 3️⃣ Non-pending users cannot stay on awaiting */
+  if (store.role !== 'pending' && to.name === 'Awaiting') {
+    return { name: 'Dashboard' }
+  }
+
+  /* 4️⃣ Single permission requirement */
+  if (to.meta.requiresPermission && !store.hasPermission(to.meta.requiresPermission)) {
+    
+    // 🚨 TEMPORARY FIX: Add fallback for admin users while permission system initializes
+    if (store.role === 'admin' && store.effectivePermissions.length === 0) {
+      const adminFallbackPermissions = [
+        'manage_users', 'view_users', 'access_admin', 'manage_roles', 'view_audit_logs'
+        // Project permissions removed - feature on hold
+      ]
+      if (adminFallbackPermissions.includes(to.meta.requiresPermission)) {
+        console.log(`[router] 🔧 Admin fallback permission granted: ${to.meta.requiresPermission}`)
+        return true // Allow access with fallback
+      }
+    }
+  
+    console.warn(`Access denied: Missing permission '${to.meta.requiresPermission}'`)
+    return { name: 'Dashboard' }
+  }
+
+  /* 5️⃣ Any permission requirement (user needs at least one) */
+  if (to.meta.requiresAnyPermission && !store.hasAnyPermission(to.meta.requiresAnyPermission)) {
+    console.warn(`Access denied: Missing any of permissions:`, to.meta.requiresAnyPermission)
+    return { name: 'Dashboard' }
+  }
+
+  /* 6️⃣ All permissions requirement (user needs all) */
+  if (to.meta.requiresAllPermissions && !store.hasAllPermissions(to.meta.requiresAllPermissions)) {
+    console.warn(`Access denied: Missing required permissions:`, to.meta.requiresAllPermissions)
+    return { name: 'Dashboard' }
+  }
+
+  /* 7️⃣ Role requirement (backwards compatibility) */
+  if (to.meta.requiresRole) {
+    const requiredRole = to.meta.requiresRole
+    const userRole = store.role
+    
+    // Owner can access everything
+    if (userRole === 'owner') return true
+    
+    // Exact role match
+    if (userRole === requiredRole) return true
+    
+    // Admin can access user/viewer content
+    if (userRole === 'admin' && ['user', 'viewer'].includes(requiredRole)) return true
+    
+    // User can access viewer content
+    if (userRole === 'user' && requiredRole === 'viewer') return true
+    
+    console.warn(`Access denied: Role '${userRole}' cannot access '${requiredRole}' content`)
+    return { name: 'Dashboard' }
+  }
+
+  return true
 })
 
-/* Role hierarchy check helper */
-function checkRoleAccess(userRole, requiredRole) {
-  // Owner can access everything
-  if (userRole === 'owner') return true
-  
-  // Exact role match
-  if (userRole === requiredRole) return true
-  
-  // Role hierarchy
-  const hierarchy = {
-    owner: 100,
-    admin: 90,
-    user: 50,
-    viewer: 20,
-    pending: 10
-  }
-  
-  const userLevel = hierarchy[userRole] || 0
-  const requiredLevel = hierarchy[requiredRole] || 0
-  
-  return userLevel >= requiredLevel
-}
-
-/* Programmatic navigation with permission checks */
+/* Router helper for programmatic navigation with permission checks */
 export function navigateWithPermissionCheck(route, fallback = '/dash') {
   const store = useAuthStore()
   
   // Get route definition
-  const routeRecord = router.getRoutes().find(r => 
-    r.name === route.name || r.path === route.path || r.path === route
-  )
+  const routeRecord = router.getRoutes().find(r => r.name === route.name || r.path === route.path)
   
   if (!routeRecord) {
-    console.warn(`[router] Route not found: ${route}`)
     router.push(fallback)
     return false
   }
   
   // Check permissions
   if (routeRecord.meta?.requiresPermission && !store.hasPermission(routeRecord.meta.requiresPermission)) {
-    console.warn(`[router] Permission denied for route: ${routeRecord.path}`)
     router.push(fallback)
     return false
   }
@@ -219,30 +209,6 @@ export function navigateWithPermissionCheck(route, fallback = '/dash') {
   // Navigate if all checks pass
   router.push(route)
   return true
-}
-
-/* Route helper to get accessible routes for current user */
-export function getAccessibleRoutes() {
-  const store = useAuthStore()
-  if (!store.user || !store.ready) return []
-  
-  return router.getRoutes().filter(route => {
-    // Skip non-navigable routes
-    if (!route.name || route.name === 'Login' || route.name === 'NotFound') return false
-    
-    // Check auth requirement
-    if (route.meta?.requiresAuth && !store.user) return false
-    
-    // Check permissions
-    if (route.meta?.requiresPermission && !store.hasPermission(route.meta.requiresPermission)) return false
-    if (route.meta?.requiresAnyPermission && !store.hasAnyPermission(route.meta.requiresAnyPermission)) return false
-    if (route.meta?.requiresAllPermissions && !store.hasAllPermissions(route.meta.requiresAllPermissions)) return false
-    
-    // Check role
-    if (route.meta?.requiresRole && !checkRoleAccess(store.role, route.meta.requiresRole)) return false
-    
-    return true
-  })
 }
 
 export default router
