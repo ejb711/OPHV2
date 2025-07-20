@@ -1,4 +1,4 @@
-<!-- client/src/components/admin/UserManagement.vue - COMPLETE VERSION -->
+<!-- client/src/components/admin/UserManagement.vue - COMPLETE VERSION WITH CLICKABLE EMAIL LINKS -->
 <template>
   <div>
     <!-- Header with Add User Button -->
@@ -73,14 +73,39 @@
       :items-per-page="25"
       :sort-by="[{ key: 'createdAt', order: 'desc' }]"
     >
-      <!-- Email column with avatar -->
+      <!-- Email column with avatar and clickable link -->
       <template #[`item.email`]="{ item }">
         <div class="d-flex align-center">
           <v-avatar size="32" class="mr-3">
             <v-img v-if="item.photoURL" :src="item.photoURL" />
             <span v-else class="text-caption">{{ item.email.charAt(0).toUpperCase() }}</span>
           </v-avatar>
-          {{ item.email }}
+          
+          <!-- Clickable email link for users that can be edited -->
+          <PermissionGuard permission="edit_users">
+            <template #default="{ hasPermission }">
+              <div v-if="hasPermission && canEditUser(item)">
+                <v-btn
+                  variant="text"
+                  color="primary"
+                  class="text-none pa-0"
+                  style="text-decoration: none; justify-content: flex-start;"
+                  @click="navigateToUserEdit(item)"
+                >
+                  {{ item.email }}
+                </v-btn>
+                <div class="text-caption text-medium-emphasis">
+                  {{ item.displayName || 'No display name' }}
+                </div>
+              </div>
+              <div v-else>
+                <div class="font-weight-medium">{{ item.email }}</div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ item.displayName || 'No display name' }}
+                </div>
+              </div>
+            </template>
+          </PermissionGuard>
         </div>
       </template>
 
@@ -132,26 +157,55 @@
       <!-- Actions column -->
       <template #[`item.actions`]="{ item }">
         <div class="d-flex gap-1">
+          <!-- Edit Profile Button -->
           <PermissionGuard permission="edit_users">
-            <v-btn
-              icon="mdi-pencil"
-              size="small"
-              variant="text"
-              color="primary"
-              @click="editUser(item)"
-              :disabled="!canEditUser(item)"
-            />
+            <v-tooltip text="Edit Profile">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-account-edit"
+                  size="small"
+                  variant="text"
+                  color="primary"
+                  @click="navigateToUserEdit(item)"
+                  :disabled="!canEditUser(item)"
+                />
+              </template>
+            </v-tooltip>
+          </PermissionGuard>
+
+          <!-- Edit User Button (role/permissions) -->
+          <PermissionGuard permission="edit_users">
+            <v-tooltip text="Edit User Settings">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-pencil"
+                  size="small"
+                  variant="text"
+                  color="secondary"
+                  @click="editUser(item)"
+                  :disabled="!canEditUser(item)"
+                />
+              </template>
+            </v-tooltip>
           </PermissionGuard>
           
+          <!-- Delete User Button -->
           <PermissionGuard permission="delete_users">
-            <v-btn
-              icon="mdi-delete"
-              size="small"
-              variant="text"
-              color="error"
-              @click="confirmDeleteUser(item)"
-              :disabled="item.id === auth.currentUser?.uid || item.role === 'owner'"
-            />
+            <v-tooltip text="Delete User">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-delete"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  @click="confirmDeleteUser(item)"
+                  :disabled="item.id === auth.currentUser?.uid || item.role === 'owner'"
+                />
+              </template>
+            </v-tooltip>
           </PermissionGuard>
         </div>
       </template>
@@ -209,19 +263,11 @@
               </v-col>
               <v-col cols="12">
                 <v-select
-                  v-model="editForm.status"
-                  :items="['active', 'pending', 'suspended']"
-                  label="Status"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-autocomplete
                   v-model="editForm.customPermissions"
-                  :items="allPermissions"
+                  :items="availablePermissions"
                   item-title="name"
                   item-value="id"
-                  label="Custom Permissions"
+                  label="Additional Permissions"
                   variant="outlined"
                   multiple
                   chips
@@ -229,9 +275,9 @@
                 />
               </v-col>
               <v-col cols="12">
-                <v-autocomplete
+                <v-select
                   v-model="editForm.deniedPermissions"
-                  :items="allPermissions"
+                  :items="availablePermissions"
                   item-title="name"
                   item-value="id"
                   label="Denied Permissions"
@@ -241,27 +287,13 @@
                   closable-chips
                 />
               </v-col>
-              <v-col cols="12">
-                <v-textarea
-                  v-model="editForm.notes"
-                  label="Notes"
-                  variant="outlined"
-                  rows="3"
-                />
-              </v-col>
             </v-row>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="showEditDialog = false">Cancel</v-btn>
-          <v-btn
-            color="primary"
-            :loading="saving"
-            @click="saveUser"
-          >
-            Save
-          </v-btn>
+          <v-btn color="primary" @click="saveUser">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -269,7 +301,7 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-h5">Confirm Deletion</v-card-title>
+        <v-card-title class="text-h5">Confirm Delete</v-card-title>
         <v-card-text>
           Are you sure you want to delete user <strong>{{ userToDelete?.email }}</strong>?
           This action cannot be undone.
@@ -277,75 +309,52 @@
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="showDeleteDialog = false">Cancel</v-btn>
-          <v-btn
-            color="error"
-            :loading="saving"
-            @click="deleteUser"
-          >
-            Delete
-          </v-btn>
+          <v-btn color="error" @click="deleteUser">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Bulk Operations Dialog -->
+    <!-- Bulk Actions Dialog -->
     <v-dialog v-model="showBulkDialog" max-width="500">
       <v-card>
-        <v-card-title>Bulk Operations</v-card-title>
+        <v-card-title>Bulk Actions</v-card-title>
         <v-card-text>
           <v-select
-            v-model="bulkOperation.action"
+            v-model="bulkAction"
             :items="bulkActionOptions"
-            label="Action"
+            label="Select Action"
             variant="outlined"
           />
           
           <v-select
-            v-if="bulkOperation.action === 'changeRole'"
-            v-model="bulkOperation.role"
+            v-if="bulkAction === 'change_role'"
+            v-model="bulkRole"
             :items="availableRoles"
             item-title="name"
             item-value="id"
             label="New Role"
             variant="outlined"
           />
-          
-          <v-autocomplete
-            v-if="bulkOperation.action === 'addPermissions'"
-            v-model="bulkOperation.permissions"
-            :items="allPermissions"
-            item-title="name"
-            item-value="id"
-            label="Permissions to Add"
-            variant="outlined"
-            multiple
-            chips
-          />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="showBulkDialog = false">Cancel</v-btn>
-          <v-btn
-            color="primary"
-            :loading="saving"
-            @click="executeBulkOperation"
-          >
-            Execute
-          </v-btn>
+          <v-btn color="primary" @click="executeBulkAction">Execute</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Snackbar for notifications -->
+    <!-- Success/Error Snackbar -->
     <v-snackbar
       v-model="snackbar.show"
       :color="snackbar.color"
-      :timeout="4000"
+      timeout="4000"
       location="top"
     >
       {{ snackbar.message }}
-      <template v-slot:actions>
+      <template #actions>
         <v-btn
+          color="white"
           variant="text"
           @click="snackbar.show = false"
         >
@@ -357,407 +366,381 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  serverTimestamp,
-  deleteDoc,
-  where,
-  or
-} from 'firebase/firestore'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { collection, query, onSnapshot, updateDoc, doc, deleteDoc, orderBy } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, auth, functions } from '@/firebase'
+import { db, functions } from '@/firebase'
 import { useAuthStore } from '@/stores/auth'
 import { usePermissionsStore } from '@/stores/permissions'
+import { useAudit } from '@/composables/useAudit'
 import PermissionGuard from '@/components/PermissionGuard.vue'
 
-const emit = defineEmits(['activity', 'create-user'])
-
-/* ---------- stores ---------- */
-const authStore = useAuthStore()
+const router = useRouter()
+const auth = useAuthStore()
 const permissionsStore = usePermissionsStore()
+const { logActivity } = useAudit()
 
-/* ---------- reactive data ---------- */
-const loading = ref(false)
-const saving = ref(false)
+// State
+const loading = ref(true)
 const users = ref([])
-const selectedUsers = ref([])
 const searchText = ref('')
-const roleFilter = ref(null)
-const statusFilter = ref(null)
+const roleFilter = ref('')
+const statusFilter = ref('')
+const selectedUsers = ref([])
 
-// Snackbar
+// Dialog states
+const showEditDialog = ref(false)
+const showDeleteDialog = ref(false)
+const showBulkDialog = ref(false)
+
+// Form states
+const editForm = ref({
+  id: '',
+  email: '',
+  role: '',
+  customPermissions: [],
+  deniedPermissions: []
+})
+
+const userToDelete = ref(null)
+const bulkAction = ref('')
+const bulkRole = ref('')
+
 const snackbar = ref({
   show: false,
   message: '',
   color: 'success'
 })
 
-// Edit user dialog
-const showEditDialog = ref(false)
-const editingUser = ref(null)
-const editForm = ref({
-  role: '',
-  customPermissions: [],
-  deniedPermissions: [],
-  status: 'active',
-  notes: ''
-})
+// Firebase listeners
+let unsubscribeUsers = null
 
-// Delete user dialog
-const showDeleteDialog = ref(false)
-const userToDelete = ref(null)
-
-// Bulk operations
-const showBulkDialog = ref(false)
-const bulkOperation = ref({
-  action: '',
-  role: '',
-  permissions: []
-})
-
-/* ---------- firestore listener ---------- */
-let unsubscribe = null
-
-/* ---------- computed properties ---------- */
-const availableRoles = computed(() => permissionsStore.allRoles)
-const allPermissions = computed(() => permissionsStore.allPermissions)
-
-const roleFilterOptions = computed(() => [
-  { title: 'All Roles', value: null },
-  ...availableRoles.value.map(role => ({ title: role.name, value: role.id }))
-])
-
-const statusFilterOptions = computed(() => [
-  { title: 'All Statuses', value: null },
-  { title: 'Active', value: 'active' },
-  { title: 'Pending', value: 'pending' },
-  { title: 'Suspended', value: 'suspended' }
-])
-
+// Computed
 const filteredUsers = computed(() => {
   let filtered = users.value
 
-  // Apply search filter
+  // Search filter
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
     filtered = filtered.filter(user => 
-      user.email.toLowerCase().includes(search)
+      user.email.toLowerCase().includes(search) ||
+      (user.displayName && user.displayName.toLowerCase().includes(search))
     )
   }
 
-  // Apply role filter
+  // Role filter
   if (roleFilter.value) {
     filtered = filtered.filter(user => user.role === roleFilter.value)
   }
 
-  // Apply status filter
+  // Status filter
   if (statusFilter.value) {
     filtered = filtered.filter(user => (user.status || 'active') === statusFilter.value)
   }
 
-  return filtered
+  return filtered.map(user => ({
+    ...user,
+    customPermCount: (user.customPermissions || []).length
+  }))
 })
 
-const headers = computed(() => [
-  { title: 'Email', key: 'email', sortable: true },
+const availableRoles = computed(() => permissionsStore.roles)
+const availablePermissions = computed(() => permissionsStore.permissions)
+
+const roleFilterOptions = computed(() => {
+  const roles = [...new Set(users.value.map(user => user.role))]
+  return roles.map(role => ({
+    title: getRoleName(role),
+    value: role
+  }))
+})
+
+const statusFilterOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Pending', value: 'pending' },
+  { title: 'Inactive', value: 'inactive' },
+  { title: 'Suspended', value: 'suspended' }
+]
+
+const bulkActionOptions = [
+  { title: 'Change Role', value: 'change_role' },
+  { title: 'Activate Users', value: 'activate' },
+  { title: 'Deactivate Users', value: 'deactivate' }
+]
+
+// Table headers
+const headers = [
+  { title: 'User', key: 'email', sortable: true, width: '30%' },
   { title: 'Role', key: 'role', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Custom Perms', key: 'customPermCount', sortable: true },
   { title: 'Created', key: 'createdAt', sortable: true },
   { title: 'Last Active', key: 'lastActive', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, width: '100px' }
-])
+  { title: 'Actions', key: 'actions', sortable: false, width: '150px' }
+]
 
-const bulkActionOptions = computed(() => [
-  { title: 'Change Role', value: 'changeRole' },
-  { title: 'Add Permissions', value: 'addPermissions' },
-  { title: 'Suspend Users', value: 'suspend' },
-  { title: 'Activate Users', value: 'activate' }
-])
-
-/* ---------- permission checks ---------- */
-const canEditUser = computed(() => (user) => {
-  return authStore.hasPermission('edit_users') && user.id !== auth.currentUser?.uid
-})
-
-const canDeleteUser = computed(() => (user) => {
-  return authStore.hasPermission('delete_users') && 
-         user.id !== auth.currentUser?.uid &&
-         user.role !== 'owner'
-})
-
-/* ---------- lifecycle ---------- */
-onMounted(async () => {
-  await loadUsers()
-})
-
-onUnmounted(() => {
-  if (unsubscribe) unsubscribe()
-})
-
-/* ---------- utility functions ---------- */
-function showSnackbar(message, color = 'success') {
-  snackbar.value = {
-    show: true,
-    message,
-    color
-  }
-}
-
-function formatDate(date) {
-  if (!date) return 'Never'
-  const d = date instanceof Date ? date : 
-           typeof date.toDate === 'function' ? date.toDate() : new Date(date)
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
-}
-
+// Methods
 function getRoleColor(role) {
   const colors = {
     owner: 'purple',
-    admin: 'red',
-    user: 'blue',
-    viewer: 'green',
-    pending: 'orange'
+    admin: 'primary',
+    user: 'success',
+    viewer: 'info',
+    pending: 'warning'
   }
   return colors[role] || 'grey'
 }
 
-function getRoleName(roleId) {
-  const role = availableRoles.value.find(r => r.id === roleId)
-  return role ? role.name : roleId
+function getRoleName(role) {
+  const roleMap = {
+    owner: 'Owner',
+    admin: 'Administrator',
+    user: 'User',
+    viewer: 'Viewer',
+    pending: 'Pending'
+  }
+  return roleMap[role] || role
 }
 
 function getStatusColor(status) {
   const colors = {
     active: 'success',
     pending: 'warning',
+    inactive: 'grey',
     suspended: 'error'
   }
   return colors[status] || 'grey'
 }
 
-function getPermissionName(permissionId) {
-  const permission = allPermissions.value.find(p => p.id === permissionId)
-  return permission ? permission.name : permissionId
-}
-
-/* ---------- FIXED: Load users function ---------- */
-async function loadUsers() {
-  if (!authStore.user) return
+function formatDate(date) {
+  if (!date) return 'Never'
   
-  loading.value = true
-  try {
-    // FIXED: Simple query that includes all users, then filter out deleted ones
-    const usersQuery = query(
-      collection(db, 'users'),
-      orderBy('createdAt', 'desc')
-    )
-    
-    unsubscribe = onSnapshot(usersQuery, (snapshot) => {
-      users.value = snapshot.docs
-        .map(doc => {
-          const data = doc.data()
-          return {
-            id: doc.id,
-            ...data,
-            // Default status to 'active' if not set
-            status: data.status || 'active',
-            customPermCount: (data.customPermissions || []).length,
-            createdAt: data.createdAt?.toDate?.() || data.createdAt,
-            lastActive: data.lastActive?.toDate?.() || data.lastActive
-          }
-        })
-        // Filter out deleted users on the client side
-        .filter(user => user.status !== 'deleted')
-      
-      console.log(`Loaded ${users.value.length} users`)
-    })
-    
-  } catch (e) {
-    console.error('Error loading users:', e)
-    showSnackbar('Failed to load users', 'error')
-  } finally {
-    loading.value = false
+  let dateObj
+  if (date.toDate) {
+    dateObj = date.toDate()
+  } else if (date instanceof Date) {
+    dateObj = date
+  } else {
+    dateObj = new Date(date)
+  }
+  
+  return dateObj.toLocaleDateString()
+}
+
+function canEditUser(user) {
+  // Cannot edit yourself
+  if (user.id === auth.user?.uid) return false
+  
+  // Only owners can edit other owners
+  if (user.role === 'owner' && auth.role !== 'owner') return false
+  
+  return true
+}
+
+function navigateToUserEdit(user) {
+  if (canEditUser(user)) {
+    router.push(`/admin/users/${user.id}/edit`)
   }
 }
 
-/* ---------- user management ---------- */
 function editUser(user) {
-  if (!canEditUser.value(user)) {
-    showSnackbar('You do not have permission to edit this user', 'error')
-    return
-  }
-
-  editingUser.value = user
   editForm.value = {
+    id: user.id,
+    email: user.email,
     role: user.role,
-    customPermissions: [...(user.customPermissions || [])],
-    deniedPermissions: [...(user.deniedPermissions || [])],
-    status: user.status || 'active',
-    notes: user.notes || ''
+    customPermissions: user.customPermissions || [],
+    deniedPermissions: user.deniedPermissions || []
   }
   showEditDialog.value = true
 }
 
-async function saveUser() {
-  if (!editingUser.value) return
-  
-  saving.value = true
-  try {
-    const updates = {
-      role: editForm.value.role,
-      customPermissions: editForm.value.customPermissions,
-      deniedPermissions: editForm.value.deniedPermissions,
-      status: editForm.value.status,
-      notes: editForm.value.notes,
-      updatedAt: serverTimestamp(),
-      updatedBy: auth.currentUser.uid
-    }
-
-    await updateDoc(doc(db, 'users', editingUser.value.id), updates)
-
-    // Log activity
-    emit('activity', 'user_updated', {
-      userId: editingUser.value.id,
-      email: editingUser.value.email,
-      changes: {
-        role: { from: editingUser.value.role, to: editForm.value.role },
-        status: { from: editingUser.value.status, to: editForm.value.status }
-      }
-    })
-
-    showSnackbar('User updated successfully')
-    showEditDialog.value = false
-    editingUser.value = null
-  } catch (e) {
-    console.error('Error updating user:', e)
-    showSnackbar('Failed to update user', 'error')
-  } finally {
-    saving.value = false
-  }
-}
-
 function confirmDeleteUser(user) {
-  if (!canDeleteUser.value(user)) {
-    showSnackbar('You do not have permission to delete this user', 'error')
-    return
-  }
-  
   userToDelete.value = user
   showDeleteDialog.value = true
 }
 
-async function deleteUser() {
-  if (!userToDelete.value) return
-  
-  saving.value = true
+async function saveUser() {
   try {
-    // Use Cloud Function for proper user deletion
+    const userRef = doc(db, 'users', editForm.value.id)
+    
+    await updateDoc(userRef, {
+      role: editForm.value.role,
+      customPermissions: editForm.value.customPermissions,
+      deniedPermissions: editForm.value.deniedPermissions,
+      updatedAt: new Date(),
+      updatedBy: auth.user.uid
+    })
+
+    await logActivity('user_updated', {
+      targetUserId: editForm.value.id,
+      targetUserEmail: editForm.value.email,
+      changes: {
+        role: editForm.value.role,
+        customPermissions: editForm.value.customPermissions,
+        deniedPermissions: editForm.value.deniedPermissions
+      }
+    })
+
+    showEditDialog.value = false
+    snackbar.value = {
+      show: true,
+      message: 'User updated successfully',
+      color: 'success'
+    }
+
+  } catch (error) {
+    console.error('Error updating user:', error)
+    snackbar.value = {
+      show: true,
+      message: 'Failed to update user',
+      color: 'error'
+    }
+  }
+}
+
+async function deleteUser() {
+  try {
     const deleteUserFunction = httpsCallable(functions, 'deleteUser')
     await deleteUserFunction({ userId: userToDelete.value.id })
 
-    emit('activity', 'user_deleted', {
-      userId: userToDelete.value.id,
-      email: userToDelete.value.email
+    await logActivity('user_deleted', {
+      targetUserId: userToDelete.value.id,
+      targetUserEmail: userToDelete.value.email
     })
 
-    showSnackbar('User deleted successfully')
     showDeleteDialog.value = false
     userToDelete.value = null
-  } catch (e) {
-    console.error('Error deleting user:', e)
     
-    let errorMessage = 'Failed to delete user'
-    if (e.code === 'functions/permission-denied') {
-      errorMessage = 'You do not have permission to delete this user'
-    } else if (e.code === 'functions/not-found') {
-      errorMessage = 'User not found'
-    } else if (e.code === 'functions/invalid-argument') {
-      errorMessage = e.message || 'Invalid request'
-    } else if (e.message) {
-      errorMessage = e.message
+    snackbar.value = {
+      show: true,
+      message: 'User deleted successfully',
+      color: 'success'
     }
-    
-    showSnackbar(errorMessage, 'error')
-  } finally {
-    saving.value = false
+
+  } catch (error) {
+    console.error('Error deleting user:', error)
+    snackbar.value = {
+      show: true,
+      message: 'Failed to delete user',
+      color: 'error'
+    }
   }
 }
 
-/* ---------- bulk operations ---------- */
 function openBulkDialog() {
-  if (selectedUsers.value.length === 0) {
-    showSnackbar('Please select users first', 'warning')
-    return
-  }
   showBulkDialog.value = true
 }
 
-async function executeBulkOperation() {
-  saving.value = true
+async function executeBulkAction() {
   try {
-    const updates = {}
-    
-    switch (bulkOperation.value.action) {
-      case 'changeRole':
-        updates.role = bulkOperation.value.role
-        break
-      case 'addPermissions':
-        // Will be handled per user below
-        break
-      case 'suspend':
-        updates.status = 'suspended'
-        break
-      case 'activate':
-        updates.status = 'active'
-        break
-    }
-
-    // Update each selected user
     for (const userId of selectedUsers.value) {
       const user = users.value.find(u => u.id === userId)
-      if (!canEditUser.value(user)) continue
+      if (!user || !canEditUser(user)) continue
 
-      const userUpdates = { ...updates, updatedAt: serverTimestamp() }
+      const userRef = doc(db, 'users', userId)
       
-      if (bulkOperation.value.action === 'addPermissions') {
-        const currentPerms = user.customPermissions || []
-        userUpdates.customPermissions = [...new Set([...currentPerms, ...bulkOperation.value.permissions])]
+      switch (bulkAction.value) {
+        case 'change_role':
+          await updateDoc(userRef, {
+            role: bulkRole.value,
+            updatedAt: new Date(),
+            updatedBy: auth.user.uid
+          })
+          break
+        case 'activate':
+          await updateDoc(userRef, {
+            status: 'active',
+            updatedAt: new Date(),
+            updatedBy: auth.user.uid
+          })
+          break
+        case 'deactivate':
+          await updateDoc(userRef, {
+            status: 'inactive',
+            updatedAt: new Date(),
+            updatedBy: auth.user.uid
+          })
+          break
       }
-      
-      await updateDoc(doc(db, 'users', userId), userUpdates)
     }
 
-    emit('activity', 'bulk_operation', {
-      action: bulkOperation.value.action,
+    await logActivity('bulk_user_action', {
+      action: bulkAction.value,
       userCount: selectedUsers.value.length,
-      details: bulkOperation.value
+      userIds: selectedUsers.value
     })
 
-    showSnackbar(`Bulk operation completed for ${selectedUsers.value.length} users`)
-    showBulkDialog.value = false
     selectedUsers.value = []
-    bulkOperation.value = { action: '', role: '', permissions: [] }
-  } catch (e) {
-    console.error('Error executing bulk operation:', e)
-    showSnackbar('Failed to execute bulk operation', 'error')
-  } finally {
-    saving.value = false
+    showBulkDialog.value = false
+    bulkAction.value = ''
+    bulkRole.value = ''
+
+    snackbar.value = {
+      show: true,
+      message: 'Bulk action completed successfully',
+      color: 'success'
+    }
+
+  } catch (error) {
+    console.error('Error executing bulk action:', error)
+    snackbar.value = {
+      show: true,
+      message: 'Failed to execute bulk action',
+      color: 'error'
+    }
   }
 }
+
+async function loadUsers() {
+  try {
+    loading.value = true
+    
+    const usersQuery = query(
+      collection(db, 'users'),
+      orderBy('createdAt', 'desc')
+    )
+
+    unsubscribeUsers = onSnapshot(usersQuery, (snapshot) => {
+      users.value = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      loading.value = false
+    }, (error) => {
+      console.error('Error loading users:', error)
+      loading.value = false
+    })
+
+  } catch (error) {
+    console.error('Error setting up users listener:', error)
+    loading.value = false
+  }
+}
+
+// Lifecycle
+onMounted(async () => {
+  await loadUsers()
+})
+
+onUnmounted(() => {
+  if (unsubscribeUsers) {
+    unsubscribeUsers()
+  }
+})
+
+// Define emits
+defineEmits(['activity', 'create-user'])
 </script>
 
 <style scoped>
-.v-data-table {
-  border-radius: 8px;
+.clickable-email {
+  cursor: pointer;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+}
+
+.clickable-email:hover {
+  text-decoration: none;
 }
 </style>

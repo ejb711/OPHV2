@@ -1,4 +1,4 @@
-// client/src/router/index.js - Enhanced with better permission handling
+// client/src/router/index.js - Enhanced with User Profile Edit Route
 import { createRouter, createWebHistory } from 'vue-router'
 
 import LoginView from '../views/LoginView.vue'
@@ -36,7 +36,7 @@ export const router = createRouter({
       component: AdminView,
       meta: { 
         requiresAuth: true, 
-        requiresPermission: 'access_admin'  // Changed to more generic permission
+        requiresPermission: 'access_admin'
       } 
     },
     
@@ -49,6 +49,17 @@ export const router = createRouter({
         requiresAuth: true,
         requiresPermission: 'view_own_profile'
       } 
+    },
+
+    // NEW: Admin User Profile Edit
+    {
+      path: '/admin/users/:userId/edit',
+      name: 'UserProfileEdit',
+      component: () => import('../views/UserProfileEditView.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresPermission: 'edit_users'
+      }
     },
     
     // Catch-all 404
@@ -126,25 +137,48 @@ router.beforeEach(async (to, from) => {
       return { name: 'Dashboard' }
     }
     
-    // 7. Check single permission requirement
+    // 7. Special handling for UserProfileEdit route
+    if (to.name === 'UserProfileEdit') {
+      // Check if user has edit_users permission
+      if (!store.hasPermission('edit_users')) {
+        console.warn('[router] Access denied: Missing permission "edit_users"')
+        return { name: 'Admin' }
+      }
+
+      // Additional check: prevent editing own profile via admin route
+      // (should use regular /profile route instead)
+      const targetUserId = to.params.userId
+      if (targetUserId === store.user.uid) {
+        console.log('[router] Redirecting to own profile page')
+        return { name: 'Profile' }
+      }
+
+      // Owners can edit anyone, admins cannot edit other owners
+      if (store.role !== 'owner') {
+        // We'll validate the target user's role in the component
+        // since we need to fetch user data first
+      }
+    }
+    
+    // 8. Check single permission requirement
     if (to.meta.requiresPermission && !store.hasPermission(to.meta.requiresPermission)) {
       console.warn(`[router] Access denied: Missing permission '${to.meta.requiresPermission}'`)
       return { name: 'Dashboard' }
     }
     
-    // 8. Check multiple permissions (any)
+    // 9. Check multiple permissions (any)
     if (to.meta.requiresAnyPermission && !store.hasAnyPermission(to.meta.requiresAnyPermission)) {
       console.warn(`[router] Access denied: Missing any of permissions:`, to.meta.requiresAnyPermission)
       return { name: 'Dashboard' }
     }
     
-    // 9. Check multiple permissions (all)
+    // 10. Check multiple permissions (all)
     if (to.meta.requiresAllPermissions && !store.hasAllPermissions(to.meta.requiresAllPermissions)) {
       console.warn(`[router] Access denied: Missing required permissions:`, to.meta.requiresAllPermissions)
       return { name: 'Dashboard' }
     }
     
-    // 10. Role requirement (backwards compatibility)
+    // 11. Role requirement (backwards compatibility)
     if (to.meta.requiresRole) {
       const hasRole = checkRoleAccess(store.role, to.meta.requiresRole)
       if (!hasRole) {
@@ -228,7 +262,7 @@ export function getAccessibleRoutes() {
   
   return router.getRoutes().filter(route => {
     // Skip non-navigable routes
-    if (!route.name || route.name === 'Login' || route.name === 'NotFound') return false
+    if (!route.name || route.name === 'Login' || route.name === 'NotFound' || route.name === 'UserProfileEdit') return false
     
     // Check auth requirement
     if (route.meta?.requiresAuth && !store.user) return false
@@ -243,6 +277,31 @@ export function getAccessibleRoutes() {
     
     return true
   })
+}
+
+/* Helper to check if user can access a specific route */
+export function canAccessRoute(routeName, params = {}) {
+  const store = useAuthStore()
+  if (!store.user || !store.ready) return false
+  
+  const route = router.getRoutes().find(r => r.name === routeName)
+  if (!route) return false
+  
+  // Check basic permissions
+  if (route.meta?.requiresAuth && !store.user) return false
+  if (route.meta?.requiresPermission && !store.hasPermission(route.meta.requiresPermission)) return false
+  if (route.meta?.requiresAnyPermission && !store.hasAnyPermission(route.meta.requiresAnyPermission)) return false
+  if (route.meta?.requiresAllPermissions && !store.hasAllPermissions(route.meta.requiresAllPermissions)) return false
+  if (route.meta?.requiresRole && !checkRoleAccess(store.role, route.meta.requiresRole)) return false
+  
+  // Special checks for specific routes
+  if (routeName === 'UserProfileEdit') {
+    const targetUserId = params.userId
+    if (targetUserId === store.user.uid) return false // Use /profile instead
+    // Additional role-based checks would be done in component
+  }
+  
+  return true
 }
 
 export default router
