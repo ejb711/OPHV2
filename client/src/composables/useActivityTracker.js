@@ -23,23 +23,18 @@ export function useActivityTracker() {
       // Reset error state on success
       hasPermissionError = false
       retryCount = 0
-      console.log('📍 Activity updated successfully')
       
     } catch (error) {
       retryCount++
       
       if (error.code === 'permission-denied' || error.message.includes('Missing or insufficient permissions')) {
-        console.warn('⚠️ Activity tracking disabled: insufficient permissions')
         hasPermissionError = true
         stopTracking() // Stop trying if we don't have permission
         return
       }
       
       if (error.code === 'failed-precondition' || error.code === 'unavailable') {
-        console.warn(`⚠️ Activity update failed (${error.code}), will retry (${retryCount}/${maxRetries})`)
-        
         if (retryCount >= maxRetries) {
-          console.warn('⚠️ Activity tracking disabled: too many failures')
           hasPermissionError = true
           stopTracking()
         }
@@ -54,8 +49,6 @@ export function useActivityTracker() {
   // Start tracking activity with better error handling
   function startTracking() {
     if (!auth.user || hasPermissionError) return
-    
-    console.log('🟢 Starting activity tracking')
     
     // Update immediately (with delay to allow auth to settle)
     setTimeout(updateActivity, 2000)
@@ -91,8 +84,6 @@ export function useActivityTracker() {
 
   // Stop tracking
   function stopTracking() {
-    console.log('🔴 Stopping activity tracking')
-    
     if (activityInterval) {
       clearInterval(activityInterval)
       activityInterval = null
@@ -108,7 +99,6 @@ export function useActivityTracker() {
   function resetErrorState() {
     hasPermissionError = false
     retryCount = 0
-    console.log('🔄 Activity tracker error state reset')
   }
 
   // Auto-start/stop based on auth state
