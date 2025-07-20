@@ -1,227 +1,494 @@
-# OPHV2 - Frontend Development Guide
+# OPHV2 - Frontend Composables Documentation
 
-## 🎨 Component Architecture
+## 🧩 Composables Overview
 
-### Core Components
-```
-components/
-├── PermissionGuard.vue    # Conditional rendering wrapper
-├── AppLayout.vue         # Universal layout with navigation
-├── admin/
-│   ├── UserManagement.vue
-│   ├── RoleMatrix.vue
-│   └── AuditLogs.vue
-└── shared/
-    ├── LoadingSpinner.vue
-    └── ErrorAlert.vue
-```
+OPHV2 uses Vue 3 composition functions for reusable business logic. All composables follow consistent patterns and provide error handling.
 
-### Component Rules
-- **Max 350 lines** (extract at 250)
-- Use `<script setup>` for new components
-- Always include permission checks
-- Emit events, don't mutate props
+## 📋 Available Composables
 
-### PermissionGuard Usage
-```vue
-<!-- Single permission -->
-<PermissionGuard permission="edit_users">
-  <EditButton />
-</PermissionGuard>
+### 1. **useAudit.js** - Audit Logging System
+**Purpose**: Track user actions and system events for compliance and debugging
 
-<!-- Multiple (ANY) -->
-<PermissionGuard :any-permissions="['edit_users', 'admin']">
-  <AdminControls />
-</PermissionGuard>
-
-<!-- Multiple (ALL) -->
-<PermissionGuard :all-permissions="['view_data', 'export_data']">
-  <ExportButton />
-</PermissionGuard>
-```
-
-## 🗄️ State Management (Pinia)
-
-### Store Structure
+**Import**:
 ```javascript
-// stores/auth.js
-- currentUser
-- isAuthenticated
-- userRole
-- permissions[]
-- hasPermission()
-- signIn/signOut()
-
-// stores/permissions.js  
-- users[]
-- roles[]
-- permissions[]
-- fetchUsers()
-- updateUserRole()
+import { useAudit } from '@/composables/useAudit'
 ```
 
-### Store Patterns
+**Basic Usage**:
 ```javascript
-// Modular store (when > 350 lines)
-stores/feature/
-├── index.js      # Store definition
-├── actions.js    # Async operations
-├── getters.js    # Computed values
-└── types.js      # Constants
+const { log } = useAudit()
+
+// Simple action logging
+await log.userLogin({ ip: '192.168.1.1' })
+await log.adminTabViewed('users')
+await log.userUpdated({ targetUserId: 'user123', changes: { role: 'admin' } })
+
+// Custom events
+await log.custom('custom_action', { details: 'any data' })
 ```
 
-## 🪝 Composables
-
-### Key Composables
+**Available Log Methods**:
 ```javascript
-// composables/usePermissions.js
-const { hasPermission, isAdmin, canManageUsers } = usePermissions()
+// Authentication
+log.userLogin(details)
+log.userLogout(details)
 
-// composables/useAudit.js
-const { logAction } = useAudit()
-await logAction('user_deleted', { userId, deletedBy })
+// Profile Management  
+log.profileViewed(details)
+log.profileUpdated(details)
+log.settingsChanged(details)
+log.passwordChanged(details)
 
-// composables/useFirestore.js
-const { loading, error, data } = useFirestoreCollection('users')
+// Admin Actions
+log.adminPanelAccessed(details)
+log.adminTabViewed(tabName)
+log.userCreated(details)
+log.userUpdated(details)
+log.userDeleted(details)
+log.roleChanged(details)
+log.permissionGranted(details)
+log.permissionRevoked(details)
+log.bulkOperation(details)
+
+// Future Features (Ready)
+log.projectCreated(details)
+log.projectUpdated(details)
+log.projectDeleted(details)
+log.forumPostCreated(details)
+log.eventCreated(details)
+
+// Security Events
+log.securityAlert(details)
+log.unauthorizedAccess(details)
+log.systemError(details)
 ```
 
-### Creating Composables
+**Advanced Usage**:
 ```javascript
-// Extract when logic is:
-// - Used in multiple components
-// - Complex (> 50 lines)
-// - Testable separately
+const { logEvent, getRecentActivity, RETENTION_CONFIG } = useAudit()
+
+// Direct logging with custom action
+await logEvent('complex_workflow_completed', {
+  workflowId: 'wf-123',
+  steps: ['step1', 'step2', 'step3'],
+  duration: 1200
+})
+
+// Get user's recent activity
+const recentActivity = await getRecentActivity(25) // Last 25 actions
+```
+
+**Error Handling**:
+- Composable gracefully handles permission errors
+- Never throws exceptions that break app functionality
+- Logs errors to console in development mode
+- Automatically retries on temporary failures
+
+---
+
+### 2. **useActivityTracker.js** - User Activity Monitoring
+**Purpose**: Track user presence and update `lastActive` timestamp
+
+**Import**:
+```javascript
+import { useActivityTracker } from '@/composables/useActivityTracker'
+```
+
+**Basic Usage** (Auto-start):
+```javascript
+// In App.vue or main layout component
+useActivityTracker() // Automatically starts tracking
+```
+
+**Manual Control**:
+```javascript
+const { 
+  startTracking, 
+  stopTracking, 
+  updateActivity, 
+  resetErrorState,
+  forceUpdate,
+  hasPermissionError,
+  isTracking 
+} = useActivityTracker()
+
+// Manual control
+startTracking()     // Start tracking user activity
+stopTracking()      // Stop tracking
+forceUpdate()       // Force immediate update
+resetErrorState()   // Reset after fixing permissions
+
+// Status checks
+console.log('Has errors:', hasPermissionError())
+console.log('Is tracking:', isTracking())
+```
+
+**Features**:
+- **Auto-throttling**: Updates max once per minute
+- **Event tracking**: Responds to mouse, keyboard, touch events
+- **Error recovery**: Automatically handles permission issues
+- **Network resilience**: Graceful handling of offline scenarios
+- **Performance optimized**: Passive event listeners, minimal overhead
+
+**Configuration**:
+```javascript
+// Activity is tracked when user:
+// - Moves mouse, clicks, types, scrolls, touches screen
+// - Automatic update every 5 minutes
+// - Throttled to prevent excessive updates (max 1/minute)
+```
+
+---
+
+### 3. **usePermissions.js** - Permission Checking
+**Purpose**: Check user permissions and role-based access
+
+**Import**:
+```javascript
+import { usePermissions } from '@/composables/usePermissions'
+```
+
+**Basic Usage**:
+```javascript
+const { 
+  hasPermission, 
+  hasAnyPermission, 
+  isAdmin, 
+  canManageUsers,
+  requiresPermission 
+} = usePermissions()
+
+// Single permission check
+if (hasPermission('edit_users')) {
+  // Show edit button
+}
+
+// Multiple permission check (user needs ANY of these)
+if (hasAnyPermission(['edit_posts', 'moderate_posts'])) {
+  // Show content moderation
+}
+
+// Role checks
+if (isAdmin) {
+  // Show admin features
+}
+
+// Specific functionality checks
+if (canManageUsers) {
+  // Show user management
+}
+
+// Route guard usage
+const canAccess = requiresPermission('view_admin_panel')
+```
+
+**Complete API**:
+```javascript
+// Permission checks
+hasPermission(permission)
+hasAnyPermission([permissions])
+hasAllPermissions([permissions])
+
+// Role checks  
+isOwner, isAdmin, isUser, isPending
+canManageRole(targetRole)
+
+// Feature-specific checks
+canManageUsers, canViewUsers, canCreateUsers
+canManageProjects, canViewProjects
+canManageForums, canViewForums
+canManageCalendar, canViewCalendar
+canAccessAdmin, canViewAnalytics
+
+// UI helpers
+showAdminNav, showProjectsNav, showForumsNav
+showCreateButton, showEditButton, showDeleteButton
+
+// Route guards
+requiresPermission(permission)
+requiresAnyPermission([permissions])
+requiresRole(role)
+
+// Error handling
+getPermissionErrorMessage(permission)
+```
+
+---
+
+### 4. **useErrorHandler.js** - Global Error Management
+**Purpose**: Centralized error handling and user feedback
+
+**Import**:
+```javascript
+import { useErrorHandler } from '@/composables/useErrorHandler'
+```
+
+**Usage**:
+```javascript
+const { handleError, showError, showSuccess } = useErrorHandler()
+
+try {
+  await riskyOperation()
+  showSuccess('Operation completed successfully!')
+} catch (error) {
+  handleError(error, {
+    context: 'User Management',
+    action: 'updateUser',
+    userId: 'user123'
+  })
+}
+
+// Direct user messages
+showError('Something went wrong')
+showSuccess('Data saved successfully')
+```
+
+---
+
+## 🛠️ Composable Patterns & Best Practices
+
+### 1. **Error Handling Pattern**
+All composables follow this error handling pattern:
+```javascript
+export function useComposable() {
+  const loading = ref(false)
+  const error = ref(null)
+  
+  const performAction = async () => {
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Action logic
+      return result
+    } catch (err) {
+      error.value = err
+      console.error('Composable error:', err)
+      // Don't re-throw to prevent app crashes
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  return { performAction, loading, error }
+}
+```
+
+### 2. **Reactive State Pattern**
+```javascript
 export function useFeature() {
-  const state = reactive({})
-  const computed = computed(() => {})
-  const methods = {}
+  const state = reactive({
+    data: [],
+    loading: false,
+    error: null
+  })
   
-  return { ...toRefs(state), computed, ...methods }
+  const fetchData = async () => {
+    state.loading = true
+    try {
+      state.data = await apiCall()
+    } catch (error) {
+      state.error = error
+    } finally {
+      state.loading = false
+    }
+  }
+  
+  return { state, fetchData }
 }
 ```
 
-## 🛣️ Routing Patterns
-
-### Permission-Based Routes
+### 3. **Auto-cleanup Pattern**
 ```javascript
-{
-  path: '/admin',
-  component: AdminView,
-  meta: { 
-    requiresAuth: true,
-    requiresPermission: 'view_admin_panel'
+export function useFeature() {
+  let unsubscribe = null
+  
+  const startListening = () => {
+    unsubscribe = onSnapshot(collection, (snapshot) => {
+      // Handle updates
+    })
+  }
+  
+  onUnmounted(() => {
+    if (unsubscribe) unsubscribe()
+  })
+  
+  return { startListening }
+}
+```
+
+## 🔧 Creating New Composables
+
+### Template for New Composables:
+```javascript
+// composables/useNewFeature.js
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useAudit } from '@/composables/useAudit'
+
+export function useNewFeature() {
+  const auth = useAuthStore()
+  const { log } = useAudit()
+  
+  // State
+  const loading = ref(false)
+  const error = ref(null)
+  const data = reactive({
+    items: [],
+    total: 0
+  })
+  
+  // Methods
+  const fetchData = async () => {
+    if (!auth.user) return
+    
+    loading.value = true
+    error.value = null
+    
+    try {
+      // Implementation
+      await log.custom('feature_accessed')
+      return result
+    } catch (err) {
+      error.value = err
+      console.error('New feature error:', err)
+    } finally {
+      loading.value = false
+    }
+  }
+  
+  // Lifecycle
+  onMounted(() => {
+    if (auth.ready) {
+      fetchData()
+    }
+  })
+  
+  // Return public API
+  return {
+    // State
+    loading: readonly(loading),
+    error: readonly(error),
+    data: readonly(data),
+    
+    // Methods
+    fetchData,
+    
+    // Computed
+    hasData: computed(() => data.items.length > 0)
   }
 }
 ```
 
-### Route Guards
+## 📊 File Organization Rules
+
+### Size Limits (CRITICAL)
+- **Target**: Keep composables under 350 lines
+- **Max**: 500 lines absolute maximum
+- **Strategy**: Extract helper functions, split complex features
+
+### When to Split a Composable:
 ```javascript
-router.beforeEach((to, from, next) => {
-  // Check auth
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return next('/login')
-  }
+// ❌ Too large (600+ lines)
+useComplexFeature.js
+
+// ✅ Better: Split into focused composables
+useFeatureData.js       // Data fetching (200 lines)
+useFeatureActions.js    // User actions (180 lines)
+useFeatureValidation.js // Validation logic (120 lines)
+```
+
+### Modular Pattern:
+```javascript
+// Main composable (orchestrator)
+export function useComplexFeature() {
+  const { data, loading, fetchData } = useFeatureData()
+  const { createItem, updateItem, deleteItem } = useFeatureActions()
+  const { validateInput, errors } = useFeatureValidation()
   
-  // Check permission
-  if (to.meta.requiresPermission && 
-      !authStore.hasPermission(to.meta.requiresPermission)) {
-    return next('/unauthorized')
+  return {
+    // Data
+    data, loading,
+    
+    // Actions
+    createItem, updateItem, deleteItem,
+    
+    // Validation
+    validateInput, errors,
+    
+    // Lifecycle
+    fetchData
   }
-  
-  next()
+}
+```
+
+## 🔍 Testing Composables
+
+### Browser Console Testing:
+```javascript
+// Test useAudit
+const { log } = useAudit()
+await log.custom('test_action', { test: true })
+
+// Test useActivityTracker
+const tracker = useActivityTracker()
+console.log('Is tracking:', tracker.isTracking())
+
+// Test usePermissions
+const perms = usePermissions()
+console.log('Is admin:', perms.isAdmin)
+console.log('Can manage users:', perms.canManageUsers)
+```
+
+### Development Debugging:
+```javascript
+// Add to any composable for debugging
+if (import.meta.env.DEV) {
+  window.__debug_composable = {
+    state: readonly(state),
+    actions: { fetchData, updateData },
+    utils: { clearCache, resetState }
+  }
+}
+```
+
+## 🚨 Common Issues & Solutions
+
+### Issue: "Export not found" errors
+**Solution**: Verify composable has proper export and return statement
+```javascript
+// ✅ Correct
+export function useComposable() {
+  // ... implementation
+  return { methods, state } // MUST have return!
+}
+```
+
+### Issue: Permission errors in composables
+**Solution**: Check Firestore rules and use error handling
+```javascript
+try {
+  await firestoreOperation()
+} catch (error) {
+  if (error.code === 'permission-denied') {
+    console.warn('Permission denied - graceful fallback')
+    return null
+  }
+  throw error
+}
+```
+
+### Issue: Memory leaks in composables
+**Solution**: Always cleanup in onUnmounted
+```javascript
+onUnmounted(() => {
+  if (unsubscribe) unsubscribe()
+  if (interval) clearInterval(interval)
+  if (timeout) clearTimeout(timeout)
 })
 ```
 
-## 🎭 UI/UX Patterns
-
-### Vuetify Components
-- Use Vuetify's built-in components
-- Follow Material Design principles
-- Maintain consistent spacing (4px grid)
-
-### Brand Colors
-```scss
-// Louisiana Department of Health palette (from LDHBrandGuide2019.pdf)
-// Primary Colors
-$navy: #003057;      // PMS 541 - Logo navy
-$blue: #426DA9;      // PMS 7683 - Logo blue  
-$gold: #B89D18;      // PMS 457 - Logo gold
-$aqua: #63B1BC;      // PMS 7709 - Logo aqua
-
-// Secondary Colors  
-$dark-blue: #041E41; // PMS 282
-$gray: #9EA2A2;      // PMS 422
-$tan: #CFC493;       // PMS 4535
-$light-blue: #A3C7D2;// PMS 551
-$teal: #0099A8;      // PMS 320
-$purple: #9595D2;    // PMS 271
-```
-
-### Typography
-```css
-/* Headers: font-weight-bold (Franklin Gothic) */
-.v-card-title { font-weight: bold; }
-
-/* Body: Default Vuetify (Cambria equivalent) */
-.v-card-text { /* uses body-1 */ }
-```
-
-## 📝 Form Patterns
-
-### Validation Rules
-```javascript
-const rules = {
-  required: v => !!v || 'Required',
-  email: v => /.+@.+\..+/.test(v) || 'Invalid email',
-  minLength: len => v => v.length >= len || `Min ${len} characters`
-}
-```
-
-### Form Components
-```vue
-<v-form v-model="valid" @submit.prevent="handleSubmit">
-  <v-text-field
-    v-model="email"
-    :rules="[rules.required, rules.email]"
-    label="Email"
-  />
-</v-form>
-```
-
-## 🔧 Development Tips
-
-### File Organization
-```
-views/ComplexView.vue → Split into:
-├── ComplexView.vue (< 150 lines)
-├── components/ComplexViewHeader.vue
-├── components/ComplexViewContent.vue
-└── composables/useComplexView.js
-```
-
-### Performance
-- Lazy load routes: `() => import('./views/Feature.vue')`
-- Use `v-show` for frequently toggled elements
-- Implement virtual scrolling for large lists
-- Cache Firestore listeners in composables
-
-### Error Handling
-```javascript
-try {
-  await someAction()
-  showSnackbar('Success!', 'success')
-} catch (error) {
-  console.error('Action failed:', error)
-  showSnackbar('Operation failed', 'error')
-}
-```
-
-## 🐛 Common Issues
-
-1. **Reactivity not working**: Use `reactive()` or `ref()`
-2. **Props mutation**: Emit events instead
-3. **Memory leaks**: Clean up listeners in `onUnmounted()`
-4. **Large files**: Extract components/composables
-
 ---
-*See main [README.md](./README.md) for project overview*
+
+*Last Updated: July 20, 2025*  
+*Related: [README.md](./README.md), [README-SECURITY.md](./README-SECURITY.md)*
