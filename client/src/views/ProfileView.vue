@@ -1,23 +1,38 @@
-<!-- Updated ProfileView.vue with new tab components -->
+<!-- ProfileView.vue - Simplified with basic info in profile tab -->
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { updateProfile, updateEmail, sendEmailVerification } from 'firebase/auth'
 import AppLayout from '../components/AppLayout.vue'
 import PermissionGuard from '../components/PermissionGuard.vue'
-import ProfileSettingsTab from '../components/profile/ProfileSettingsTab.vue'
-import ProfileActivityTab from '../components/profile/ProfileActivityTab.vue'
 import ProfileSecurityTab from '../components/profile/ProfileSecurityTab.vue'
 import { useAuthStore } from '../stores/auth'
-import { usePermissionsStore } from '../stores/permissions'
+import { useAudit } from '../composables/useAudit'
+import { db, auth } from '../firebase'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const permissionsStore = usePermissionsStore()
+const { logEvent } = useAudit()
 
 /* ---------- state ---------- */
 const loading = ref(true)
+const saving = ref(false)
 const error = ref('')
 const selectedTab = ref('profile')
+
+// Profile form state
+const form = ref({
+  displayName: '',
+  email: '',
+  phone: '',
+  department: '',
+  title: '',
+  location: '',
+  bio: ''
+})
+
+const isFormDirty = ref(false)
 
 // Snackbar for notifications
 const snackbar = ref({
@@ -29,21 +44,8 @@ const snackbar = ref({
 /* ---------- computed ---------- */
 const currentUser = computed(() => authStore.user)
 const userRole = computed(() => authStore.role)
-const permissions = computed(() => authStore.effectivePermissions || [])
 
-// Debug computed to see permission state
-const debugInfo = computed(() => ({
-  role: userRole.value,
-  isOwner: authStore.isOwner,
-  permissions: permissions.value,
-  hasViewProfile: authStore.hasPermission('view_own_profile'),
-  hasEditProfile: authStore.hasPermission('edit_own_profile'),
-  hasViewActivity: authStore.hasPermission('view_own_activity'),
-  hasManageSecurity: authStore.hasPermission('manage_own_security'),
-  authReady: authStore.ready
-}))
-
-// Available tabs based on permissions
+// Available tabs based on permissions - only profile and security now
 const availableTabs = computed(() => {
   const tabs = [
     { 
@@ -51,18 +53,6 @@ const availableTabs = computed(() => {
       title: 'Profile', 
       icon: 'mdi-account',
       permission: 'view_own_profile' 
-    },
-    { 
-      value: 'settings', 
-      title: 'Settings', 
-      icon: 'mdi-cog',
-      permission: 'edit_own_profile' 
-    },
-    { 
-      value: 'activity', 
-      title: 'Activity', 
-      icon: 'mdi-history',
-      permission: 'view_own_activity' 
     },
     { 
       value: 'security', 
@@ -74,42 +64,49 @@ const availableTabs = computed(() => {
   
   // Special handling for owners - always show all tabs
   if (userRole.value === 'owner') {
-    console.log('User is owner (role check), showing all tabs')
     return tabs
   }
   
   // For other users, filter by permissions
   const filteredTabs = tabs.filter(tab => {
-    const hasPermission = authStore.hasPermission(tab.permission)
-    console.log(`Tab ${tab.title}: permission ${tab.permission} = ${hasPermission}`)
-    return hasPermission
+    return authStore.hasPermission(tab.permission)
   })
   
   // If no tabs after filtering, but user has a valid role, show at least the profile tab
   if (filteredTabs.length === 0 && userRole.value && userRole.value !== 'pending') {
-    console.log('No tabs found, showing profile tab as fallback')
     return [tabs[0]] // Show at least the profile tab
   }
   
   return filteredTabs
 })
 
-// Watch for changes in permissions
-watch(permissions, (newPerms) => {
-  console.log('Permissions updated:', newPerms)
+// Computed property for phone with automatic formatting
+const formattedPhone = computed({
+  get() {
+    return form.value.phone
+  },
+  set(value) {
+    const formatted = formatPhoneNumber(value)
+    form.value.phone = formatted
+    markFormDirty()
+  }
 })
 
-watch(debugInfo, (info) => {
-  console.log('Debug info updated:', info)
-}, { immediate: true })
+// Email validation rules
+const emailRules = [
+  value => !!value || 'Email is required',
+  value => /.+@.+\..+/.test(value) || 'Email must be valid',
+  value => value.endsWith('@la.gov') || 'Must use Louisiana government email'
+]
+
+// Phone validation rules
+const phoneRules = [
+  value => !value || /^\(\d{3}\)\s\d{3}-\d{4}$/.test(value) || 'Phone must be in format (XXX) XXX-XXXX'
+]
 
 /* ---------- methods ---------- */
 const showSnackbar = (message, color = 'success') => {
-  snackbar.value = {
-    show: true,
-    message,
-    color
-  }
+  snackbar.value = { show: true, message, color }
 }
 
 const formatDate = (dateString) => {
@@ -132,52 +129,138 @@ const getRoleColor = (role) => {
   return colors[role] || 'grey'
 }
 
-const refreshPermissions = async () => {
-  console.log('Manually refreshing permissions...')
+const loadUserData = async () => {
+  loading.value = true
   try {
-    await authStore.refreshPermissions()
-    showSnackbar('Permissions refreshed', 'success')
-    console.log('After refresh:', debugInfo.value)
+    const user = currentUser.value
+    if (user) {
+      // Load from Firebase Auth
+      form.value.displayName = user.displayName || ''
+      form.value.email = user.email || ''
+      
+      // Load from Firestore user document
+      const userDoc = await authStore.getUserDocument()
+      if (userDoc) {
+        form.value.phone = userDoc.phone || ''
+        form.value.department = userDoc.department || ''
+        form.value.title = userDoc.title || ''
+        form.value.location = userDoc.location || ''
+        form.value.bio = userDoc.bio || ''
+      }
+    }
   } catch (error) {
-    console.error('Error refreshing permissions:', error)
-    showSnackbar('Failed to refresh permissions', 'error')
+    console.error('Error loading user data:', error)
+    showSnackbar('Failed to load profile data', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
-/* ---------- lifecycle ---------- */
-onMounted(async () => {
-  loading.value = true
-  console.log('ProfileView mounting...')
-  
+const saveProfile = async () => {
+  saving.value = true
   try {
-    // Ensure user data is loaded
+    const user = auth.currentUser
+    if (!user) throw new Error('No user logged in')
+
+    // Update Firebase Auth profile
+    if (form.value.displayName !== user.displayName) {
+      await updateProfile(user, {
+        displayName: form.value.displayName
+      })
+    }
+
+    // Handle email change
+    if (form.value.email !== user.email) {
+      await updateEmail(user, form.value.email)
+      await sendEmailVerification(user)
+      showSnackbar('Email updated. Please check your new email for verification.', 'info')
+    }
+
+    // Update Firestore user document
+    await updateDoc(doc(db, 'users', user.uid), {
+      displayName: form.value.displayName,
+      phone: form.value.phone,
+      department: form.value.department,
+      title: form.value.title,
+      location: form.value.location,
+      bio: form.value.bio,
+      updatedAt: serverTimestamp()
+    })
+
+    // Log the activity
+    await logEvent('profile_updated', {
+      userId: user.uid,
+      changes: {
+        displayName: form.value.displayName,
+        department: form.value.department,
+        title: form.value.title
+      }
+    })
+
+    // Refresh auth store
+    await authStore.refreshCurrentUser()
+    
+    isFormDirty.value = false
+    showSnackbar('Profile updated successfully')
+
+  } catch (error) {
+    console.error('Error saving profile:', error)
+    if (error.code === 'auth/requires-recent-login') {
+      showSnackbar('Please log in again to change your email', 'warning')
+    } else {
+      showSnackbar('Failed to update profile', 'error')
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+// Phone formatting function
+const formatPhoneNumber = (value) => {
+  if (!value) return ''
+  
+  // Convert to string and remove all non-numeric characters
+  const numericOnly = String(value).replace(/\D/g, '')
+  
+  // Apply progressive formatting
+  if (numericOnly.length === 0) return ''
+  if (numericOnly.length <= 3) return numericOnly
+  if (numericOnly.length <= 6) {
+    return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3)}`
+  }
+  if (numericOnly.length <= 10) {
+    return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3, 6)}-${numericOnly.slice(6)}`
+  }
+  // Limit to 10 digits
+  return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3, 6)}-${numericOnly.slice(6, 10)}`
+}
+
+// Watch for form changes
+const markFormDirty = () => {
+  isFormDirty.value = true
+}
+
+onMounted(async () => {
+  try {
+    loading.value = true
+    
+    // Wait for auth to be ready
+    if (!authStore.ready) {
+      await authStore.initializeAuth()
+    }
+    
+    // Check if user is authenticated
     if (!currentUser.value) {
-      console.log('No user found, redirecting to login')
       router.push('/login')
       return
     }
-    
-    // Ensure permissions are loaded
-    if (!authStore.ready) {
-      console.log('Waiting for auth to be ready...')
-      await new Promise(resolve => {
-        const interval = setInterval(() => {
-          if (authStore.ready) {
-            clearInterval(interval)
-            resolve()
-          }
-        }, 100)
-      })
-    }
-    
-    console.log('Auth ready, checking permissions...')
-    console.log('Available tabs:', availableTabs.value.length)
-    console.log('Debug info:', debugInfo.value)
-    
-    loading.value = false
-  } catch (error) {
-    console.error('Error loading profile:', error)
-    showSnackbar('Failed to load profile data', 'error')
+
+    await loadUserData()
+
+  } catch (err) {
+    console.error('Error initializing profile:', err)
+    error.value = 'Failed to load profile'
+  } finally {
     loading.value = false
   }
 })
@@ -185,50 +268,14 @@ onMounted(async () => {
 
 <template>
   <AppLayout>
-    <!-- Page Actions -->
-    <template #actions>
-      <v-btn
-        color="primary"
-        variant="flat"
-        @click="router.push('/dash')"
-      >
-        <v-icon left>mdi-arrow-left</v-icon>
-        Dashboard
-      </v-btn>
-    </template>
-
-    <!-- Main Content -->
     <div class="profile-container">
       <!-- Page Header -->
       <div class="page-header mb-6">
-        <h1 class="text-h4 font-weight-bold mb-2">
-          My Profile
-        </h1>
-        <p class="text-subtitle-1 text-medium-emphasis">
-          Manage your personal information, settings, and account security
+        <h1 class="text-h4 font-weight-bold mb-2">Profile</h1>
+        <p class="text-body-1 text-medium-emphasis">
+          Manage your personal information and account security
         </p>
       </div>
-
-      <!-- Debug Panel (temporary for troubleshooting) -->
-      <v-expansion-panels class="mb-4" v-if="false">
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            Debug Information
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <pre>{{ JSON.stringify(debugInfo, null, 2) }}</pre>
-            <p class="mt-2">Available tabs: {{ availableTabs.length }}</p>
-            <v-btn 
-              color="primary" 
-              @click="refreshPermissions"
-              class="mt-2"
-              size="small"
-            >
-              Refresh Permissions
-            </v-btn>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
 
       <!-- Loading State -->
       <div v-if="loading" class="text-center py-8">
@@ -261,109 +308,197 @@ onMounted(async () => {
           </v-tabs>
         </v-card>
 
-        <!-- No Tabs Available Message -->
-        <v-alert
-          v-else
-          type="warning"
-          variant="outlined"
-          class="mb-6"
-        >
-          <v-alert-title>Limited Access</v-alert-title>
-          Profile features are being set up. Please check back later or contact an administrator.
-        </v-alert>
-
         <!-- Tab Content -->
-        <v-card>
-          <v-card-text>
+        <v-card elevation="2">
+          <v-card-text class="pa-6">
             <!-- Profile Tab -->
-            <div v-if="selectedTab === 'profile' && (authStore.isOwner || authStore.hasPermission('view_own_profile'))">
-              <h2 class="text-h5 font-weight-bold mb-4">Profile Information</h2>
-              
-              <!-- Basic User Info -->
-              <v-row>
-                <v-col cols="12" md="8">
-                  <v-card variant="outlined" class="mb-4">
-                    <v-card-title class="text-h6 font-weight-bold">
-                      Account Details
-                    </v-card-title>
-                    <v-card-text>
-                      <v-row>
-                        <v-col cols="12" sm="6">
-                          <div class="mb-3">
-                            <label class="text-subtitle-2 font-weight-bold">Email</label>
-                            <p class="text-body-1">{{ currentUser.email }}</p>
-                          </div>
-                        </v-col>
-                        <v-col cols="12" sm="6">
-                          <div class="mb-3">
-                            <label class="text-subtitle-2 font-weight-bold">Role</label>
-                            <v-chip 
-                              :color="getRoleColor(userRole)" 
-                              size="small"
-                              class="ml-0"
-                            >
-                              {{ userRole }}
-                            </v-chip>
-                          </div>
-                        </v-col>
-                        <v-col cols="12" sm="6">
-                          <div class="mb-3">
-                            <label class="text-subtitle-2 font-weight-bold">Account Created</label>
-                            <p class="text-body-1">{{ formatDate(currentUser.metadata?.creationTime) }}</p>
-                          </div>
-                        </v-col>
-                        <v-col cols="12" sm="6">
-                          <div class="mb-3">
-                            <label class="text-subtitle-2 font-weight-bold">Last Sign In</label>
-                            <p class="text-body-1">{{ formatDate(currentUser.metadata?.lastSignInTime) }}</p>
-                          </div>
-                        </v-col>
-                      </v-row>
-                    </v-card-text>
-                  </v-card>
-                </v-col>
-                <v-col cols="12" md="4">
-                  <v-card variant="outlined">
-                    <v-card-title class="text-h6 font-weight-bold">
+            <div v-if="selectedTab === 'profile'">
+              <div class="d-flex justify-space-between align-start mb-6">
+                <div>
+                  <h2 class="text-h5 font-weight-bold mb-2">Personal Information</h2>
+                  <p class="text-body-1 text-medium-emphasis">
+                    Update your profile details and contact information
+                  </p>
+                </div>
+                <v-chip 
+                  :color="getRoleColor(userRole)" 
+                  variant="elevated"
+                  class="text-capitalize"
+                >
+                  {{ userRole }}
+                </v-chip>
+              </div>
+
+              <v-form @submit.prevent="saveProfile">
+                <v-row>
+                  <!-- Basic Information Section -->
+                  <v-col cols="12">
+                    <h3 class="text-h6 font-weight-bold mb-4">
+                      <v-icon left>mdi-account</v-icon>
+                      Basic Information
+                    </h3>
+                  </v-col>
+                  
+                  <v-col cols="12" md="6">
+                    <div class="field-group">
+                      <label class="field-label">Display Name</label>
+                      <v-text-field
+                        v-model="form.displayName"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        required
+                        placeholder="Enter your display name"
+                        class="auth-field"
+                        @input="markFormDirty"
+                      />
+                    </div>
+                  </v-col>
+                  
+                  <v-col cols="12" md="6">
+                    <div class="field-group">
+                      <label class="field-label">Email Address</label>
+                      <v-text-field
+                        v-model="form.email"
+                        type="email"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        required
+                        placeholder="Enter your email"
+                        class="auth-field"
+                        :rules="emailRules"
+                        @input="markFormDirty"
+                      />
+                    </div>
+                  </v-col>
+                  
+                  <v-col cols="12" md="6">
+                    <div class="field-group">
+                      <label class="field-label">Phone Number</label>
+                      <v-text-field
+                        v-model="formattedPhone"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        placeholder="(XXX) XXX-XXXX"
+                        class="auth-field"
+                        :rules="phoneRules"
+                        maxlength="14"
+                      />
+                    </div>
+                  </v-col>
+                  
+                  <v-col cols="12" md="6">
+                    <div class="field-group">
+                      <label class="field-label">Job Title</label>
+                      <v-text-field
+                        v-model="form.title"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        placeholder="Enter your job title"
+                        class="auth-field"
+                        @input="markFormDirty"
+                      />
+                    </div>
+                  </v-col>
+                  
+                  <v-col cols="12" md="6">
+                    <div class="field-group">
+                      <label class="field-label">Department</label>
+                      <v-text-field
+                        v-model="form.department"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        placeholder="Enter your department"
+                        class="auth-field"
+                        @input="markFormDirty"
+                      />
+                    </div>
+                  </v-col>
+                  
+                  <v-col cols="12" md="6">
+                    <div class="field-group">
+                      <label class="field-label">Location</label>
+                      <v-text-field
+                        v-model="form.location"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        placeholder="City, State"
+                        class="auth-field"
+                        @input="markFormDirty"
+                      />
+                    </div>
+                  </v-col>
+                  
+                  <v-col cols="12">
+                    <div class="field-group">
+                      <label class="field-label">Bio</label>
+                      <v-textarea
+                        v-model="form.bio"
+                        variant="solo-filled"
+                        density="comfortable"
+                        flat
+                        placeholder="Tell us about yourself..."
+                        class="auth-field"
+                        rows="3"
+                        @input="markFormDirty"
+                      />
+                    </div>
+                  </v-col>
+
+                  <!-- Profile Photo Section -->
+                  <v-col cols="12">
+                    <h3 class="text-h6 font-weight-bold mb-4 mt-4">
+                      <v-icon left>mdi-camera</v-icon>
                       Profile Photo
-                    </v-card-title>
-                    <v-card-text class="text-center">
-                      <v-avatar size="120" color="primary" class="mb-4">
-                        <v-img 
-                          v-if="currentUser.photoURL" 
-                          :src="currentUser.photoURL" 
-                          :alt="currentUser.displayName || 'Profile Photo'"
-                        />
-                        <v-icon v-else size="60">mdi-account</v-icon>
+                    </h3>
+                    <div class="d-flex align-center">
+                      <v-avatar size="80" color="grey-lighten-2" class="mr-4">
+                        <v-icon size="40" color="grey-darken-1">mdi-account</v-icon>
                       </v-avatar>
                       <div>
-                        <p class="text-body-2 text-medium-emphasis">
-                          Photo upload coming soon
+                        <p class="text-body-2 text-medium-emphasis mb-2">
+                          Profile photos coming soon
                         </p>
+                        <v-btn
+                          variant="outlined"
+                          size="small"
+                          disabled
+                        >
+                          Upload Photo
+                        </v-btn>
                       </div>
-                    </v-card-text>
-                  </v-card>
-                </v-col>
-              </v-row>
+                    </div>
+                  </v-col>
+
+                  <!-- Action Buttons -->
+                  <v-col cols="12" class="pt-6">
+                    <div class="d-flex gap-3 flex-wrap">
+                      <v-btn
+                        color="primary"
+                        type="submit"
+                        :loading="saving"
+                        :disabled="!isFormDirty"
+                        class="submit-btn"
+                      >
+                        Save Changes
+                      </v-btn>
+                      <v-btn
+                        variant="outlined"
+                        @click="loadUserData"
+                        :disabled="saving"
+                      >
+                        Reset
+                      </v-btn>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-form>
             </div>
-
-            <!-- Settings Tab -->
-            <PermissionGuard 
-              v-else-if="selectedTab === 'settings'" 
-              :permissions="['edit_own_profile']"
-              :fallback-check="authStore.isOwner"
-            >
-              <ProfileSettingsTab />
-            </PermissionGuard>
-
-            <!-- Activity Tab -->
-            <PermissionGuard 
-              v-else-if="selectedTab === 'activity'" 
-              :permissions="['view_own_activity']"
-              :fallback-check="authStore.isOwner"
-            >
-              <ProfileActivityTab />
-            </PermissionGuard>
 
             <!-- Security Tab -->
             <PermissionGuard 
@@ -416,7 +551,72 @@ onMounted(async () => {
   font-family: 'Cambria', Georgia, serif;
 }
 
-label {
-  color: rgba(0, 0, 0, 0.6);
+/* Login page matching field styles */
+.field-group {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.field-label {
+  display: block;
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #003057;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.25px;
+}
+
+/* Updated field styling for solo-filled variant */
+.auth-field :deep(.v-field) {
+  background: #f8f9fa;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.auth-field :deep(.v-field:hover) {
+  background: #f0f2f5;
+  border-color: rgba(66, 109, 169, 0.2);
+}
+
+.auth-field :deep(.v-field--focused) {
+  background: white;
+  border-color: #426DA9;
+  box-shadow: 0 0 0 4px rgba(66, 109, 169, 0.1);
+}
+
+.auth-field :deep(.v-field__input) {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 1rem;
+  color: #003057;
+  padding: 0.75rem 1rem !important;
+  min-height: 48px !important;
+}
+
+.auth-field :deep(.v-field__input::placeholder) {
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+/* Remove any label from the v-text-field since we're using external labels */
+.auth-field :deep(.v-label) {
+  display: none !important;
+}
+
+/* Error message styling */
+.auth-field :deep(.v-messages) {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Submit button styling */
+.submit-btn {
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  height: 48px;
+  border-radius: 8px;
 }
 </style>

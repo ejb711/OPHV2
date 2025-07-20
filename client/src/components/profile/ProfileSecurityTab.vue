@@ -1,13 +1,11 @@
-<!-- ProfileSecurityTab.vue -->
+<!-- ProfileSecurityTab.vue - Simplified without 2FA -->
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { 
   updatePassword, 
   reauthenticateWithCredential, 
   EmailAuthProvider,
-  sendPasswordResetEmail,
-  updateEmail,
-  sendEmailVerification
+  sendPasswordResetEmail
 } from 'firebase/auth'
 import { updateDoc, doc, serverTimestamp, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { auth, db } from '../../firebase'
@@ -30,9 +28,7 @@ const showConfirmPassword = ref(false)
 
 // Security settings
 const securitySettings = ref({
-  twoFactorEnabled: false,
   sessionTimeout: 60, // minutes
-  passwordExpiry: 90, // days
   allowMultipleSessions: true,
   requirePasswordChange: false
 })
@@ -346,28 +342,38 @@ onMounted(async () => {
           </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="changePassword">
-              <v-text-field
-                v-model="passwordForm.currentPassword"
-                label="Current Password"
-                :type="showCurrentPassword ? 'text' : 'password'"
-                variant="outlined"
-                required
-                class="mb-4"
-                :append-inner-icon="showCurrentPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="showCurrentPassword = !showCurrentPassword"
-              />
+              <div class="field-group">
+                <label class="field-label">Current Password</label>
+                <v-text-field
+                  v-model="passwordForm.currentPassword"
+                  :type="showCurrentPassword ? 'text' : 'password'"
+                  variant="solo-filled"
+                  density="comfortable"
+                  flat
+                  required
+                  placeholder="Enter your current password"
+                  class="auth-field"
+                  :append-inner-icon="showCurrentPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showCurrentPassword = !showCurrentPassword"
+                />
+              </div>
 
-              <v-text-field
-                v-model="passwordForm.newPassword"
-                label="New Password"
-                :type="showNewPassword ? 'text' : 'password'"
-                variant="outlined"
-                :rules="passwordRules"
-                required
-                class="mb-2"
-                :append-inner-icon="showNewPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="showNewPassword = !showNewPassword"
-              />
+              <div class="field-group">
+                <label class="field-label">New Password</label>
+                <v-text-field
+                  v-model="passwordForm.newPassword"
+                  :type="showNewPassword ? 'text' : 'password'"
+                  variant="solo-filled"
+                  density="comfortable"
+                  flat
+                  required
+                  placeholder="Enter a new password"
+                  class="auth-field"
+                  :rules="passwordRules"
+                  :append-inner-icon="showNewPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showNewPassword = !showNewPassword"
+                />
+              </div>
 
               <!-- Password Strength Indicator -->
               <div v-if="passwordForm.newPassword" class="mb-4">
@@ -385,17 +391,22 @@ onMounted(async () => {
                 />
               </div>
 
-              <v-text-field
-                v-model="passwordForm.confirmPassword"
-                label="Confirm New Password"
-                :type="showConfirmPassword ? 'text' : 'password'"
-                variant="outlined"
-                :rules="confirmPasswordRules"
-                required
-                class="mb-4"
-                :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="showConfirmPassword = !showConfirmPassword"
-              />
+              <div class="field-group">
+                <label class="field-label">Confirm New Password</label>
+                <v-text-field
+                  v-model="passwordForm.confirmPassword"
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  variant="solo-filled"
+                  density="comfortable"
+                  flat
+                  required
+                  placeholder="Confirm your new password"
+                  class="auth-field"
+                  :rules="confirmPasswordRules"
+                  :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showConfirmPassword = !showConfirmPassword"
+                />
+              </div>
 
               <div class="d-flex gap-3 flex-wrap">
                 <v-btn
@@ -403,6 +414,7 @@ onMounted(async () => {
                   type="submit"
                   :loading="loading"
                   :disabled="!isPasswordFormValid"
+                  class="submit-btn"
                 >
                   Change Password
                 </v-btn>
@@ -426,30 +438,23 @@ onMounted(async () => {
           <v-card-text>
             <v-row>
               <v-col cols="12" md="6">
-                <v-switch
-                  v-model="securitySettings.twoFactorEnabled"
-                  label="Two-Factor Authentication"
-                  color="primary"
-                  inset
-                  disabled
-                  @change="updateSecuritySettings"
-                />
-                <p class="text-caption text-medium-emphasis ml-8">
-                  Add an extra layer of security (coming soon)
-                </p>
-              </v-col>
-
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="securitySettings.sessionTimeout"
-                  :items="sessionTimeoutOptions"
-                  label="Session Timeout"
-                  variant="outlined"
-                  density="compact"
-                  item-title="text"
-                  item-value="value"
-                  @update:model-value="updateSecuritySettings"
-                />
+                <div class="field-group">
+                  <label class="field-label">Session Timeout</label>
+                  <v-select
+                    v-model="securitySettings.sessionTimeout"
+                    :items="sessionTimeoutOptions"
+                    variant="solo-filled"
+                    density="comfortable"
+                    flat
+                    item-title="text"
+                    item-value="value"
+                    class="auth-field"
+                    @update:model-value="updateSecuritySettings"
+                  />
+                  <p class="text-caption text-medium-emphasis mt-1">
+                    How long to stay logged in when inactive
+                  </p>
+                </div>
               </v-col>
 
               <v-col cols="12" md="6">
@@ -509,7 +514,7 @@ onMounted(async () => {
             </div>
 
             <div v-else-if="recentEvents.length === 0" class="text-center py-4">
-              <v-icon size="48" color="grey">mdi-shield-check</v-icon>
+              <v-icon size="48" color="grey-lighten-1">mdi-shield-check</v-icon>
               <p class="text-body-2 text-medium-emphasis mt-2">
                 No recent security events
               </p>
@@ -523,27 +528,17 @@ onMounted(async () => {
                   class="px-0"
                 >
                   <template #prepend>
-                    <v-icon
-                      :color="getEventColor(event.action)"
-                      size="20"
-                    >
-                      {{ getEventIcon(event.action) }}
-                    </v-icon>
+                    <v-avatar size="32" :color="getEventColor(event.action)">
+                      <v-icon size="16" color="white">{{ getEventIcon(event.action) }}</v-icon>
+                    </v-avatar>
                   </template>
 
                   <v-list-item-title class="text-body-2">
                     {{ formatEventText(event) }}
                   </v-list-item-title>
-
                   <v-list-item-subtitle class="text-caption">
                     {{ formatDate(event.timestamp) }}
                   </v-list-item-subtitle>
-
-                  <template #append v-if="event.details?.ip">
-                    <v-chip size="x-small" variant="outlined">
-                      {{ event.details.ip }}
-                    </v-chip>
-                  </template>
                 </v-list-item>
               </v-list>
             </div>
@@ -552,11 +547,11 @@ onMounted(async () => {
       </v-col>
     </v-row>
 
-    <!-- Snackbar -->
+    <!-- Snackbar for notifications -->
     <v-snackbar
       v-model="snackbar.show"
       :color="snackbar.color"
-      :timeout="4000"
+      :timeout="3000"
     >
       {{ snackbar.message }}
     </v-snackbar>
@@ -564,8 +559,73 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.profile-security h2 {
+/* Login page matching field styles */
+.field-group {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.field-label {
+  display: block;
   font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #003057;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.25px;
+}
+
+/* Updated field styling for solo-filled variant */
+.auth-field :deep(.v-field) {
+  background: #f8f9fa;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.auth-field :deep(.v-field:hover) {
+  background: #f0f2f5;
+  border-color: rgba(66, 109, 169, 0.2);
+}
+
+.auth-field :deep(.v-field--focused) {
+  background: white;
+  border-color: #426DA9;
+  box-shadow: 0 0 0 4px rgba(66, 109, 169, 0.1);
+}
+
+.auth-field :deep(.v-field__input) {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 1rem;
+  color: #003057;
+  padding: 0.75rem 1rem !important;
+  min-height: 48px !important;
+}
+
+.auth-field :deep(.v-field__input::placeholder) {
+  color: #6c757d;
+  opacity: 0.7;
+}
+
+/* Remove any label from the v-text-field since we're using external labels */
+.auth-field :deep(.v-label) {
+  display: none !important;
+}
+
+/* Error message styling */
+.auth-field :deep(.v-messages) {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Submit button styling */
+.submit-btn {
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  height: 48px;
+  border-radius: 8px;
 }
 
 .v-card-title {
@@ -574,9 +634,5 @@ onMounted(async () => {
 
 .v-card-text {
   font-family: 'Cambria', Georgia, serif;
-}
-
-.gap-3 {
-  gap: 0.75rem;
 }
 </style>
