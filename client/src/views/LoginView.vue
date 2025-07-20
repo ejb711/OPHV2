@@ -1,7 +1,7 @@
 <template>
   <div class="login-screen">
     <div class="login-container">
-      <!-- LDH Logo Area (matching LoadingScreen) -->
+      <!-- LDH Logo Section (matching LoadingScreen) -->
       <div class="logo-section">
         <div class="logo-placeholder">
           <div class="logo-cross">
@@ -10,58 +10,52 @@
           </div>
         </div>
         <div class="logo-text">
-          <div class="department-text">LOUISIANA</div>
+          <div class="dept-text">LOUISIANA</div>
           <div class="health-text">DEPARTMENT OF HEALTH</div>
         </div>
       </div>
 
-      <!-- Platform Title -->
+      <!-- Platform Header -->
       <div class="platform-header">
         <h1 class="platform-title">BRCO</h1>
         <p class="platform-subtitle">Public Health Platform</p>
       </div>
 
-      <!-- Login Form -->
-      <div class="auth-form">
-        <div class="form-header">
-          <h2 class="form-title">Sign In</h2>
-          <p class="form-subtitle">Access your BRCO dashboard</p>
-        </div>
-
-        <form @submit.prevent="handleSubmit" class="auth-form-fields">
+      <!-- Sign In Form -->
+      <div class="sign-in-card">
+        <h2 class="sign-in-title">Sign In</h2>
+        <p class="sign-in-subtitle">Access your BRCO dashboard</p>
+        
+        <form @submit.prevent="handleSubmit" class="sign-in-form">
           <!-- Email Field -->
           <div class="field-group">
-            <label class="field-label">Email Address</label>
+            <label class="field-label" for="email">Email Address</label>
             <v-text-field
+              id="email"
               v-model="email"
               type="email"
               variant="solo-filled"
-              density="comfortable"
-              flat
-              required
-              placeholder="Enter your email"
+              placeholder="Enter your email address"
               class="auth-field"
-              :rules="[rules.required, rules.email]"
-              hide-details="auto"
+              autocomplete="email"
               :disabled="loading"
+              hide-details="auto"
             />
           </div>
 
           <!-- Password Field -->
           <div class="field-group">
-            <label class="field-label">Password</label>
+            <label class="field-label" for="password">Password</label>
             <v-text-field
+              id="password"
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               variant="solo-filled"
-              density="comfortable"
-              flat
-              required
               placeholder="Enter your password"
               class="auth-field"
-              :rules="[rules.required, rules.minLength]"
-              hide-details="auto"
+              autocomplete="current-password"
               :disabled="loading"
+              hide-details="auto"
             >
               <template #append-inner>
                 <v-btn
@@ -145,28 +139,38 @@ const rules = {
 
 /* ----- Methods ----------------------------------------------------------- */
 async function handleSubmit() {
+  console.log('[LoginView] Form submitted with:', { email: email.value, passwordLength: password.value?.length })
+  
   // Clear any previous errors
   errorMsg.value = ''
   
   // Validate form
   if (!email.value || !password.value) {
     errorMsg.value = 'Please fill in all fields'
+    console.warn('[LoginView] Validation failed: Missing fields')
     return
   }
 
-  if (!rules.email(email.value) === true) {
-    errorMsg.value = 'Please enter a valid email address'
+  // Fix validation logic - check if email validation rule passes
+  const emailValidation = rules.email(email.value)
+  if (emailValidation !== true) {
+    errorMsg.value = emailValidation // This will be the error message
+    console.warn('[LoginView] Email validation failed:', emailValidation)
     return
   }
 
   loading.value = true
+  console.log('[LoginView] Starting login process...')
   
   try {
     // Call the auth store login method
+    console.log('[LoginView] Calling auth.login...')
     const result = await auth.login(email.value.trim(), password.value)
+    console.log('[LoginView] Login result:', result)
     
     // Check if login was successful
     if (!result.success) {
+      console.warn('[LoginView] Login failed:', result)
       // Create a proper error object for the error handler
       const error = new Error(result.error)
       error.code = result.errorCode || 'unknown'
@@ -177,30 +181,44 @@ async function handleSubmit() {
       return
     }
 
-    // Wait until the store has fetched role ≠ null
+    console.log('[LoginView] Login successful, waiting for auth ready...')
+    
+    // Wait until the auth store is fully ready (includes role data)
     await new Promise(resolve => {
-      const stop = watch(
-        () => auth.role,
-        r => { 
-          if (r !== null) { 
-            stop()
-            resolve() 
-          } 
-        },
-        { immediate: true }
+      if (auth.ready) {
+        console.log('[LoginView] Auth already ready')
+        resolve()
+        return
+      }
+      
+      console.log('[LoginView] Waiting for auth ready...')
+      const unwatch = watch(
+        () => auth.ready,
+        (ready) => {
+          console.log('[LoginView] Auth ready changed:', ready)
+          if (ready) {
+            unwatch()
+            resolve()
+          }
+        }
       )
     })
 
+    console.log('[LoginView] Auth ready, role:', auth.role)
+    
     // Successful login - redirect based on role
-    router.push(auth.role === 'pending' ? '/awaiting' : '/')
+    const targetRoute = auth.role === 'pending' ? '/awaiting' : '/dash'
+    console.log('[LoginView] Redirecting to:', targetRoute)
+    router.push(targetRoute)
     
   } catch (err) {
-    console.error('Login error:', err)
+    console.error('[LoginView] Login error:', err)
     // Create a proper error object for the error handler
     const errorObj = handleError(err, { component: 'LoginView', action: 'login' })
     errorMsg.value = errorObj.message
   } finally {
     loading.value = false
+    console.log('[LoginView] Login process completed')
   }
 }
 
@@ -293,15 +311,14 @@ watch([email, password], () => {
 
 .logo-text {
   text-align: left;
-  font-weight: 700;
-  line-height: 1.2;
 }
 
-.department-text {
-  font-size: 0.75rem;
+.dept-text {
+  font-size: 1rem;
   letter-spacing: 1px;
   color: #B89D18;
-  margin-bottom: 0.25rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .health-text {
@@ -336,43 +353,36 @@ watch([email, password], () => {
   font-style: italic;
 }
 
-/* Authentication Form */
-.auth-form {
+/* Sign In Card */
+.sign-in-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 20px 40px rgba(0, 48, 87, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   opacity: 0;
   animation: fadeInUp 0.8s ease-out 0.6s forwards;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  padding: 2.5rem 2rem;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
-.form-header {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.form-title {
+.sign-in-title {
   font-family: 'ITC Franklin Gothic', Arial, sans-serif;
   font-size: 1.75rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #003057;
   margin: 0 0 0.5rem 0;
+  letter-spacing: 0.5px;
 }
 
-.form-subtitle {
+.sign-in-subtitle {
   font-family: 'Cambria', Georgia, serif;
-  font-size: 0.95rem;
-  color: #426DA9;
-  margin: 0;
-  opacity: 0.8;
+  font-size: 1rem;
+  color: #6c757d;
+  margin: 0 0 2rem 0;
 }
 
-.auth-form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.sign-in-form {
+  margin-top: 1.5rem;
 }
 
 /* Field Group with Separate Labels */
@@ -470,27 +480,28 @@ watch([email, password], () => {
   height: 100%;
   background: linear-gradient(90deg, 
     transparent 0%, 
-    rgba(99, 177, 188, 0.1) 30%, 
-    rgba(139, 163, 199, 0.08) 50%, 
-    rgba(99, 177, 188, 0.1) 70%, 
+    rgba(255, 255, 255, 0.1) 50%, 
     transparent 100%
   );
-  border-radius: 50px 50px 0 0;
-  animation: wave 3s ease-in-out infinite;
+  border-radius: 50% 50% 0 0;
+  animation: wave 6s ease-in-out infinite;
 }
 
 .wave-1 {
   animation-delay: 0s;
+  opacity: 0.4;
 }
 
 .wave-2 {
-  animation-delay: 0.5s;
-  opacity: 0.8;
+  animation-delay: 2s;
+  opacity: 0.3;
+  height: 80%;
 }
 
 .wave-3 {
-  animation-delay: 1s;
-  opacity: 0.6;
+  animation-delay: 4s;
+  opacity: 0.2;
+  height: 60%;
 }
 
 /* Animations */
@@ -507,79 +518,10 @@ watch([email, password], () => {
 
 @keyframes wave {
   0%, 100% {
-    transform: translateX(-50%);
+    transform: translateX(-100%);
   }
   50% {
-    transform: translateX(-30%);
-  }
-}
-
-/* Responsive Design */
-@media (max-width: 640px) {
-  .login-screen {
-    padding: 1rem;
-  }
-  
-  .auth-form {
-    padding: 2rem 1.5rem;
-    border-radius: 16px;
-  }
-  
-  .platform-title {
-    font-size: 2rem;
-  }
-  
-  .logo-section {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .logo-placeholder {
-    margin-right: 0;
-  }
-  
-  .logo-text {
-    text-align: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .auth-form {
-    padding: 1.5rem 1rem;
-  }
-  
-  .platform-title {
-    font-size: 1.75rem;
-  }
-  
-  .form-title {
-    font-size: 1.5rem;
-  }
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .auth-field :deep(.v-field) {
-    border: 2px solid #003057;
-  }
-  
-  .auth-field :deep(.v-field--focused) {
-    border-color: #426DA9;
-    box-shadow: 0 0 0 2px #426DA9;
-  }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .logo-section,
-  .platform-header,
-  .auth-form {
-    animation: none;
-    opacity: 1;
-  }
-  
-  .wave {
-    animation: none;
+    transform: translateX(0);
   }
 }
 </style>
