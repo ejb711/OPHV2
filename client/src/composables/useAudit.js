@@ -1,17 +1,12 @@
-// Enhanced useAudit.js with automatic retention management
-import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs, deleteDoc, updateDoc } from 'firebase/firestore'
+// useAudit.js - Fixed to only use CREATE operations
+import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuthStore } from '../stores/auth'
 
 // Retention configuration
 const RETENTION_CONFIG = {
-  // Keep full details for 90 days
   FULL_RETENTION_DAYS: 90,
-  
-  // Keep compressed logs for 365 days total
   COMPRESSED_RETENTION_DAYS: 365,
-  
-  // Actions that should be kept longer for compliance
   COMPLIANCE_ACTIONS: [
     'user_deleted',
     'role_changed', 
@@ -20,11 +15,7 @@ const RETENTION_CONFIG = {
     'security_alert',
     'unauthorized_access'
   ],
-  
-  // Max logs to process in cleanup batch
   CLEANUP_BATCH_SIZE: 100,
-  
-  // How often to run cleanup (in days)
   CLEANUP_INTERVAL_DAYS: 7
 }
 
@@ -32,7 +23,7 @@ export function useAudit() {
   const authStore = useAuthStore()
 
   /**
-   * Log an audit event with automatic retention management
+   * Log an audit event - ONLY uses CREATE operations
    */
   async function logEvent(action, details = {}) {
     if (!action || typeof action !== 'string' || !authStore.user) {
@@ -50,7 +41,7 @@ export function useAudit() {
         })
       }
 
-      // Create audit log entry
+      // Create audit log entry - ALWAYS CREATE NEW DOCUMENT
       const auditEntry = {
         action: action.toLowerCase().trim(),
         details: cleanDetails,
@@ -61,38 +52,43 @@ export function useAudit() {
         // Retention metadata
         retentionTier: getRetentionTier(action),
         compressAfter: getCompressionDate(action),
-        deleteAfter: getDeletionDate(action)
+        deleteAfter: getDeletionDate(action),
+        
+        // System metadata
+        userAgent: navigator.userAgent || 'unknown',
+        ipAddress: 'client', // Will be set by Cloud Functions if needed
+        sessionId: authStore.sessionId || 'unknown'
       }
 
+      // Use addDoc to CREATE a new document (never update)
       await addDoc(collection(db, 'audit_logs'), auditEntry)
       
-      // Periodically run cleanup (don't await to avoid blocking)
-      if (Math.random() < 0.1) { // 10% chance to trigger cleanup
-        setTimeout(() => performRetentionCleanup(), 1000)
-      }
-      
     } catch (error) {
+      // Don't throw error to avoid breaking app functionality
       console.error('Failed to log audit event:', error)
+      
+      // In development, show more details
+      if (import.meta.env.DEV) {
+        console.error('Audit log details:', { action, details, user: authStore.user?.email })
+      }
     }
   }
 
   /**
-   * Determine retention tier based on action type
+   * Get retention tier for action
    */
   function getRetentionTier(action) {
     if (RETENTION_CONFIG.COMPLIANCE_ACTIONS.includes(action)) {
-      return 'compliance' // Keep longer
+      return 'compliance'
     }
-    
-    if (action.includes('admin') || action.includes('security')) {
-      return 'security' // Medium retention
+    if (action.includes('admin') || action.includes('system')) {
+      return 'admin'
     }
-    
-    return 'operational' // Standard retention
+    return 'standard'
   }
 
   /**
-   * Get compression date based on retention tier
+   * Get compression date
    */
   function getCompressionDate(action) {
     const date = new Date()
@@ -101,241 +97,100 @@ export function useAudit() {
   }
 
   /**
-   * Get deletion date based on retention tier
+   * Get deletion date
    */
   function getDeletionDate(action) {
     const date = new Date()
-    const tier = getRetentionTier(action)
-    
-    switch (tier) {
-      case 'compliance':
-        date.setDate(date.getDate() + (RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS * 2)) // 2 years
-        break
-      case 'security':
-        date.setDate(date.getDate() + RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS) // 1 year
-        break
-      default:
-        date.setDate(date.getDate() + RETENTION_CONFIG.FULL_RETENTION_DAYS) // 90 days
-    }
-    
+    const days = RETENTION_CONFIG.COMPLIANCE_ACTIONS.includes(action) 
+      ? RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS * 2 // Compliance logs kept longer
+      : RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS
+    date.setDate(date.getDate() + days)
     return date
   }
 
   /**
-   * Perform automatic retention cleanup
+   * Get recent audit logs for current user
    */
-  async function performRetentionCleanup() {
+  async function getRecentActivity(limitCount = 50) {
+    if (!authStore.user) return []
+
     try {
-      const now = new Date()
-      
-      // Step 1: Compress old logs (remove detailed info, keep summary)
-      await compressOldLogs(now)
-      
-      // Step 2: Delete expired logs
-      await deleteExpiredLogs(now)
-      
-      console.log('✅ Audit log retention cleanup completed')
-    } catch (error) {
-      console.error('❌ Error during retention cleanup:', error)
-    }
-  }
-
-  /**
-   * Compress logs older than retention period
-   */
-  async function compressOldLogs(now) {
-    const compressionDate = new Date(now)
-    compressionDate.setDate(compressionDate.getDate() - RETENTION_CONFIG.FULL_RETENTION_DAYS)
-    
-    const q = query(
-      collection(db, 'audit_logs'),
-      where('timestamp', '<', compressionDate),
-      where('compressed', '==', false),
-      limit(RETENTION_CONFIG.CLEANUP_BATCH_SIZE)
-    )
-    
-    const snapshot = await getDocs(q)
-    
-    for (const doc of snapshot.docs) {
-      const data = doc.data()
-      
-      // Create compressed version
-      const compressedDetails = {
-        action: data.action,
-        userId: data.userId,
-        userEmail: data.userEmail,
-        timestamp: data.timestamp,
-        summary: createSummary(data),
-        compressed: true,
-        originalSize: JSON.stringify(data.details).length
-      }
-      
-      // Update document with compressed data
-      await updateDoc(doc.ref, compressedDetails)
-    }
-    
-    if (snapshot.docs.length > 0) {
-      console.log(`🗜️ Compressed ${snapshot.docs.length} audit logs`)
-    }
-  }
-
-  /**
-   * Delete logs past their retention period
-   */
-  async function deleteExpiredLogs(now) {
-    const deletionDate = new Date(now)
-    deletionDate.setDate(deletionDate.getDate() - RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS)
-    
-    const q = query(
-      collection(db, 'audit_logs'),
-      where('timestamp', '<', deletionDate),
-      limit(RETENTION_CONFIG.CLEANUP_BATCH_SIZE)
-    )
-    
-    const snapshot = await getDocs(q)
-    
-    for (const doc of snapshot.docs) {
-      // Don't delete compliance logs
-      const data = doc.data()
-      if (data.retentionTier !== 'compliance') {
-        await deleteDoc(doc.ref)
-      }
-    }
-    
-    if (snapshot.docs.length > 0) {
-      console.log(`🗑️ Deleted ${snapshot.docs.length} expired audit logs`)
-    }
-  }
-
-  /**
-   * Create summary for compressed logs
-   */
-  function createSummary(logData) {
-    const { action, details } = logData
-    
-    // Create human-readable summaries
-    switch (action) {
-      case 'user_updated':
-        return `User ${details.userEmail} updated by ${logData.userEmail}`
-      case 'role_changed':
-        return `Role changed from ${details.fromRole} to ${details.toRole}`
-      case 'admin_tab_viewed':
-        return `Viewed ${details.tab} tab`
-      default:
-        return `${action.replace(/_/g, ' ')} action`
-    }
-  }
-
-  /**
-   * Get retention statistics for monitoring
-   */
-  async function getRetentionStats() {
-    try {
-      const now = new Date()
-      const thirtyDaysAgo = new Date(now)
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-      // Count recent logs
-      const recentQuery = query(
+      const q = query(
         collection(db, 'audit_logs'),
-        where('timestamp', '>', thirtyDaysAgo)
+        where('userId', '==', authStore.user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
       )
-      const recentSnapshot = await getDocs(recentQuery)
-
-      // Count compressed logs
-      const compressedQuery = query(
-        collection(db, 'audit_logs'),
-        where('compressed', '==', true)
-      )
-      const compressedSnapshot = await getDocs(compressedQuery)
-
-      return {
-        totalLogs: recentSnapshot.size,
-        compressedLogs: compressedSnapshot.size,
-        storageEstimate: estimateStorageUsage(recentSnapshot.docs),
-        retentionHealth: 'good' // Could be calculated based on ratios
-      }
+      
+      const snapshot = await getDocs(q)
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
     } catch (error) {
-      console.error('Error getting retention stats:', error)
-      return null
+      console.error('Error fetching recent activity:', error)
+      return []
     }
   }
 
-  /**
-   * Estimate storage usage
-   */
-  function estimateStorageUsage(docs) {
-    let totalBytes = 0
-    docs.forEach(doc => {
-      totalBytes += JSON.stringify(doc.data()).length
-    })
-    
-    // Convert to human readable
-    if (totalBytes < 1024) return `${totalBytes} B`
-    if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`
-    return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  /**
-   * Predefined audit event helpers
-   */
+  // Pre-defined audit logging functions for common actions
   const log = {
-    // User management
-    userCreated: (userEmail) => 
-      logEvent('user_created', { userEmail }),
+    // Authentication events
+    userLogin: (details = {}) => logEvent('user_login', details),
+    userLogout: (details = {}) => logEvent('user_logout', details),
     
-    userUpdated: (userId, userEmail, changes) => 
-      logEvent('user_updated', { userId, userEmail, changes }),
+    // Profile events
+    profileViewed: (details = {}) => logEvent('profile_viewed', details),
+    profileUpdated: (details = {}) => logEvent('profile_updated', details),
+    settingsChanged: (details = {}) => logEvent('settings_changed', details),
+    passwordChanged: (details = {}) => logEvent('password_changed', details),
     
-    userDeleted: (userId, userEmail) => 
-      logEvent('user_deleted', { userId, userEmail }),
+    // Admin events
+    adminPanelAccessed: (details = {}) => logEvent('admin_panel_accessed', details),
+    adminTabViewed: (tab) => logEvent('admin_tab_viewed', { tab }),
+    userCreated: (details = {}) => logEvent('user_created', details),
+    userUpdated: (details = {}) => logEvent('user_updated', details),
+    userDeleted: (details = {}) => logEvent('user_deleted', details),
+    roleChanged: (details = {}) => logEvent('role_changed', details),
+    permissionGranted: (details = {}) => logEvent('permission_granted', details),
+    permissionRevoked: (details = {}) => logEvent('permission_revoked', details),
+    bulkOperation: (details = {}) => logEvent('bulk_operation', details),
     
-    roleChanged: (userId, userEmail, fromRole, toRole) => 
-      logEvent('role_changed', { userId, userEmail, fromRole, toRole }),
+    // Project events (ready for future)
+    projectCreated: (details = {}) => logEvent('project_created', details),
+    projectUpdated: (details = {}) => logEvent('project_updated', details),
+    projectDeleted: (details = {}) => logEvent('project_deleted', details),
+    projectViewed: (details = {}) => logEvent('project_viewed', details),
     
-    // Permission management
-    permissionGranted: (userId, userEmail, permission) => 
-      logEvent('permission_granted', { userId, userEmail, permission }),
+    // Forum events (ready for future)
+    forumPostCreated: (details = {}) => logEvent('forum_post_created', details),
+    forumPostUpdated: (details = {}) => logEvent('forum_post_updated', details),
+    forumPostDeleted: (details = {}) => logEvent('forum_post_deleted', details),
     
-    permissionRevoked: (userId, userEmail, permission) => 
-      logEvent('permission_revoked', { userId, userEmail, permission }),
-    
-    // Admin actions
-    adminTabViewed: (tab) => 
-      logEvent('admin_tab_viewed', { tab }),
-    
-    // Data operations
-    dataExported: (type, recordCount, filters = {}) => 
-      logEvent('data_exported', { type, recordCount, filters }),
+    // Calendar events (ready for future)
+    eventCreated: (details = {}) => logEvent('event_created', details),
+    eventUpdated: (details = {}) => logEvent('event_updated', details),
+    eventDeleted: (details = {}) => logEvent('event_deleted', details),
     
     // Security events
-    unauthorizedAccess: (attemptedAction, resource) => 
-      logEvent('unauthorized_access', { attemptedAction, resource }),
+    securityAlert: (details = {}) => logEvent('security_alert', details),
+    unauthorizedAccess: (details = {}) => logEvent('unauthorized_access', details),
+    systemError: (details = {}) => logEvent('system_error', details),
     
-    suspiciousActivity: (details) => 
-      logEvent('suspicious_activity', details),
-    
-    // Bulk operations
-    bulkOperation: (operation, userCount, details = {}) => 
-      logEvent('bulk_operation', { operation, userCount, ...details }),
-    
-    // Authentication
-    userLogin: (method = 'email') => 
-      logEvent('user_login', { method }),
-    
-    userLogout: () => 
-      logEvent('user_logout', {}),
-    
-    // Custom events
-    custom: (action, details = {}) => 
-      logEvent(action, details)
+    // Generic logging
+    custom: (action, details = {}) => logEvent(action, details)
   }
 
+  // ESSENTIAL: Return all functions and utilities
   return {
     logEvent,
+    getRecentActivity,
     log,
-    performRetentionCleanup,
-    getRetentionStats,
-    RETENTION_CONFIG
+    // Retention utilities for reference
+    RETENTION_CONFIG,
+    // Helper functions
+    getRetentionTier,
+    getCompressionDate,
+    getDeletionDate
   }
 }
