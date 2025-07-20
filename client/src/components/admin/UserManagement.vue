@@ -1,16 +1,475 @@
-<!-- client/src/components/admin/UserManagement.vue -->
+<!-- client/src/components/admin/UserManagement.vue - Fixed Delete User Functionality -->
+<template>
+  <div>
+    <!-- Header with search and filters -->
+    <v-row class="mb-4" align="center">
+      <v-col cols="12" md="4">
+        <v-text-field
+          v-model="search"
+          label="Search users..."
+          prepend-inner-icon="mdi-magnify"
+          variant="outlined"
+          density="compact"
+          clearable
+          hide-details
+        ></v-text-field>
+      </v-col>
+      
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="selectedRole"
+          :items="[{ title: 'All Roles', value: 'all' }, ...availableRoles.map(r => ({ title: r.name, value: r.id }))]"
+          label="Filter by role"
+          variant="outlined"
+          density="compact"
+          hide-details
+        ></v-select>
+      </v-col>
+      
+      <v-col cols="12" md="3">
+        <v-select
+          v-model="selectedStatus"
+          :items="[
+            { title: 'All Status', value: 'all' },
+            { title: 'Active', value: 'active' },
+            { title: 'Pending', value: 'pending' },
+            { title: 'Suspended', value: 'suspended' }
+          ]"
+          label="Filter by status"
+          variant="outlined"
+          density="compact"
+          hide-details
+        ></v-select>
+      </v-col>
+      
+      <v-col cols="12" md="2">
+        <PermissionGuard permission="create_users">
+          <v-btn
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-plus"
+            @click="$emit('create-user')"
+            block
+          >
+            Add User
+          </v-btn>
+        </PermissionGuard>
+      </v-col>
+    </v-row>
+
+    <!-- Bulk actions -->
+    <v-row v-if="selectedUsers.length > 0" class="mb-4">
+      <v-col>
+        <v-card variant="outlined" color="info">
+          <v-card-text class="py-2">
+            <v-row align="center">
+              <v-col>
+                <span class="text-subtitle-2">
+                  {{ selectedUsers.length }} users selected
+                </span>
+              </v-col>
+              <v-col cols="auto">
+                <PermissionGuard permission="edit_users">
+                  <v-btn
+                    variant="outlined"
+                    size="small"
+                    @click="openBulkDialog"
+                    prepend-icon="mdi-cog"
+                  >
+                    Bulk Actions
+                  </v-btn>
+                </PermissionGuard>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Users table -->
+    <v-data-table
+      v-model="selectedUsers"
+      :headers="headers"
+      :items="filteredUsers"
+      :loading="loading"
+      item-key="id"
+      show-select
+      :items-per-page="25"
+      :sort-by="[{ key: 'createdAt', order: 'desc' }]"
+    >
+      <!-- Email column with avatar -->
+      <template v-slot:item.email="{ item }">
+        <div class="d-flex align-center">
+          <v-avatar size="32" class="mr-3">
+            <v-img 
+              v-if="item.photoURL" 
+              :src="item.photoURL"
+              :alt="item.email"
+            ></v-img>
+            <v-icon v-else>mdi-account</v-icon>
+          </v-avatar>
+          <div>
+            <div class="font-weight-medium">{{ item.email }}</div>
+            <div v-if="item.displayName" class="text-caption text-medium-emphasis">
+              {{ item.displayName }}
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Role column with chip -->
+      <template v-slot:item.role="{ item }">
+        <v-chip
+          :color="getRoleColor(item.role)"
+          size="small"
+          variant="flat"
+        >
+          {{ getRoleName(item.role) }}
+        </v-chip>
+      </template>
+
+      <!-- Status column with chip -->
+      <template v-slot:item.status="{ item }">
+        <v-chip
+          :color="getStatusColor(item.status)"
+          size="small"
+          variant="flat"
+        >
+          {{ item.status || 'active' }}
+        </v-chip>
+      </template>
+
+      <!-- Created date column -->
+      <template v-slot:item.createdAt="{ item }">
+        <span class="text-caption">
+          {{ formatDate(item.createdAt) }}
+        </span>
+      </template>
+
+      <!-- Last active column -->
+      <template v-slot:item.lastActive="{ item }">
+        <span class="text-caption">
+          {{ item.lastActive ? formatDate(item.lastActive) : 'Never' }}
+        </span>
+      </template>
+
+      <!-- Custom permissions count -->
+      <template v-slot:item.customPermCount="{ item }">
+        <v-chip
+          v-if="item.customPermCount > 0"
+          size="small"
+          variant="outlined"
+          color="info"
+        >
+          +{{ item.customPermCount }}
+        </v-chip>
+        <span v-else class="text-medium-emphasis">—</span>
+      </template>
+
+      <!-- Actions column -->
+      <template v-slot:item.actions="{ item }">
+        <div class="d-flex ga-1">
+          <PermissionGuard permission="edit_users">
+            <v-tooltip text="Edit User" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon
+                  size="small"
+                  variant="flat"
+                  color="primary"
+                  @click="editUser(item)"
+                  :disabled="!canEditUser(item)"
+                  density="comfortable"
+                >
+                  <v-icon size="small">mdi-pencil</v-icon>
+                </v-btn>
+              </template>
+            </v-tooltip>
+          </PermissionGuard>
+
+          <PermissionGuard permission="delete_users">
+            <v-tooltip text="Delete User" location="top">
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon
+                  size="small"
+                  variant="flat"
+                  color="error"
+                  @click="confirmDeleteUser(item)"
+                  :disabled="item.id === auth.currentUser.uid"
+                  density="comfortable"
+                >
+                  <v-icon size="small">mdi-delete</v-icon>
+                </v-btn>
+              </template>
+            </v-tooltip>
+          </PermissionGuard>
+        </div>
+      </template>
+    </v-data-table>
+
+    <!-- Edit User Dialog -->
+    <v-dialog v-model="showEditDialog" max-width="800" persistent>
+      <v-card>
+        <v-card-title class="text-h5">
+          Edit User: {{ editingUser?.email }}
+        </v-card-title>
+
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="editForm.role"
+                :items="availableRoles.filter(r => authStore.canManageRole(r.id))"
+                item-title="name"
+                item-value="id"
+                label="Role"
+                variant="outlined"
+                :disabled="!authStore.canManageRole(editingUser?.role)"
+              ></v-select>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="editForm.status"
+                :items="[
+                  { title: 'Active', value: 'active' },
+                  { title: 'Suspended', value: 'suspended' },
+                  { title: 'Pending', value: 'pending' }
+                ]"
+                label="Status"
+                variant="outlined"
+              ></v-select>
+            </v-col>
+
+            <v-col cols="12">
+              <v-textarea
+                v-model="editForm.notes"
+                label="Notes"
+                variant="outlined"
+                rows="3"
+              ></v-textarea>
+            </v-col>
+
+            <v-col cols="12" v-if="allPermissions.length > 0">
+              <v-expansion-panels variant="accordion">
+                <v-expansion-panel title="Custom Permissions">
+                  <v-expansion-panel-text>
+                    <v-row>
+                      <v-col cols="12" md="6">
+                        <v-autocomplete
+                          :items="allPermissions"
+                          item-title="name"
+                          item-value="id"
+                          label="Add Custom Permission"
+                          variant="outlined"
+                          @update:model-value="addCustomPermission"
+                          clearable
+                        ></v-autocomplete>
+                        
+                        <div v-if="editForm.customPermissions.length > 0" class="mt-2">
+                          <v-chip
+                            v-for="permission in editForm.customPermissions"
+                            :key="permission"
+                            size="small"
+                            closable
+                            @click:close="removeCustomPermission(permission)"
+                            class="mr-1 mb-1"
+                          >
+                            {{ getPermissionName(permission) }}
+                          </v-chip>
+                        </div>
+                      </v-col>
+
+                      <v-col cols="12" md="6">
+                        <v-autocomplete
+                          :items="allPermissions"
+                          item-title="name"
+                          item-value="id"
+                          label="Deny Permission"
+                          variant="outlined"
+                          @update:model-value="addDeniedPermission"
+                          clearable
+                        ></v-autocomplete>
+                        
+                        <div v-if="editForm.deniedPermissions.length > 0" class="mt-2">
+                          <v-chip
+                            v-for="permission in editForm.deniedPermissions"
+                            :key="permission"
+                            size="small"
+                            color="error"
+                            closable
+                            @click:close="removeDeniedPermission(permission)"
+                            class="mr-1 mb-1"
+                          >
+                            {{ getPermissionName(permission) }}
+                          </v-chip>
+                        </div>
+                      </v-col>
+                    </v-row>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            @click="showEditDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="saveUser"
+            :loading="saving"
+          >
+            Save Changes
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Bulk Operations Dialog -->
+    <v-dialog v-model="showBulkDialog" max-width="600">
+      <v-card>
+        <v-card-title>
+          Bulk Operations
+          <v-chip size="small" class="ml-2">
+            {{ selectedUsers.length }} users selected
+          </v-chip>
+        </v-card-title>
+
+        <v-card-text>
+          <v-select
+            v-model="bulkOperation.action"
+            :items="[
+              { title: 'Change Role', value: 'changeRole' },
+              { title: 'Add Permissions', value: 'addPermissions' },
+              { title: 'Suspend Users', value: 'suspend' },
+              { title: 'Activate Users', value: 'activate' }
+            ]"
+            label="Select operation"
+            variant="outlined"
+          ></v-select>
+
+          <v-select
+            v-if="bulkOperation.action === 'changeRole'"
+            v-model="bulkOperation.role"
+            :items="availableRoles.filter(r => authStore.canManageRole(r.id))"
+            item-title="name"
+            item-value="id"
+            label="New Role"
+            variant="outlined"
+          ></v-select>
+
+          <v-select
+            v-if="bulkOperation.action === 'addPermissions'"
+            v-model="bulkOperation.permissions"
+            :items="allPermissions"
+            item-title="name"
+            item-value="id"
+            label="Permissions to add"
+            variant="outlined"
+            multiple
+            chips
+            closable-chips
+          ></v-select>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn
+            variant="text"
+            @click="showBulkDialog = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="executeBulkOperation"
+            :loading="saving"
+          >
+            Execute
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="showDeleteDialog" max-width="500">
+      <v-card>
+        <v-card-title class="text-h5">Delete User?</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete <strong>{{ userToDelete?.email }}</strong>? 
+          This action cannot be undone.
+          
+          <v-alert type="warning" variant="tonal" class="mt-4">
+            This will permanently delete the user account and all associated data.
+          </v-alert>
+          
+          <v-text-field
+            v-model="deleteReason"
+            label="Reason for deletion (optional)"
+            variant="outlined"
+            class="mt-4"
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="showDeleteDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            @click="deleteUser"
+            :loading="saving"
+          >
+            Delete User
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="4000"
+    >
+      {{ snackbar.message }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="snackbar.show = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
+  </div>
+</template>
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { 
   collection, 
   doc, 
   updateDoc, 
-  deleteDoc, 
   onSnapshot,
   query,
   orderBy,
   serverTimestamp,
-  addDoc
+  addDoc,
+  where
 } from 'firebase/firestore'
 import { db, auth, functions } from '../../firebase'
 import { httpsCallable } from 'firebase/functions'
@@ -37,6 +496,7 @@ const showBulkDialog = ref(false)
 const showDeleteDialog = ref(false)
 const editingUser = ref(null)
 const userToDelete = ref(null)
+const deleteReason = ref('')
 const snackbar = ref({
   show: false,
   message: '',
@@ -102,46 +562,89 @@ const availableRoles = computed(() => permissionsStore.allRoles)
 const allPermissions = computed(() => permissionsStore.allPermissions)
 
 const canEditUser = computed(() => (user) => {
-  if (authStore.isOwner) return true
-  if (authStore.isAdmin && !authStore.isOwner) {
-    // Admin can't edit owners
-    return user.role !== 'owner'
-  }
-  return false
+  return authStore.canManageRole(user.role) && authStore.hasPermission('edit_users')
 })
 
-/* ---------- color mappings ---------- */
-const roleColors = {
-  owner: 'deep-purple',
-  admin: 'red',
-  user: 'primary',
-  viewer: 'blue',
-  pending: 'orange'
-}
-
-const statusColors = {
-  active: 'success',
-  suspended: 'error',
-  pending: 'warning'
-}
-
 /* ---------- lifecycle ---------- */
-onMounted(async () => {
-  await loadUsers()
+onMounted(() => {
+  loadUsers()
 })
 
 onUnmounted(() => {
-  if (unsubscribe) unsubscribe()
+  if (unsubscribe) {
+    unsubscribe()
+  }
 })
 
-/* ---------- data loading ---------- */
+/* ---------- watchers ---------- */
+watch(() => authStore.user, (newUser) => {
+  if (newUser && !unsubscribe) {
+    loadUsers()
+  }
+}, { immediate: true })
+
+/* ---------- methods ---------- */
+function showSnackbar(message, color = 'success') {
+  snackbar.value = {
+    show: true,
+    message,
+    color
+  }
+}
+
+function formatDate(date) {
+  if (!date) return 'N/A'
+  const d = date.toDate ? date.toDate() : new Date(date)
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
+}
+
+function getRoleColor(role) {
+  const colors = {
+    owner: 'purple',
+    admin: 'red',
+    user: 'blue',
+    viewer: 'green',
+    pending: 'orange'
+  }
+  return colors[role] || 'grey'
+}
+
+function getRoleName(roleId) {
+  const role = availableRoles.value.find(r => r.id === roleId)
+  return role ? role.name : roleId
+}
+
+function getStatusColor(status) {
+  const colors = {
+    active: 'success',
+    pending: 'warning',
+    suspended: 'error'
+  }
+  return colors[status] || 'grey'
+}
+
+function getPermissionName(permissionId) {
+  const permission = allPermissions.value.find(p => p.id === permissionId)
+  return permission ? permission.name : permissionId
+}
+
 async function loadUsers() {
+  if (!authStore.user) return
+  
   loading.value = true
   try {
-    const usersRef = collection(db, 'users')
-    const q = query(usersRef, orderBy('createdAt', 'desc'))
+    // Create query that excludes deleted users
+    const usersQuery = query(
+      collection(db, 'users'),
+      where('status', '!=', 'deleted'),  // Exclude deleted users
+      orderBy('status'),  // Required for != query
+      orderBy('createdAt', 'desc')
+    )
     
-    unsubscribe = onSnapshot(q, (snapshot) => {
+    unsubscribe = onSnapshot(usersQuery, (snapshot) => {
       users.value = snapshot.docs.map(doc => {
         const data = doc.data()
         return {
@@ -244,6 +747,7 @@ function confirmDeleteUser(user) {
   }
 
   userToDelete.value = user
+  deleteReason.value = ''
   showDeleteDialog.value = true
 }
 
@@ -252,24 +756,42 @@ async function deleteUser() {
 
   saving.value = true
   try {
-    // In production, you'd want to use a Cloud Function to properly delete the user
-    // For now, we'll just mark them as deleted
-    await updateDoc(doc(db, 'users', userToDelete.value.id), {
-      status: 'deleted',
-      deletedAt: serverTimestamp(),
-      deletedBy: auth.currentUser.uid
+    // Use Cloud Function for secure deletion
+    const deleteUserFunction = httpsCallable(functions, 'deleteUser')
+    
+    const result = await deleteUserFunction({
+      userId: userToDelete.value.id,
+      reason: deleteReason.value || 'Administrative action'
     })
 
+    // Log activity
     emit('activity', 'user_deleted', {
       userId: userToDelete.value.id,
-      email: userToDelete.value.email
+      email: userToDelete.value.email,
+      reason: deleteReason.value || 'Administrative action'
     })
 
     showSnackbar('User deleted successfully')
     showDeleteDialog.value = false
+    
+    // Users will be automatically removed from the list via real-time listener
+    
   } catch (e) {
     console.error('Error deleting user:', e)
-    showSnackbar('Failed to delete user', 'error')
+    let errorMessage = 'Failed to delete user'
+    
+    // Handle specific Cloud Function errors
+    if (e.code === 'functions/permission-denied') {
+      errorMessage = 'You do not have permission to delete this user'
+    } else if (e.code === 'functions/not-found') {
+      errorMessage = 'User not found'
+    } else if (e.code === 'functions/invalid-argument') {
+      errorMessage = e.message || 'Invalid request'
+    } else if (e.message) {
+      errorMessage = e.message
+    }
+    
+    showSnackbar(errorMessage, 'error')
   } finally {
     saving.value = false
   }
@@ -340,7 +862,7 @@ async function executeBulkOperation() {
 
 /* ---------- permission management ---------- */
 function addCustomPermission(permission) {
-  if (!editForm.value.customPermissions.includes(permission)) {
+  if (permission && !editForm.value.customPermissions.includes(permission)) {
     editForm.value.customPermissions.push(permission)
   }
 }
@@ -353,10 +875,8 @@ function removeCustomPermission(permission) {
 }
 
 function addDeniedPermission(permission) {
-  if (!editForm.value.deniedPermissions.includes(permission)) {
+  if (permission && !editForm.value.deniedPermissions.includes(permission)) {
     editForm.value.deniedPermissions.push(permission)
-    // Remove from custom if present
-    removeCustomPermission(permission)
   }
 }
 
@@ -366,460 +886,14 @@ function removeDeniedPermission(permission) {
     editForm.value.deniedPermissions.splice(index, 1)
   }
 }
-
-/* ---------- utilities ---------- */
-function showSnackbar(message, color = 'success') {
-  snackbar.value = { show: true, message, color }
-}
-
-function formatDate(date) {
-  if (!date) return 'Never'
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-function getRoleColor(role) {
-  return roleColors[role] || 'grey'
-}
-
-function getStatusColor(status) {
-  return statusColors[status] || 'grey'
-}
 </script>
 
-<template>
-  <div class="pa-4">
-    <!-- Toolbar -->
-    <v-toolbar flat class="mb-4">
-      <v-text-field
-        v-model="search"
-        prepend-inner-icon="mdi-magnify"
-        label="Search users..."
-        variant="outlined"
-        density="compact"
-        hide-details
-        class="mr-4"
-        style="max-width: 300px"
-      ></v-text-field>
-
-      <v-select
-        v-model="selectedRole"
-        :items="[
-          { title: 'All Roles', value: 'all' },
-          ...availableRoles.map(r => ({ title: r.name, value: r.id }))
-        ]"
-        label="Filter by role"
-        variant="outlined"
-        density="compact"
-        hide-details
-        class="mr-4"
-        style="max-width: 200px"
-      ></v-select>
-
-      <v-select
-        v-model="selectedStatus"
-        :items="[
-          { title: 'All Status', value: 'all' },
-          { title: 'Active', value: 'active' },
-          { title: 'Suspended', value: 'suspended' },
-          { title: 'Pending', value: 'pending' }
-        ]"
-        label="Filter by status"
-        variant="outlined"
-        density="compact"
-        hide-details
-        style="max-width: 200px"
-      ></v-select>
-
-      <v-spacer></v-spacer>
-
-      <PermissionGuard permissions="manage_users">
-        <v-btn
-          color="primary"
-          variant="outlined"
-          prepend-icon="mdi-account-multiple-check"
-          @click="openBulkDialog"
-          :disabled="selectedUsers.length === 0"
-          class="mr-2"
-        >
-          Bulk Actions ({{ selectedUsers.length }})
-        </v-btn>
-      </PermissionGuard>
-
-      <PermissionGuard permissions="create_users">
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="$emit('create-user')"
-        >
-          Add User
-        </v-btn>
-      </PermissionGuard>
-    </v-toolbar>
-
-    <!-- Data Table -->
-    <v-data-table
-      v-model="selectedUsers"
-      :headers="headers"
-      :items="filteredUsers"
-      :loading="loading"
-      item-value="id"
-      show-select
-      class="elevation-1"
-    >
-      <!-- Email with avatar -->
-      <template v-slot:item.email="{ item }">
-        <div class="d-flex align-center py-2">
-          <v-avatar size="32" class="mr-3">
-            <v-icon>mdi-account-circle</v-icon>
-          </v-avatar>
-          <div>
-            <div class="font-weight-medium">{{ item.email }}</div>
-            <div v-if="item.notes" class="text-caption text-medium-emphasis">
-              {{ item.notes }}
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Role chip -->
-      <template v-slot:item.role="{ item }">
-        <v-chip
-          :color="getRoleColor(item.role)"
-          size="small"
-          label
-        >
-          {{ item.role }}
-        </v-chip>
-      </template>
-
-      <!-- Status chip -->
-      <template v-slot:item.status="{ item }">
-        <v-chip
-          :color="getStatusColor(item.status)"
-          size="small"
-          label
-        >
-          {{ item.status }}
-        </v-chip>
-      </template>
-
-      <!-- Dates -->
-      <template v-slot:item.createdAt="{ item }">
-        <span class="text-caption">{{ formatDate(item.createdAt) }}</span>
-      </template>
-
-      <template v-slot:item.lastActive="{ item }">
-        <span class="text-caption">{{ formatDate(item.lastActive) }}</span>
-      </template>
-
-      <!-- Custom permissions count -->
-      <template v-slot:item.customPermCount="{ item }">
-        <v-chip
-          v-if="item.customPermCount > 0"
-          size="x-small"
-          color="info"
-          variant="tonal"
-        >
-          +{{ item.customPermCount }}
-        </v-chip>
-        <span v-else class="text-medium-emphasis">-</span>
-      </template>
-
-      <!-- Actions -->
-      <template v-slot:item.actions="{ item }">
-        <div class="d-flex justify-end ga-1">
-          <PermissionGuard permissions="edit_users">
-            <v-tooltip text="Edit User" location="top">
-              <template v-slot:activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon
-                  size="small"
-                  variant="flat"
-                  color="primary"
-                  @click="editUser(item)"
-                  :disabled="!canEditUser(item)"
-                  density="comfortable"
-                >
-                  <v-icon size="small">mdi-pencil</v-icon>
-                </v-btn>
-              </template>
-            </v-tooltip>
-          </PermissionGuard>
-
-          <PermissionGuard permissions="delete_users">
-            <v-tooltip text="Delete User" location="top">
-              <template v-slot:activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon
-                  size="small"
-                  variant="flat"
-                  color="error"
-                  @click="confirmDeleteUser(item)"
-                  :disabled="item.id === auth.currentUser.uid"
-                  density="comfortable"
-                >
-                  <v-icon size="small">mdi-delete</v-icon>
-                </v-btn>
-              </template>
-            </v-tooltip>
-          </PermissionGuard>
-        </div>
-      </template>
-    </v-data-table>
-
-    <!-- Edit User Dialog -->
-    <v-dialog v-model="showEditDialog" max-width="800" persistent>
-      <v-card>
-        <v-card-title class="text-h5">
-          Edit User: {{ editingUser?.email }}
-        </v-card-title>
-
-        <v-card-text>
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="editForm.role"
-                :items="availableRoles.filter(r => authStore.canManageRole(r.id))"
-                item-title="name"
-                item-value="id"
-                label="Role"
-                variant="outlined"
-                :disabled="!authStore.canManageRole(editingUser?.role)"
-              ></v-select>
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="editForm.status"
-                :items="[
-                  { title: 'Active', value: 'active' },
-                  { title: 'Suspended', value: 'suspended' },
-                  { title: 'Pending', value: 'pending' }
-                ]"
-                label="Status"
-                variant="outlined"
-              ></v-select>
-            </v-col>
-
-            <v-col cols="12">
-              <v-textarea
-                v-model="editForm.notes"
-                label="Notes"
-                variant="outlined"
-                rows="3"
-                placeholder="Optional notes about this user..."
-              ></v-textarea>
-            </v-col>
-
-            <v-col cols="12">
-              <v-divider class="my-4"></v-divider>
-              <div class="text-h6 font-weight-medium mb-3 text-primary">Custom Permissions</div>
-              
-              <v-select
-                :items="allPermissions.filter(p => !editForm.customPermissions.includes(p.id))"
-                item-title="name"
-                item-value="id"
-                label="Add permission"
-                variant="outlined"
-                @update:model-value="addCustomPermission"
-                clearable
-              ></v-select>
-
-              <div class="mt-2">
-                <v-chip
-                  v-for="permission in editForm.customPermissions"
-                  :key="permission"
-                  size="small"
-                  closable
-                  color="success"
-                  class="mr-2 mb-2"
-                  @click:close="removeCustomPermission(permission)"
-                >
-                  {{ allPermissions.find(p => p.id === permission)?.name || permission }}
-                </v-chip>
-              </div>
-            </v-col>
-
-            <v-col cols="12">
-              <v-divider class="my-4"></v-divider>
-              <div class="text-h6 font-weight-medium mb-3 text-primary">Denied Permissions</div>
-              
-              <v-select
-                :items="allPermissions.filter(p => !editForm.deniedPermissions.includes(p.id))"
-                item-title="name"
-                item-value="id"
-                label="Deny permission"
-                variant="outlined"
-                @update:model-value="addDeniedPermission"
-                clearable
-              ></v-select>
-
-              <div class="mt-2">
-                <v-chip
-                  v-for="permission in editForm.deniedPermissions"
-                  :key="permission"
-                  size="small"
-                  closable
-                  color="error"
-                  class="mr-2 mb-2"
-                  @click:close="removeDeniedPermission(permission)"
-                >
-                  {{ allPermissions.find(p => p.id === permission)?.name || permission }}
-                </v-chip>
-              </div>
-            </v-col>
-          </v-row>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            variant="text"
-            @click="showEditDialog = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="saveUser"
-            :loading="saving"
-          >
-            Save Changes
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Bulk Operations Dialog -->
-    <v-dialog v-model="showBulkDialog" max-width="600">
-      <v-card>
-        <v-card-title>
-          Bulk Operations
-          <v-chip size="small" class="ml-2">
-            {{ selectedUsers.length }} users selected
-          </v-chip>
-        </v-card-title>
-
-        <v-card-text>
-          <v-select
-            v-model="bulkOperation.action"
-            :items="[
-              { title: 'Change Role', value: 'changeRole' },
-              { title: 'Add Permissions', value: 'addPermissions' },
-              { title: 'Suspend Users', value: 'suspend' },
-              { title: 'Activate Users', value: 'activate' }
-            ]"
-            label="Select operation"
-            variant="outlined"
-          ></v-select>
-
-          <v-select
-            v-if="bulkOperation.action === 'changeRole'"
-            v-model="bulkOperation.role"
-            :items="availableRoles.filter(r => authStore.canManageRole(r.id))"
-            item-title="name"
-            item-value="id"
-            label="New Role"
-            variant="outlined"
-          ></v-select>
-
-          <v-select
-            v-if="bulkOperation.action === 'addPermissions'"
-            v-model="bulkOperation.permissions"
-            :items="allPermissions"
-            item-title="name"
-            item-value="id"
-            label="Permissions to add"
-            variant="outlined"
-            multiple
-            chips
-            closable-chips
-          ></v-select>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            variant="text"
-            @click="showBulkDialog = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="executeBulkOperation"
-            :loading="saving"
-          >
-            Execute
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteDialog" max-width="500">
-      <v-card>
-        <v-card-title class="text-h5">Delete User?</v-card-title>
-        <v-card-text>
-          Are you sure you want to delete <strong>{{ userToDelete?.email }}</strong>? 
-          This action cannot be undone.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn
-            variant="text"
-            @click="showDeleteDialog = false"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            @click="deleteUser"
-            :loading="saving"
-          >
-            Delete User
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Snackbar -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="3000"
-    >
-      {{ snackbar.message }}
-      <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="snackbar.show = false"
-        >
-          Close
-        </v-btn>
-      </template>
-    </v-snackbar>
-  </div>
-</template>
-
 <style scoped>
-:deep(.v-data-table) {
-  font-family: 'Cambria', Georgia, serif;
+.v-data-table {
+  background: transparent;
 }
 
-:deep(.v-data-table th) {
-  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
-  font-weight: 600;
+.v-chip {
+  font-weight: 500;
 }
 </style>

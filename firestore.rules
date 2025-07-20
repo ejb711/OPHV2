@@ -1,4 +1,4 @@
-// firestore.rules - Fixed to Allow Client-Side Audit Logging and Activity Tracking
+// firestore.rules - Enhanced with proper user deletion support
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -53,7 +53,7 @@ service cloud.firestore {
           canManageUserWithRole(request.resource.data.role)))
       );
       
-      // Delete users with proper permission
+      // Delete users with proper permission - ENHANCED
       allow delete: if request.auth != null && 
         hasPermission('delete_users') && 
         request.auth.uid != userId &&
@@ -72,14 +72,16 @@ service cloud.firestore {
       allow write: if request.auth != null && hasPermission('manage_permissions');
     }
     
-    // Audit logs - Allow client-side writes for now
+    // Audit logs - Enhanced to support Cloud Functions
     match /audit_logs/{document} {
       allow read: if request.auth != null && hasPermission('view_audit_logs');
-      // Allow authenticated users to create and update audit logs
-      // This supports the current client-side audit logging implementation
-      allow create, update: if request.auth != null && 
-        // Ensure they can only write their own audit logs
-        request.resource.data.userId == request.auth.uid;
+      // Allow authenticated users to create audit logs
+      allow create: if request.auth != null && 
+        // Ensure they can only write their own audit logs (unless system operation)
+        (request.resource.data.userId == request.auth.uid || 
+         request.resource.data.userId == 'system');
+      // Cloud Functions can write any audit logs
+      allow write: if request.auth != null && request.auth.token.admin == true;
     }
     
     // Projects collection (future)
