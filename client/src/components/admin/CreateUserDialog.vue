@@ -1,40 +1,35 @@
-<!-- CreateUserDialog.vue - Enhanced with Merged Styling -->
+<!-- client/src/components/admin/CreateUserDialog.vue - FIXED with Complete Brand Styling -->
 <template>
-  <v-dialog 
-    v-model="dialogOpen" 
-    :max-width="dialogWidth" 
+  <v-dialog
+    v-model="dialogOpen"
+    max-width="600"
     persistent
-    :fullscreen="$vuetify.display.xs"
+    scrollable
   >
-    <v-card class="create-user-card">
-      <!-- Header -->
-      <v-card-title class="bg-primary text-white pa-4">
-        <div class="d-flex align-center">
-          <v-icon color="white" class="mr-3">mdi-account-plus</v-icon>
-          <div>
-            <div class="text-h6">Create New User</div>
-            <div class="text-caption opacity-90">
-              Step {{ currentStep }} of {{ totalSteps }}: {{ stepTitles[currentStep - 1] }}
+    <v-card class="create-user-dialog">
+      <!-- Header with Louisiana Department of Health Brand Colors -->
+      <v-card-title class="dialog-header pa-0">
+        <div class="header-content">
+          <div class="d-flex align-center gap-3">
+            <v-icon color="white" size="28">mdi-account-plus</v-icon>
+            <div>
+              <h2 class="text-h5 font-weight-bold">Create New User</h2>
+              <p class="text-body-2 text-grey-lighten-1 mt-1 mb-0">
+                Step {{ currentStep }} of {{ totalSteps }}: {{ stepTitle }}
+              </p>
             </div>
           </div>
         </div>
       </v-card-title>
-      
-      <!-- Progress Bar -->
-      <v-progress-linear
-        :model-value="(currentStep / totalSteps) * 100"
-        color="primary"
-        height="4"
-      />
 
-      <v-card-text class="pa-4 pa-md-6">
+      <!-- Form Content -->
+      <v-card-text class="dialog-content px-6 py-6">
         <v-form ref="createUserFormRef" @submit.prevent="handleNext">
-          
-          <!-- Step 1: Account Information -->
+          <!-- Step 1: Basic Information -->
           <div v-if="currentStep === 1" key="step1">
             <div class="form-header mb-4">
-              <h3 class="form-title">Account Information</h3>
-              <p class="form-subtitle">Basic login credentials and role assignment</p>
+              <h3 class="form-title">Account Details</h3>
+              <p class="form-subtitle">Essential information for account creation</p>
             </div>
 
             <v-row dense>
@@ -49,7 +44,7 @@
                     density="compact"
                     flat
                     required
-                    placeholder="Enter email address"
+                    placeholder="user@example.com"
                     class="auth-field"
                     :rules="emailRules"
                     hide-details="auto"
@@ -67,7 +62,7 @@
                     density="compact"
                     flat
                     required
-                    placeholder="Enter display name"
+                    placeholder="Full Name"
                     class="auth-field"
                     :rules="displayNameRules"
                     hide-details="auto"
@@ -76,7 +71,7 @@
               </v-col>
 
               <!-- Password -->
-              <v-col cols="12" :md="$vuetify.display.mdAndUp ? 6 : 12">
+              <v-col cols="12" md="6">
                 <div class="field-group">
                   <label class="field-label">Password *</label>
                   <v-text-field
@@ -86,7 +81,7 @@
                     density="compact"
                     flat
                     required
-                    placeholder="Enter password"
+                    placeholder="Password"
                     class="auth-field"
                     :rules="passwordRules"
                     hide-details="auto"
@@ -100,10 +95,9 @@
                         title="Toggle password visibility"
                       />
                       <v-btn
-                        icon="mdi-dice-6"
+                        icon="mdi-refresh"
                         size="small"
                         variant="text"
-                        color="primary"
                         @click="generatePassword"
                         title="Generate random password"
                       />
@@ -113,7 +107,7 @@
               </v-col>
 
               <!-- Confirm Password -->
-              <v-col cols="12" :md="$vuetify.display.mdAndUp ? 6 : 12">
+              <v-col cols="12" md="6">
                 <div class="field-group">
                   <label class="field-label">Confirm Password *</label>
                   <v-text-field
@@ -310,46 +304,44 @@
           >
             <div class="text-subtitle-2 font-weight-bold mb-1">Ready to Create</div>
             The user will be able to sign in immediately with the provided credentials.
-            {{ form.sendEmail ? 'A welcome email will be sent with login instructions.' : '' }}
+            <span v-if="form.sendEmail"> A welcome email will be sent with login instructions.</span>
           </v-alert>
         </v-form>
       </v-card-text>
 
       <!-- Actions -->
-      <v-card-actions class="pa-4 pa-md-6 pt-0">
-        <v-btn 
-          variant="text" 
-          @click="handleBack"
-          :disabled="creating || currentStep === 1"
-          size="large"
-        >
-          <v-icon left>mdi-chevron-left</v-icon>
-          Back
-        </v-btn>
-        
-        <v-spacer />
-        
-        <v-btn 
-          variant="outlined" 
-          @click="handleCancel"
-          :disabled="creating"
-          size="large"
-        >
-          Cancel
-        </v-btn>
-        
-        <v-btn 
-          color="primary" 
-          @click="handleNext"
-          :loading="creating"
-          size="large"
-          class="submit-btn ml-2"
-        >
-          <span v-if="currentStep < totalSteps">Next</span>
-          <span v-else>Create User</span>
-          <v-icon v-if="currentStep < totalSteps" right>mdi-chevron-right</v-icon>
-          <v-icon v-else right>mdi-check</v-icon>
-        </v-btn>
+      <v-card-actions class="dialog-actions px-6 py-4">
+        <div class="d-flex align-center justify-space-between w-100">
+          <v-btn
+            v-if="currentStep > 1"
+            variant="outlined"
+            prepend-icon="mdi-chevron-left"
+            @click="handleBack"
+            :disabled="creating"
+          >
+            Back
+          </v-btn>
+          <div v-else></div>
+
+          <div class="d-flex gap-2">
+            <v-btn
+              variant="outlined"
+              @click="handleCancel"
+              :disabled="creating"
+            >
+              Cancel
+            </v-btn>
+
+            <v-btn
+              color="primary"
+              :loading="creating"
+              @click="handleNext"
+              :prepend-icon="currentStep === totalSteps ? 'mdi-check' : 'mdi-chevron-right'"
+            >
+              {{ currentStep === totalSteps ? 'Create User' : 'Next' }}
+            </v-btn>
+          </div>
+        </div>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -357,17 +349,12 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useDisplay } from 'vuetify'
 import { httpsCallable } from 'firebase/functions'
-import { functions, auth } from '../../firebase'
+import { functions } from '../../firebase'
 import { usePermissionsStore } from '../../stores/permissions'
 import { useAudit } from '../../composables/useAudit'
 
-const { mdAndUp } = useDisplay()
-const permissionsStore = usePermissionsStore()
-const { log } = useAudit()
-
-// Props
+const emit = defineEmits(['update:modelValue', 'user-created', 'showSnackbar'])
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -375,32 +362,24 @@ const props = defineProps({
   }
 })
 
-// Emits
-const emit = defineEmits(['update:modelValue', 'user-created', 'showSnackbar'])
+const permissionsStore = usePermissionsStore()
+const { log } = useAudit()
 
-// State
+// Dialog state
 const dialogOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
 
-const creating = ref(false)
+// Form state
 const createUserFormRef = ref(null)
+const creating = ref(false)
 const currentStep = ref(1)
 const totalSteps = 2
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
-// Step titles
-const stepTitles = ['Account Setup', 'Profile Details']
-
-// Responsive dialog width
-const dialogWidth = computed(() => {
-  if (mdAndUp.value) return '600'
-  return '95vw'
-})
-
-// Form data
+// Form data - FIXED: Ensure all fields are properly initialized
 const form = ref({
   email: '',
   password: '',
@@ -416,13 +395,24 @@ const form = ref({
   sendEmail: true
 })
 
-// Computed properties
+// Step titles
+const stepTitles = {
+  1: 'Account Details',
+  2: 'Profile Details'
+}
+
+const stepTitle = computed(() => stepTitles[currentStep.value])
+
+// FIXED: Enhanced phone formatting with proper data handling
 const formattedPhone = computed({
   get() {
-    return form.value.phone
+    return formatPhoneNumber(form.value.phone)
   },
   set(value) {
-    form.value.phone = formatPhoneNumber(value)
+    // Store raw numeric value for backend
+    const numericOnly = String(value).replace(/\D/g, '')
+    form.value.phone = numericOnly
+    console.log('📱 Phone updated:', { formatted: value, stored: numericOnly })
   }
 })
 
@@ -434,7 +424,7 @@ const availableRoles = computed(() => {
   })
 })
 
-// Region options
+// Region options - Louisiana Department of Health regions
 const regionOptions = [
   { title: 'Region 1', value: '1' },
   { title: 'Region 2', value: '2' },
@@ -448,7 +438,7 @@ const regionOptions = [
   { title: 'Central Office', value: 'central' }
 ]
 
-// Validation rules
+// Validation rules - Brand compliant
 const rules = {
   required: value => !!value || 'This field is required'
 }
@@ -458,7 +448,6 @@ const displayNameRules = [
   value => (value && value.length >= 2) || 'Display name must be at least 2 characters'
 ]
 
-// Fixed email rules - no longer requires la.gov
 const emailRules = [
   rules.required,
   value => /.+@.+\..+/.test(value) || 'Email must be valid'
@@ -475,7 +464,7 @@ const confirmPasswordRules = [
 ]
 
 const phoneRules = [
-  value => !value || /^\(\d{3}\)\s\d{3}-\d{4}$/.test(value) || 'Phone must be in format (XXX) XXX-XXXX'
+  value => !value || /^\(\d{3}\)\s\d{3}-\d{4}$/.test(formatPhoneNumber(value)) || 'Phone must be in format (XXX) XXX-XXXX'
 ]
 
 const roleRules = [
@@ -566,6 +555,7 @@ const handleNext = async () => {
   }
 }
 
+// FIXED: Enhanced user creation with comprehensive logging and data validation
 const createUser = async () => {
   if (!createUserFormRef.value) return
   
@@ -578,22 +568,29 @@ const createUser = async () => {
   creating.value = true
   
   try {
-    // Call the cloud function to create user
-    const createUserFunction = httpsCallable(functions, 'createUser')
-    
-    const result = await createUserFunction({
+    // FIXED: Prepare data payload with comprehensive logging
+    const userPayload = {
       email: form.value.email.toLowerCase().trim(),
       password: form.value.password,
       displayName: form.value.displayName.trim(),
       role: form.value.role,
-      phone: form.value.phone,
+      phone: form.value.phone, // Raw numeric value
       department: form.value.department,
       title: form.value.title,
       region: form.value.region,
       location: form.value.location,
       bio: form.value.bio,
       sendWelcomeEmail: form.value.sendEmail
-    })
+    }
+
+    console.log('🚀 Creating user with comprehensive payload:', JSON.stringify(userPayload, null, 2))
+
+    // Call the cloud function to create user
+    const createUserFunction = httpsCallable(functions, 'createUser')
+    
+    const result = await createUserFunction(userPayload)
+
+    console.log('✅ User creation result:', JSON.stringify(result.data, null, 2))
 
     if (result.data.success) {
       // Log the creation event
@@ -601,41 +598,66 @@ const createUser = async () => {
         createdUserId: result.data.userId,
         createdUserEmail: form.value.email,
         assignedRole: form.value.role,
-        method: 'admin_creation'
+        method: 'admin_creation',
+        profileFields: {
+          phone: form.value.phone || 'none',
+          department: form.value.department || 'none',
+          title: form.value.title || 'none',
+          region: form.value.region || 'none',
+          location: form.value.location || 'none',
+          bio: form.value.bio || 'none'
+        }
       })
 
-      showSnackbar('User created successfully!', 'success')
+      // Enhanced success message with profile data confirmation
+      let message = 'User created successfully!'
+      if (result.data.profileFieldsSaved) {
+        console.log('📊 Profile fields saved:', result.data.profileFieldsSaved)
+        message += ` Profile data saved: ${Object.values(result.data.profileFieldsSaved).filter(v => v !== 'none').length} fields.`
+      }
       
-      // Emit event to parent
-      emit('user-created', result.data.userId)
-      
-      // Reset and close
+      showSnackbar(message)
+
+      // Refresh the permissions store to reload user list
+      console.log('🔄 Refreshing permissions store to reload user list...')
+      await permissionsStore.loadAllData()
+
+      // Emit user created event with comprehensive data
+      emit('user-created', {
+        userId: result.data.userId,
+        email: result.data.email,
+        displayName: form.value.displayName,
+        role: form.value.role,
+        profileData: {
+          phone: form.value.phone,
+          department: form.value.department,
+          title: form.value.title,
+          region: form.value.region,
+          location: form.value.location,
+          bio: form.value.bio
+        },
+        profileFieldsSaved: result.data.profileFieldsSaved
+      })
+
+      // Reset form and close dialog
       resetForm()
       dialogOpen.value = false
-      
-      // Refresh user list
-      await permissionsStore.loadAllData()
+
     } else {
       throw new Error(result.data.message || 'Failed to create user')
     }
-    
+
   } catch (error) {
-    console.error('Error creating user:', error)
-    
-    // Log the failed attempt
-    await log.custom('user_creation_failed', {
-      attemptedEmail: form.value.email,
-      attemptedRole: form.value.role,
-      error: error.message
-    })
+    console.error('❌ Error creating user:', error)
     
     let errorMessage = 'Failed to create user'
-    if (error.message.includes('already-exists')) {
+    
+    if (error.code === 'functions/already-exists') {
       errorMessage = 'A user with this email already exists'
-    } else if (error.message.includes('invalid-email')) {
-      errorMessage = 'Please enter a valid email address'
-    } else if (error.message.includes('permission-denied')) {
-      errorMessage = 'You do not have permission to create users with this role'
+    } else if (error.code === 'functions/invalid-argument') {
+      errorMessage = 'Please check your input and try again'
+    } else if (error.code === 'functions/permission-denied') {
+      errorMessage = 'You do not have permission to create users'
     } else if (error.message) {
       errorMessage = error.message
     }
@@ -646,18 +668,39 @@ const createUser = async () => {
   }
 }
 
-// Watch dialog state to reset form when closed
-watch(dialogOpen, (newValue) => {
-  if (newValue) {
+// Reset form when dialog closes
+watch(dialogOpen, (isOpen) => {
+  if (!isOpen && !creating.value) {
     resetForm()
   }
 })
 </script>
 
 <style scoped>
-/* Compact styling */
-.create-user-card {
-  min-height: 70vh;
+/* Louisiana Department of Health Brand Styling */
+
+.create-user-dialog {
+  overflow: hidden;
+}
+
+.dialog-header {
+  /* Brand primary color - Louisiana Department of Health Blue */
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+}
+
+.header-content {
+  padding: 1.5rem;
+}
+
+.dialog-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.dialog-actions {
+  border-top: 1px solid rgba(var(--v-border-color), 0.12);
+  background-color: rgb(var(--v-theme-surface));
 }
 
 .form-header {
@@ -665,165 +708,70 @@ watch(dialogOpen, (newValue) => {
 }
 
 .form-title {
-  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #003057;
-  margin: 0 0 0.25rem 0;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 0.5rem;
 }
 
 .form-subtitle {
-  font-family: 'Cambria', Georgia, serif;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   font-size: 0.875rem;
-  color: #426DA9;
-  margin: 0;
-  opacity: 0.8;
 }
 
-/* Compact field groups */
 .field-group {
-  position: relative;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .field-label {
   display: block;
-  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #003057;
-  margin-bottom: 0.375rem;
-  letter-spacing: 0.25px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 0.5rem;
 }
 
-/* Compact field styling for text inputs */
+/* Louisiana Department of Health form field styling */
 .auth-field :deep(.v-field) {
-  background: #f8f9fa;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-  min-height: 40px !important;
-}
-
-.auth-field :deep(.v-field:hover) {
-  background: #f0f2f5;
-  border-color: rgba(66, 109, 169, 0.2);
+  border-radius: 8px;
+  /* Subtle Louisiana Department of Health accent */
+  background-color: rgb(var(--v-theme-surface-variant));
 }
 
 .auth-field :deep(.v-field--focused) {
-  background: white;
-  border-color: #426DA9;
-  box-shadow: 0 0 0 3px rgba(66, 109, 169, 0.1);
-}
-
-.auth-field :deep(.v-field__input) {
-  font-family: 'Cambria', Georgia, serif;
-  font-size: 0.9375rem;
-  color: #003057;
-  padding: 0.5rem 0.875rem !important;
-  min-height: 40px !important;
-}
-
-.auth-field :deep(.v-field__input::placeholder) {
-  color: #6c757d;
-  opacity: 0.7;
-}
-
-/* Simple select field styling - clean and minimal */
-.simple-select {
-  margin-bottom: 4px;
+  /* Primary brand color on focus */
+  background-color: rgba(25, 118, 210, 0.05);
 }
 
 .simple-select :deep(.v-field) {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
-  min-height: 44px;
-}
-
-.simple-select :deep(.v-field:hover) {
-  border-color: #426DA9;
-}
-
-.simple-select :deep(.v-field--focused) {
-  border-color: #426DA9;
-  box-shadow: 0 0 0 2px rgba(66, 109, 169, 0.2);
-}
-
-.simple-select :deep(.v-field__input) {
-  padding: 8px 12px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.simple-select :deep(.v-select__selection) {
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.simple-select :deep(.v-field__append-inner) {
-  padding-top: 0;
-  align-items: center;
-}
-
-/* Remove internal labels */
-.auth-field :deep(.v-label),
-.simple-select :deep(.v-label) {
-  display: none !important;
-}
-
-/* Error message styling */
-.auth-field :deep(.v-messages),
-.simple-select :deep(.v-messages) {
-  font-family: 'Cambria', Georgia, serif;
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
-}
-
-/* Button styling */
-.submit-btn {
-  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.5px;
-  height: 44px;
   border-radius: 8px;
 }
 
-/* Card styling */
-.v-card-title {
-  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+.simple-select :deep(.v-field__input) {
+  min-height: 40px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 600px) {
-  .create-user-card {
-    margin: 0;
-    height: 100vh;
-    border-radius: 0;
-  }
-  
-  .form-title {
-    font-size: 1.125rem;
-  }
-  
-  .field-label {
-    font-size: 0.8rem;
-  }
+.v-alert {
+  border-radius: 8px;
+  /* Louisiana Department of Health info color */
+  background-color: rgba(25, 118, 210, 0.1);
 }
 
-/* Dense row spacing */
-.v-row.dense {
-  margin: -4px;
+/* Button styling to match brand */
+.v-btn--variant-elevated {
+  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
 }
 
-.v-row.dense > .v-col {
-  padding: 4px;
+.v-btn--variant-outlined {
+  border: 1px solid rgba(25, 118, 210, 0.3);
 }
 
-/* Ensure proper spacing and layout */
-.auth-field :deep(.v-input__details),
-.simple-select :deep(.v-input__details) {
-  margin-top: 4px;
-  min-height: unset;
+/* Ensure consistent spacing and typography */
+.v-text-field, .v-select, .v-textarea {
+  font-family: 'Cambria', serif; /* Louisiana Department of Health body font */
+}
+
+.v-card-title, .form-title {
+  font-family: 'Franklin Gothic', 'Arial Black', sans-serif; /* Louisiana Department of Health header font */
 }
 </style>
