@@ -1,4 +1,4 @@
-// firestore.rules - Fixed syntax version
+// firestore.rules - Fixed to Allow Client-Side Audit Logging and Activity Tracking
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -38,9 +38,9 @@ service cloud.firestore {
       // Create users with proper permission
       allow create: if request.auth != null && hasPermission('create_users');
       
-      // Update users - more permissive approach
+      // Update users - Allow self-updates and admin updates
       allow update: if request.auth != null && (
-        // Users can update their own limited fields
+        // Users can update their own activity and limited fields
         (request.auth.uid == userId && 
          request.resource.data.diff(resource.data).affectedKeys()
            .hasOnly(['displayName', 'photoURL', 'lastActive', 'preferences'])) ||
@@ -72,12 +72,14 @@ service cloud.firestore {
       allow write: if request.auth != null && hasPermission('manage_permissions');
     }
     
-    // Audit logs - temporary direct write permission
+    // Audit logs - Allow client-side writes for now
     match /audit_logs/{document} {
       allow read: if request.auth != null && hasPermission('view_audit_logs');
-      // Temporary: Allow authenticated users to create audit logs
-      // TODO: Change to 'allow write: if false;' when Cloud Functions are set up
-      allow create: if request.auth != null;
+      // Allow authenticated users to create and update audit logs
+      // This supports the current client-side audit logging implementation
+      allow create, update: if request.auth != null && 
+        // Ensure they can only write their own audit logs
+        request.resource.data.userId == request.auth.uid;
     }
     
     // Projects collection (future)
