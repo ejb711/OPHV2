@@ -52,7 +52,7 @@
             <label class="field-label">Password</label>
             <v-text-field
               v-model="password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               variant="solo-filled"
               density="comfortable"
               flat
@@ -62,7 +62,18 @@
               :rules="[rules.required, rules.minLength]"
               hide-details="auto"
               :disabled="loading"
-            />
+            >
+              <template #append-inner>
+                <v-btn
+                  :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  size="small"
+                  variant="text"
+                  @click="showPassword = !showPassword"
+                  :title="showPassword ? 'Hide password' : 'Show password'"
+                  :disabled="loading"
+                />
+              </template>
+            </v-text-field>
           </div>
 
           <!-- Sign In Button -->
@@ -113,6 +124,7 @@ import { useErrorHandler } from '../composables/useErrorHandler'
 /* ----- Local State ------------------------------------------------------- */
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const errorMsg = ref('')
 const loading = ref(false)
 
@@ -180,21 +192,20 @@ async function handleSubmit() {
     })
 
     // Successful login - redirect based on role
-    router.push(auth.role === 'pending' ? '/awaiting' : '/dash')
+    router.push(auth.role === 'pending' ? '/awaiting' : '/')
     
   } catch (err) {
     console.error('Login error:', err)
-    
-    // Use the error handler for any unexpected errors
+    // Create a proper error object for the error handler
     const errorObj = handleError(err, { component: 'LoginView', action: 'login' })
     errorMsg.value = errorObj.message
-    
   } finally {
     loading.value = false
   }
 }
 
-// Clear error message when user starts typing
+/* ----- Reactive Behavior ------------------------------------------------- */
+// Clear error when user starts typing
 watch([email, password], () => {
   if (errorMsg.value) {
     errorMsg.value = ''
@@ -203,78 +214,85 @@ watch([email, password], () => {
 </script>
 
 <style scoped>
-/* Main Login Screen - Full viewport with LDH gradient */
+/* Main Layout */
 .login-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(135deg, #003057 0%, #426DA9 100%);
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, 
+    #003057 0%,     /* LDH Dark Blue */
+    #426DA9 50%,    /* LDH Medium Blue */
+    #63B1BC 80%,    /* LDH Light Blue/Teal */
+    #8ba3c7 100%    /* Subtle Blue-Gray (toned down from gold) */
+  );
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 2rem 1rem;
   overflow: hidden;
 }
 
 .login-container {
-  text-align: center;
-  color: white;
   position: relative;
-  max-width: 450px;
+  z-index: 10;
   width: 100%;
-  padding: 2rem;
-  z-index: 2;
+  max-width: 480px;
+  text-align: center;
 }
 
-/* Logo Section (matching LoadingScreen) */
+/* LDH Logo Section (matching LoadingScreen) */
 .logo-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 2rem;
   opacity: 0;
   animation: fadeInUp 0.8s ease-out 0.2s forwards;
 }
 
 .logo-placeholder {
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 1.5rem;
   position: relative;
-  background: #63B1BC;
+  width: 48px;
+  height: 48px;
+  margin-right: 1rem;
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .logo-cross {
   position: relative;
-  width: 28px;
-  height: 28px;
-}
-
-.cross-vertical, .cross-horizontal {
-  position: absolute;
-  background: white;
-  border-radius: 2px;
+  width: 24px;
+  height: 24px;
 }
 
 .cross-vertical {
-  width: 5px;
-  height: 28px;
-  left: 11.5px;
-  top: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 20px;
+  background: #63B1BC;
+  border-radius: 2px;
 }
 
 .cross-horizontal {
-  width: 28px;
-  height: 5px;
-  left: 0;
-  top: 11.5px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 4px;
+  background: #B89D18;
+  border-radius: 2px;
 }
 
 .logo-text {
-  font-family: 'Arial Black', 'Helvetica Neue', Arial, sans-serif;
+  text-align: left;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -452,18 +470,28 @@ watch([email, password], () => {
   height: 100%;
   background: linear-gradient(90deg, 
     transparent 0%, 
-    rgba(99, 177, 188, 0.1) 25%, 
-    rgba(184, 157, 24, 0.1) 50%, 
-    rgba(99, 177, 188, 0.1) 75%, 
+    rgba(99, 177, 188, 0.1) 30%, 
+    rgba(139, 163, 199, 0.08) 50%, 
+    rgba(99, 177, 188, 0.1) 70%, 
     transparent 100%
   );
   border-radius: 50px 50px 0 0;
-  animation: wave 4s ease-in-out infinite;
+  animation: wave 3s ease-in-out infinite;
 }
 
-.wave-1 { animation-delay: 0s; opacity: 0.3; }
-.wave-2 { animation-delay: -1.3s; opacity: 0.2; }
-.wave-3 { animation-delay: -2.6s; opacity: 0.1; }
+.wave-1 {
+  animation-delay: 0s;
+}
+
+.wave-2 {
+  animation-delay: 0.5s;
+  opacity: 0.8;
+}
+
+.wave-3 {
+  animation-delay: 1s;
+  opacity: 0.6;
+}
 
 /* Animations */
 @keyframes fadeInUp {
@@ -479,48 +507,49 @@ watch([email, password], () => {
 
 @keyframes wave {
   0%, 100% {
-    transform: translateX(-100%);
+    transform: translateX(-50%);
   }
   50% {
-    transform: translateX(0%);
+    transform: translateX(-30%);
   }
 }
 
 /* Responsive Design */
 @media (max-width: 640px) {
-  .login-container {
-    padding: 1.5rem;
-    max-width: 350px;
+  .login-screen {
+    padding: 1rem;
+  }
+  
+  .auth-form {
+    padding: 2rem 1.5rem;
+    border-radius: 16px;
   }
   
   .platform-title {
     font-size: 2rem;
   }
   
+  .logo-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
   .logo-placeholder {
-    width: 60px;
-    height: 60px;
+    margin-right: 0;
   }
   
-  .logo-cross {
-    width: 24px;
-    height: 24px;
+  .logo-text {
+    text-align: center;
   }
-  
-  .cross-vertical {
-    width: 4px;
-    height: 24px;
-    left: 10px;
-  }
-  
-  .cross-horizontal {
-    width: 24px;
-    height: 4px;
-    top: 10px;
-  }
-  
+}
+
+@media (max-width: 480px) {
   .auth-form {
-    padding: 2rem 1.5rem;
+    padding: 1.5rem 1rem;
+  }
+  
+  .platform-title {
+    font-size: 1.75rem;
   }
   
   .form-title {
@@ -528,39 +557,29 @@ watch([email, password], () => {
   }
 }
 
-/* Dark mode considerations and reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .wave {
-    animation-duration: 6s;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .auth-field :deep(.v-field) {
+    border: 2px solid #003057;
   }
   
-  .login-screen,
+  .auth-field :deep(.v-field--focused) {
+    border-color: #426DA9;
+    box-shadow: 0 0 0 2px #426DA9;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
   .logo-section,
   .platform-header,
   .auth-form {
     animation: none;
     opacity: 1;
   }
-}
-
-/* Focus management for accessibility */
-.auth-form:focus-within {
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(66, 109, 169, 0.2);
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .auth-form {
-    background: white;
-    border: 2px solid #003057;
-  }
   
-  .form-title {
-    color: #000;
-  }
-  
-  .form-subtitle {
-    color: #333;
+  .wave {
+    animation: none;
   }
 }
 </style>
