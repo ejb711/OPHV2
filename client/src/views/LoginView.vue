@@ -43,6 +43,7 @@
               class="auth-field"
               :rules="[rules.required, rules.email]"
               hide-details="auto"
+              :disabled="loading"
             />
           </div>
 
@@ -60,6 +61,7 @@
               class="auth-field"
               :rules="[rules.required, rules.minLength]"
               hide-details="auto"
+              :disabled="loading"
             />
           </div>
 
@@ -72,6 +74,7 @@
             block
             class="submit-btn"
             :loading="loading"
+            :disabled="loading || !email || !password"
           >
             Sign In
           </v-btn>
@@ -83,6 +86,8 @@
             variant="tonal"
             density="compact"
             class="error-alert"
+            closable
+            @click:close="errorMsg = ''"
           >
             {{ errorMsg }}
           </v-alert>
@@ -103,6 +108,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useErrorHandler } from '../composables/useErrorHandler'
 
 /* ----- Local State ------------------------------------------------------- */
 const email = ref('')
@@ -113,6 +119,7 @@ const loading = ref(false)
 /* ----- Composables ------------------------------------------------------- */
 const router = useRouter()
 const auth = useAuthStore()
+const { handleError } = useErrorHandler()
 
 /* ----- Form Validation Rules --------------------------------------------- */
 const rules = {
@@ -126,27 +133,73 @@ const rules = {
 
 /* ----- Methods ----------------------------------------------------------- */
 async function handleSubmit() {
+  // Clear any previous errors
   errorMsg.value = ''
+  
+  // Validate form
+  if (!email.value || !password.value) {
+    errorMsg.value = 'Please fill in all fields'
+    return
+  }
+
+  if (!rules.email(email.value) === true) {
+    errorMsg.value = 'Please enter a valid email address'
+    return
+  }
+
   loading.value = true
   
   try {
-    await auth.login(email.value, password.value)
+    // Call the auth store login method
+    const result = await auth.login(email.value.trim(), password.value)
+    
+    // Check if login was successful
+    if (!result.success) {
+      // Create a proper error object for the error handler
+      const error = new Error(result.error)
+      error.code = result.errorCode || 'unknown'
+      
+      // Use the error handler to get user-friendly message
+      const errorObj = handleError(error, { component: 'LoginView', action: 'login' })
+      errorMsg.value = errorObj.message
+      return
+    }
 
     // Wait until the store has fetched role ≠ null
     await new Promise(resolve => {
       const stop = watch(
         () => auth.role,
-        r => { if (r !== null) { stop(); resolve() } }
+        r => { 
+          if (r !== null) { 
+            stop()
+            resolve() 
+          } 
+        },
+        { immediate: true }
       )
     })
 
+    // Successful login - redirect based on role
     router.push(auth.role === 'pending' ? '/awaiting' : '/dash')
+    
   } catch (err) {
-    errorMsg.value = err.code?.replace('auth/', '') || err.message
+    console.error('Login error:', err)
+    
+    // Use the error handler for any unexpected errors
+    const errorObj = handleError(err, { component: 'LoginView', action: 'login' })
+    errorMsg.value = errorObj.message
+    
   } finally {
     loading.value = false
   }
 }
+
+// Clear error message when user starts typing
+watch([email, password], () => {
+  if (errorMsg.value) {
+    errorMsg.value = ''
+  }
+})
 </script>
 
 <style scoped>

@@ -1,4 +1,4 @@
-// client/src/composables/useErrorHandler.js - Centralized error handling
+// client/src/composables/useErrorHandler.js - Updated with new Firebase error codes
 import { ref } from 'vue'
 import { useAudit } from './useAudit'
 
@@ -18,7 +18,8 @@ const ERROR_TYPES = {
 
 // User-friendly error messages
 const ERROR_MESSAGES = {
-  // Authentication errors
+  // Authentication errors - Updated for Firebase v9+ error codes
+  'auth/invalid-credential': 'Invalid email or password',
   'auth/user-not-found': 'No account found with this email address',
   'auth/wrong-password': 'Incorrect password',
   'auth/invalid-email': 'Please enter a valid email address',
@@ -27,6 +28,9 @@ const ERROR_MESSAGES = {
   'auth/weak-password': 'Password should be at least 6 characters',
   'auth/too-many-requests': 'Too many failed attempts. Please try again later',
   'auth/network-request-failed': 'Network error. Please check your connection',
+  'auth/operation-not-allowed': 'This sign-in method is not enabled',
+  'auth/invalid-password': 'Invalid password',
+  'auth/requires-recent-login': 'Please log out and log back in to continue',
   
   // Firestore errors
   'permission-denied': 'You don\'t have permission to perform this action',

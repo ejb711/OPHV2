@@ -1,4 +1,4 @@
-// client/src/stores/auth.js - Enhanced with better permission management
+// client/src/stores/auth.js - Complete Enhanced Version with Login Error Handling
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -218,7 +218,13 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, user: cred.user }
     } catch (err) {
       console.error('[auth] Login error:', err)
-      return { success: false, error: err.message }
+      
+      // Return structured error with Firebase error code for proper error handling
+      return { 
+        success: false, 
+        error: err.message,
+        errorCode: err.code // This is crucial for proper error handling in LoginView
+      }
     }
   }
 
@@ -229,7 +235,13 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true, user: cred.user }
     } catch (err) {
       console.error('[auth] Signup error:', err)
-      return { success: false, error: err.message }
+      
+      // Return structured error with Firebase error code
+      return { 
+        success: false, 
+        error: err.message,
+        errorCode: err.code
+      }
     }
   }
 
@@ -240,7 +252,11 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: true }
     } catch (err) {
       console.error('[auth] Logout error:', err)
-      return { success: false, error: err.message }
+      return { 
+        success: false, 
+        error: err.message,
+        errorCode: err.code
+      }
     }
   }
 
