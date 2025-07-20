@@ -1,4 +1,4 @@
-// client/src/stores/auth.js - Enhanced with permissions + TEMPORARY FIX
+// client/src/stores/auth.js - Enhanced with better permission management
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
@@ -22,9 +22,19 @@ export const useAuthStore = defineStore('auth', () => {
   const customPermissions = ref([])
   const deniedPermissions = ref([])
   const ready = ref(false)
+  const error = ref(null)
+  
+  // Permission cache with TTL
+  const permissionCache = ref(new Map())
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
   /* ---------- computed ---------- */
   const effectivePermissions = computed(() => {
+    // Owners have all permissions
+    if (role.value === 'owner') {
+      return ['*'] // Special wildcard permission
+    }
+    
     // Start with role permissions
     let permissions = new Set(rolePermissions.value)
     
@@ -41,20 +51,30 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => role.value === 'admin' || role.value === 'owner')
   const isUser = computed(() => ['user', 'admin', 'owner'].includes(role.value))
   const isPending = computed(() => role.value === 'pending')
+  const isAuthenticated = computed(() => !!user.value && ready.value)
 
   /* ---------- permission helpers ---------- */
   function hasPermission(permission) {
-    if (role.value === 'owner') return true // owners have all permissions
+    if (!ready.value) return false
+    if (role.value === 'owner') return true
     
-   
-    return effectivePermissions.value.includes(permission)
+    // Check cache first
+    const cached = getCachedPermission(permission)
+    if (cached !== null) return cached
+    
+    // Check effective permissions
+    const hasIt = effectivePermissions.value.includes(permission)
+    setCachedPermission(permission, hasIt)
+    return hasIt
   }
 
   function hasAnyPermission(permissions) {
+    if (!Array.isArray(permissions) || permissions.length === 0) return false
     return permissions.some(permission => hasPermission(permission))
   }
 
   function hasAllPermissions(permissions) {
+    if (!Array.isArray(permissions) || permissions.length === 0) return true
     return permissions.every(permission => hasPermission(permission))
   }
 
@@ -63,17 +83,45 @@ export const useAuthStore = defineStore('auth', () => {
     if (role.value === 'admin' && !['owner', 'admin'].includes(targetRole)) return true
     return false
   }
+  
+  /* ---------- cache management ---------- */
+  function getCachedPermission(permission) {
+    const cached = permissionCache.value.get(permission)
+    if (!cached) return null
+    
+    if (Date.now() - cached.timestamp > CACHE_TTL) {
+      permissionCache.value.delete(permission)
+      return null
+    }
+    
+    return cached.value
+  }
+  
+  function setCachedPermission(permission, value) {
+    permissionCache.value.set(permission, {
+      value,
+      timestamp: Date.now()
+    })
+  }
+  
+  function clearPermissionCache() {
+    permissionCache.value.clear()
+  }
 
   /* ---------- auth state handler ---------- */
   onAuthStateChanged(auth, async (u) => {
-    console.log('[auth] state changed:', u?.uid ?? 'signed-out')
+    console.log('[auth] State changed:', u?.uid ?? 'signed-out')
+    
+    // Reset state
     user.value = u
     role.value = null
     userPermissions.value = []
     rolePermissions.value = []
     customPermissions.value = []
     deniedPermissions.value = []
+    error.value = null
     ready.value = false
+    clearPermissionCache()
 
     if (!u) {
       ready.value = true
@@ -81,9 +129,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      // Fetch user profile
-      const userSnap = await getDoc(doc(db, 'users', u.uid))
-      const userData = userSnap.data()
+      // Fetch user profile with retry
+      const userData = await fetchUserData(u.uid)
       
       if (!userData) {
         role.value = 'pending'
@@ -91,99 +138,161 @@ export const useAuthStore = defineStore('auth', () => {
         return
       }
 
+      // Set user data
       role.value = userData.role ?? 'pending'
       customPermissions.value = userData.customPermissions ?? []
       deniedPermissions.value = userData.deniedPermissions ?? []
 
       // Fetch role permissions if not pending
       if (role.value !== 'pending') {
-        try {
-          const roleSnap = await getDoc(doc(db, 'roles', role.value))
-          if (roleSnap.exists()) {
-            rolePermissions.value = roleSnap.data().permissions ?? []
-          } else {
-            console.warn('[auth] ⚠️ Role document not found for:', role.value)
-            // This is expected during initial setup
-          }
-        } catch (roleError) {
-          console.warn('[auth] ⚠️ Error fetching role permissions:', roleError)
-          // This is expected if roles collection doesn't exist yet
-        }
+        await fetchRolePermissions(role.value)
       }
-
-      ready.value = true
-      console.log('[auth] role & permissions loaded →', {
+      
+      console.log('[auth] Permissions loaded:', {
         role: role.value,
         rolePermissions: rolePermissions.value.length,
         customPermissions: customPermissions.value.length,
-        effectivePermissions: effectivePermissions.value.length,
-        usingFallback: role.value === 'admin' && effectivePermissions.value.length === 0
+        deniedPermissions: deniedPermissions.value.length,
+        effective: effectivePermissions.value.length
       })
-    } catch (error) {
-      console.error('Error loading user permissions:', error)
-      role.value = 'pending'
+      
+    } catch (err) {
+      console.error('[auth] Error loading user data:', err)
+      error.value = err.message
+      role.value = 'pending' // Safe fallback
+    } finally {
       ready.value = true
     }
   })
+  
+  /* ---------- data fetching helpers ---------- */
+  async function fetchUserData(uid, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const userSnap = await getDoc(doc(db, 'users', uid))
+        if (userSnap.exists()) {
+          return userSnap.data()
+        }
+        return null
+      } catch (err) {
+        if (i === retries - 1) throw err
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+      }
+    }
+  }
+  
+  async function fetchRolePermissions(roleId) {
+    try {
+      const roleSnap = await getDoc(doc(db, 'roles', roleId))
+      if (roleSnap.exists()) {
+        const roleData = roleSnap.data()
+        rolePermissions.value = roleData.permissions ?? []
+        
+        // For owners, fetch all available permissions
+        if (roleId === 'owner' && roleData.permissions?.includes('*')) {
+          const allPerms = await fetchAllPermissions()
+          rolePermissions.value = allPerms
+        }
+      }
+    } catch (err) {
+      console.warn('[auth] Error fetching role permissions:', err)
+      // Don't throw - continue with empty permissions
+    }
+  }
+  
+  async function fetchAllPermissions() {
+    try {
+      const permsSnap = await getDocs(collection(db, 'permissions'))
+      return permsSnap.docs.map(doc => doc.id)
+    } catch (err) {
+      console.warn('[auth] Error fetching all permissions:', err)
+      return []
+    }
+  }
 
-  /* ---------- actions ---------- */
-  const login = (e, p) => signInWithEmailAndPassword(auth, e, p)
-  const signup = (e, p) => createUserWithEmailAndPassword(auth, e, p)
-  const logout = () => signOut(auth)
+  /* ---------- auth actions ---------- */
+  async function login(email, password) {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      // onAuthStateChanged will handle the rest
+      return { success: true, user: cred.user }
+    } catch (err) {
+      console.error('[auth] Login error:', err)
+      return { success: false, error: err.message }
+    }
+  }
 
+  async function signup(email, password) {
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password)
+      // User document will be created by Cloud Function
+      return { success: true, user: cred.user }
+    } catch (err) {
+      console.error('[auth] Signup error:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
+  async function logout() {
+    try {
+      await signOut(auth)
+      // State will be reset by onAuthStateChanged
+      return { success: true }
+    } catch (err) {
+      console.error('[auth] Logout error:', err)
+      return { success: false, error: err.message }
+    }
+  }
+
+  /* ---------- manual refresh ---------- */
   async function refreshPermissions() {
     if (!user.value) return
     
-    // Force refresh of auth token to get latest custom claims
-    await auth.currentUser.getIdToken(true)
+    clearPermissionCache()
+    ready.value = false
     
-    // Re-fetch user data and permissions
-    const userSnap = await getDoc(doc(db, 'users', user.value.uid))
-    const userData = userSnap.data()
-    
-    if (userData) {
-      role.value = userData.role
-      customPermissions.value = userData.customPermissions ?? []
-      deniedPermissions.value = userData.deniedPermissions ?? []
-
-      if (role.value !== 'pending') {
-        try {
-          const roleSnap = await getDoc(doc(db, 'roles', role.value))
-          if (roleSnap.exists()) {
-            rolePermissions.value = roleSnap.data().permissions ?? []
-          }
-        } catch (error) {
-          console.warn('[auth] Error refreshing role permissions:', error)
+    try {
+      const userData = await fetchUserData(user.value.uid)
+      if (userData) {
+        role.value = userData.role ?? 'pending'
+        customPermissions.value = userData.customPermissions ?? []
+        deniedPermissions.value = userData.deniedPermissions ?? []
+        
+        if (role.value !== 'pending') {
+          await fetchRolePermissions(role.value)
         }
       }
+    } catch (err) {
+      console.error('[auth] Error refreshing permissions:', err)
+      error.value = err.message
+    } finally {
+      ready.value = true
     }
   }
 
   async function getUserDocument() {
-  if (!user.value) return null
-  
-  try {
-    const userDoc = await getDoc(doc(db, 'users', user.value.uid))
-    return userDoc.exists() ? userDoc.data() : null
-  } catch (error) {
-    console.error('Error fetching user document:', error)
-    return null
+    if (!user.value) return null
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.value.uid))
+      return userDoc.exists() ? userDoc.data() : null
+    } catch (error) {
+      console.error('[auth] Error fetching user document:', error)
+      return null
+    }
   }
-}
 
   async function refreshCurrentUser() {
     if (!user.value) return
     
     try {
-      // Refresh the Firebase Auth user object
       await auth.currentUser.reload()
-      
       // The onAuthStateChanged listener will automatically update
-      // the user ref and trigger permission refresh
     } catch (error) {
-      console.error('Error refreshing current user:', error)
+      console.error('[auth] Error refreshing current user:', error)
     }
   }
+  
   return {
     // State
     user,
@@ -193,6 +302,7 @@ export const useAuthStore = defineStore('auth', () => {
     customPermissions,
     deniedPermissions,
     ready,
+    error,
     
     // Computed
     effectivePermissions,
@@ -200,6 +310,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     isUser,
     isPending,
+    isAuthenticated,
     
     // Methods
     hasPermission,
@@ -210,8 +321,8 @@ export const useAuthStore = defineStore('auth', () => {
     signup,
     logout,
     refreshPermissions,
-
     getUserDocument,
     refreshCurrentUser,
+    clearPermissionCache
   }
 })
