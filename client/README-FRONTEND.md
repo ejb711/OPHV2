@@ -14,20 +14,41 @@ OPHV2 uses Vue 3 composition functions for reusable business logic. All composab
 import { useAudit } from '@/composables/useAudit'
 ```
 
-**Basic Usage**:
+**⚠️ CRITICAL: Correct API Usage**
 ```javascript
+// ❌ WRONG - This will cause "log is not a function" error
 const { log } = useAudit()
+await log('admin_panel_accessed', details)
 
-// Simple action logging
-await log.userLogin({ ip: '192.168.1.1' })
-await log.adminTabViewed('users')
-await log.userUpdated({ targetUserId: 'user123', changes: { role: 'admin' } })
+// ✅ CORRECT - Use predefined methods
+const { log } = useAudit()
+await log.adminPanelAccessed(details)
 
-// Custom events
-await log.custom('custom_action', { details: 'any data' })
+// ✅ CORRECT - For custom actions
+const { logEvent } = useAudit()
+await logEvent('custom_action', details)
+
+// ✅ BEST - Import both for flexibility
+const { log, logEvent } = useAudit()
+await log.userCreated(details)        // Predefined
+await logEvent('custom_workflow', details)  // Custom
 ```
 
-**Available Log Methods**:
+**Basic Usage**:
+```javascript
+const { log, logEvent } = useAudit()
+
+// Simple action logging using predefined methods
+await log.userLogin({ ip: '192.168.1.1' })
+await log.adminPanelAccessed({ timestamp: new Date().toISOString() })
+await log.userUpdated({ targetUserId: 'user123', changes: { role: 'admin' } })
+
+// Custom events using logEvent function
+await logEvent('custom_action', { details: 'any data' })
+await logEvent('workflow_completed', { workflowId: 'wf-123', duration: 1200 })
+```
+
+**Available Log Methods** (via `log` object):
 ```javascript
 // Authentication
 log.userLogin(details)
@@ -61,21 +82,53 @@ log.eventCreated(details)
 log.securityAlert(details)
 log.unauthorizedAccess(details)
 log.systemError(details)
+
+// Generic logging (equivalent to logEvent)
+log.custom(action, details)
 ```
 
 **Advanced Usage**:
 ```javascript
-const { logEvent, getRecentActivity, RETENTION_CONFIG } = useAudit()
+const { log, logEvent, getRecentActivity, RETENTION_CONFIG } = useAudit()
 
-// Direct logging with custom action
+// Using predefined methods (recommended for common actions)
+await log.adminPanelAccessed({
+  timestamp: new Date().toISOString(),
+  userAgent: navigator.userAgent
+})
+
+// Using logEvent for complex custom workflows
 await logEvent('complex_workflow_completed', {
   workflowId: 'wf-123',
   steps: ['step1', 'step2', 'step3'],
-  duration: 1200
+  duration: 1200,
+  outcome: 'success'
 })
 
 // Get user's recent activity
 const recentActivity = await getRecentActivity(25) // Last 25 actions
+
+// Check retention configuration
+console.log('Retention config:', RETENTION_CONFIG)
+```
+
+**When to Use Which Method**:
+```javascript
+// Use log.methodName() for:
+// - Standard application actions
+// - Pre-defined events with established patterns
+// - Actions that follow naming conventions
+await log.userCreated({ userId: 'abc123', email: 'user@example.com' })
+
+// Use logEvent() for:
+// - Custom business logic events
+// - Complex workflows
+// - Actions not covered by predefined methods
+await logEvent('invoice_generated', { invoiceId: 'inv-456', amount: 250.00 })
+
+// Use log.custom() for:
+// - Generic custom events (alternative to logEvent)
+await log.custom('data_export_requested', { format: 'csv', recordCount: 1500 })
 ```
 
 **Error Handling**:
@@ -83,6 +136,13 @@ const recentActivity = await getRecentActivity(25) // Last 25 actions
 - Never throws exceptions that break app functionality
 - Logs errors to console in development mode
 - Automatically retries on temporary failures
+- Safe to use in try/catch blocks without breaking app flow
+
+**Performance Notes**:
+- All logging is asynchronous and non-blocking
+- Failed logs don't interrupt user workflows
+- Automatic batching for high-frequency events
+- Uses Firestore optimized write patterns
 
 ---
 

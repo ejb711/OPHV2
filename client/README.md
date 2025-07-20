@@ -133,6 +133,27 @@ firebase deploy --only firestore:indexes
 2. Verify `useAudit()` composable is imported correctly
 3. Check browser network tab for failed requests
 
+#### 9. **Vue Component Emit Warnings**
+**Symptoms**: "Component emitted event 'X' but it is neither declared in the emits option"
+**Solutions**:
+1. Add missing events to defineEmits array: `defineEmits(['existing-event', 'new-event'])`
+2. Check child components for undeclared emitted events
+3. Verify parent components handle emitted events properly
+
+#### 10. **useAudit "log is not a function" Error**
+**Symptoms**: "TypeError: log is not a function"
+**Solutions**:
+1. Use correct API: `log.adminPanelAccessed()` not `log('admin_panel_accessed')`
+2. Import both: `const { log, logEvent } = useAudit()`
+3. Use `logEvent()` for custom actions, `log.methodName()` for predefined actions
+
+#### 11. **Vuetify 3 Component Warnings**
+**Symptoms**: "Failed to resolve component: v-subheader" or similar deprecated components
+**Solutions**:
+1. Replace v-subheader with: `<div class="text-h6 font-weight-medium mb-3 text-primary">`
+2. Check Vuetify 3 migration guide for other deprecated components
+3. Use modern Vuetify 3 typography and spacing classes
+
 ### Advanced Debugging
 
 #### Debug Permissions in Browser Console
@@ -217,3 +238,14 @@ firebase firestore:rules validate
 ---
 *Last Updated: July 20, 2025 - Major permissions fix applied*  
 *Remember to update when making structural changes!*
+
+### **4. Quick Status Update**
+Since you recently had Firestore permission fixes, you might also want to add a note in the main README.md status section:
+
+```markdown
+## 🎯 Current Status
+
+✅ **Complete**: Auth system, role management, admin panel, audit logging  
+✅ **Recently Fixed**: Firestore permissions, activity tracking, Vue emit warnings, audit logging API  
+🚧 **Ready to Build**: Projects, Forums, Calendar, Reports  
+📋 **Maintenance**: Keep files < 350 lines, update READMEs with changes
