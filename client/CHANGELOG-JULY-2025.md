@@ -1,5 +1,92 @@
 # CHANGELOG - July 2025
 
+## July 20, 2025 (Late Night) - Critical Profile Fields Fix
+
+### 🐛 **CRITICAL FIX: User Profile Fields Not Saving**
+
+#### **Issue Resolved**
+**Problem**: Profile fields (phone, department, title, region, location, bio) were being saved by the `createUser` Cloud Function but immediately overwritten by the `onUserCreated` authentication trigger
+- Admin creates user with profile data → Data saved correctly to Firestore ✅
+- Firebase Auth triggers `onUserCreated` automatically → Overwrites entire document ❌
+- Result: All profile fields lost, replaced with default values
+
+#### **Solution Implemented**
+**Modified Authentication Trigger**: Updated `onUserCreated` to check for existing documents before creating new ones
+
+**Key Improvements:**
+- **Document preservation**: Check if user document exists before creating
+- **Smart detection**: Differentiate between admin-created and self-registered users
+- **Profile data protection**: Preserve all admin-entered profile information
+- **Audit trail maintained**: Proper logging for both creation methods
+
+#### **Files Modified**
+
+##### **1. functions/src/auth/triggers.js** - Authentication Trigger Fix
+```
+functions/src/auth/triggers.js
+```
+**Changes:**
+- **CRITICAL**: Added existence check before creating user documents
+- **Profile preservation**: Only update auth-related fields for existing documents
+- **Self-registration support**: Still create documents for new self-registered users
+- Enhanced logging to track document creation vs updates
+- Audit logging differentiates between admin creation and self-registration
+
+#### **Technical Details**
+
+**❌ Broken Trigger Logic:**
+```javascript
+exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
+  // Always created new document, overwriting any existing data
+  await admin.firestore().collection('users').doc(user.uid).set(userData)
+})
+```
+
+**✅ Fixed Trigger Logic:**
+```javascript
+exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
+  // Check if document already exists
+  const existingDoc = await admin.firestore().collection('users').doc(user.uid).get()
+  
+  if (existingDoc.exists) {
+    // Document exists (admin-created) - preserve profile data
+    await admin.firestore().collection('users').doc(user.uid).update({
+      lastActive: admin.firestore.FieldValue.serverTimestamp(),
+      'metadata.emailVerified': user.emailVerified || false
+    })
+    return
+  }
+  
+  // Only create new document for self-registered users
+  await admin.firestore().collection('users').doc(user.uid).set(userData)
+})
+```
+
+#### **Root Cause Analysis**
+
+The system had a race condition between two processes:
+1. **Admin User Creation**: `createUser` function saves all profile fields
+2. **Auth Trigger**: `onUserCreated` automatically fires and overwrites the document
+
+The trigger was designed for self-registration but didn't account for admin-created users with pre-filled profile data.
+
+#### **Testing Scenarios Validated:**
+- ✅ **Admin creates user** → All profile fields persist in Firestore
+- ✅ **Profile data preservation** → Phone, department, title, region, location, bio retained
+- ✅ **Role preservation** → User role not overwritten as 'pending'
+- ✅ **Self-registration** → Still works correctly with default values
+- ✅ **Audit logging** → Both creation methods properly logged
+- ✅ **Edit functionality** → Profile fields display correctly in admin edit view
+
+#### **Verification Steps:**
+1. Created test user "asfd" with all profile fields filled
+2. Checked Firestore - all fields present and correct
+3. Verified role shows as selected (not 'pending')
+4. Confirmed fields display in UserProfileEditView
+5. Tested self-registration still works properly
+
+---
+
 ## July 20, 2025 (Night) - Login System Critical Fixes
 
 ### 🔧 **CRITICAL FIXES: Login System**
@@ -456,6 +543,7 @@ functions/src/
 
 ### **Files Modified/Created (Complete Project History)**
 ```
+✅ CRITICAL PROFILE FIX (July 20 Late Night): functions/src/auth/triggers.js (document preservation)
 ✅ CRITICAL LOGIN FIXES (July 20 Night): client/src/views/LoginView.vue (validation, routing, branding)
 ✅ ENHANCED (July 20 Late Night): Login error handling system (3 files)
 ✅ NEW (July 20 Evening): client/src/views/UserProfileEditView.vue (340 lines)
@@ -470,7 +558,7 @@ functions/src/
 
 ### **Current System Capabilities**
 - **Authentication**: Professional login experience with user-friendly error handling and working login flow
-- **Users**: Complete CRUD with enhanced profile management via clickable admin interface
+- **Users**: Complete CRUD with enhanced profile management and data persistence
 - **Roles**: Full hierarchy with inheritance (Owner → Admin → User → Viewer → Pending)
 - **Permissions**: Granular system with custom grants/denials and audit logging
 - **Functions**: Modular architecture with individual module deployment capability
@@ -480,7 +568,7 @@ functions/src/
 
 ### **Production Readiness Checklist**
 - ✅ **Authentication**: Multi-tier role system operational with enhanced error handling and working login flow
-- ✅ **User Management**: Complete CRUD with enhanced profile editing
+- ✅ **User Management**: Complete CRUD with profile field persistence
 - ✅ **Admin Interface**: Professional panel with all management capabilities
 - ✅ **Audit System**: Comprehensive logging with retention policies
 - ✅ **Security**: Multi-layer permission enforcement
@@ -490,8 +578,9 @@ functions/src/
 - ✅ **Error Handling**: User-friendly authentication error management and proper routing
 - ✅ **User Experience**: Professional interface with graceful error recovery and functional login system
 - ✅ **Brand Compliance**: Consistent visual identity across all screens
+- ✅ **Data Integrity**: Profile fields properly preserved through authentication triggers
 
-**OPHV2 Status**: 🚀 **Enterprise-Ready Platform** with fully functional authentication, comprehensive admin user management, modular Cloud Functions architecture, working login system, and robust foundation prepared for advanced feature development (Projects, Forums, Calendar, Advanced Reporting).
+**OPHV2 Status**: 🚀 **Enterprise-Ready Platform** with fully functional authentication, comprehensive admin user management, profile data persistence, modular Cloud Functions architecture, working login system, and robust foundation prepared for advanced feature development (Projects, Forums, Calendar, Advanced Reporting).
 
 ---
 
@@ -552,7 +641,7 @@ logActivity('user_profile_updated', {
 1. Test login works with valid credentials → redirects to dashboard
 2. Test login shows proper error messages for invalid credentials  
 3. Test admin panel loads without errors
-4. Test user creation works in both Auth and Firestore  
+4. Test user creation works with profile fields persisting
 5. Test user deletion removes from both systems
 6. Test profile editing functionality
 7. Test cross colors match between LoginView and LoadingScreen
@@ -615,7 +704,7 @@ VITE_FIREBASE_APP_ID
 - **User-friendly error handling**: Modern Firebase error code mapping
 
 ### **✅ COMPLETED: Admin Management System**
-- **User Management**: Create, edit, delete users with role assignment
+- **User Management**: Create, edit, delete users with role assignment and profile persistence
 - **Enhanced User Profile Editing**: Click user emails to edit full profiles
 - **Role Management**: Create custom roles with specific permission sets
 - **Permission Matrix**: Visual grid showing all role-permission relationships
@@ -627,9 +716,11 @@ VITE_FIREBASE_APP_ID
 - **Dashboard**: Role-based content display with quick actions
 - **Awaiting Approval**: Workflow for pending users awaiting admin approval
 - **Functional Authentication**: Working login with proper error handling and routing
+- **Data Persistence**: Profile fields properly saved and maintained
 
 ### **✅ COMPLETED: Infrastructure**
 - **Modular Cloud Functions**: 8 focused modules for better maintainability
+- **Smart Authentication Triggers**: Document preservation for admin-created users
 - **Firestore Security Rules**: Permission-based access control at database level
 - **Component Guards**: PermissionGuard wrapper for conditional UI rendering
 - **Brand Compliance**: Consistent typography and color scheme per LDH standards
@@ -638,7 +729,8 @@ VITE_FIREBASE_APP_ID
   - Permission System: Granular permissions with categories, runtime permission checking
   - Error Handling: Consistent error transformation patterns, user-friendly messages
   - Functional Login System: Fixed validation, routing, and brand compliance issues
+  - Profile Data Integrity: Authentication triggers preserve admin-entered data
 
 ---
 
-*This comprehensive changelog documents the complete evolution of OPHV2 from its foundation through all critical fixes and enhancements, ensuring full functionality and enterprise readiness.* 🚀
+*This comprehensive changelog documents the complete evolution of OPHV2 from its foundation through all critical fixes and enhancements, ensuring full functionality and enterprise readiness with complete data persistence.* 🚀

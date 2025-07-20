@@ -1,347 +1,417 @@
-<!-- client/src/components/admin/CreateUserDialog.vue - FIXED with Complete Brand Styling -->
+<!-- client/src/components/admin/CreateUserDialog.vue - COMPLETE Professional Louisiana DOH Styling -->
 <template>
   <v-dialog
     v-model="dialogOpen"
-    max-width="600"
+    :max-width="$vuetify.display.smAndDown ? '100%' : '650'"
     persistent
     scrollable
+    :fullscreen="$vuetify.display.smAndDown"
+    transition="dialog-bottom-transition"
   >
-    <v-card class="create-user-dialog">
-      <!-- Header with Louisiana Department of Health Brand Colors -->
-      <v-card-title class="dialog-header pa-0">
-        <div class="header-content">
-          <div class="d-flex align-center gap-3">
-            <v-icon color="white" size="28">mdi-account-plus</v-icon>
-            <div>
-              <h2 class="text-h5 font-weight-bold">Create New User</h2>
-              <p class="text-body-2 text-grey-lighten-1 mt-1 mb-0">
-                Step {{ currentStep }} of {{ totalSteps }}: {{ stepTitle }}
-              </p>
+    <v-card class="create-user-card elevation-12">
+      <!-- Professional Government Header -->
+      <div class="dialog-header">
+        <v-toolbar color="transparent" flat>
+          <v-icon color="white" size="32" class="mr-3">mdi-account-plus-outline</v-icon>
+          <div>
+            <v-toolbar-title class="text-h5 font-weight-bold text-white">
+              Create New User
+            </v-toolbar-title>
+            <div class="text-caption text-white-darken-1 mt-n1">
+              Step {{ currentStep }} of {{ totalSteps }}: {{ stepTitle }}
             </div>
           </div>
-        </div>
-      </v-card-title>
-
-      <!-- Form Content -->
-      <v-card-text class="dialog-content px-6 py-6">
-        <v-form ref="createUserFormRef" @submit.prevent="handleNext">
-          <!-- Step 1: Basic Information -->
-          <div v-if="currentStep === 1" key="step1">
-            <div class="form-header mb-4">
-              <h3 class="form-title">Account Details</h3>
-              <p class="form-subtitle">Essential information for account creation</p>
-            </div>
-
-            <v-row dense>
-              <!-- Email -->
-              <v-col cols="12">
-                <div class="field-group">
-                  <label class="field-label">Email Address *</label>
-                  <v-text-field
-                    v-model="form.email"
-                    type="email"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    required
-                    placeholder="user@example.com"
-                    class="auth-field"
-                    :rules="emailRules"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Display Name -->
-              <v-col cols="12">
-                <div class="field-group">
-                  <label class="field-label">Display Name *</label>
-                  <v-text-field
-                    v-model="form.displayName"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    required
-                    placeholder="Full Name"
-                    class="auth-field"
-                    :rules="displayNameRules"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Password -->
-              <v-col cols="12" md="6">
-                <div class="field-group">
-                  <label class="field-label">Password *</label>
-                  <v-text-field
-                    v-model="form.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    required
-                    placeholder="Password"
-                    class="auth-field"
-                    :rules="passwordRules"
-                    hide-details="auto"
-                  >
-                    <template #append-inner>
-                      <v-btn
-                        :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                        size="small"
-                        variant="text"
-                        @click="showPassword = !showPassword"
-                        title="Toggle password visibility"
-                      />
-                      <v-btn
-                        icon="mdi-refresh"
-                        size="small"
-                        variant="text"
-                        @click="generatePassword"
-                        title="Generate random password"
-                      />
-                    </template>
-                  </v-text-field>
-                </div>
-              </v-col>
-
-              <!-- Confirm Password -->
-              <v-col cols="12" md="6">
-                <div class="field-group">
-                  <label class="field-label">Confirm Password *</label>
-                  <v-text-field
-                    v-model="form.confirmPassword"
-                    :type="showConfirmPassword ? 'text' : 'password'"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    required
-                    placeholder="Confirm password"
-                    class="auth-field"
-                    :rules="confirmPasswordRules"
-                    hide-details="auto"
-                  >
-                    <template #append-inner>
-                      <v-btn
-                        :icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                        size="small"
-                        variant="text"
-                        @click="showConfirmPassword = !showConfirmPassword"
-                        title="Toggle password visibility"
-                      />
-                    </template>
-                  </v-text-field>
-                </div>
-              </v-col>
-
-              <!-- Role -->
-              <v-col cols="12">
-                <div class="field-group">
-                  <label class="field-label">Role *</label>
-                  <v-select
-                    v-model="form.role"
-                    :items="availableRoles"
-                    item-title="name"
-                    item-value="id"
-                    variant="solo"
-                    density="compact"
-                    placeholder="Select user role"
-                    class="simple-select"
-                    :rules="roleRules"
-                    hide-details="auto"
-                  >
-                    <template #item="{ props, item }">
-                      <v-list-item v-bind="props">
-                        <template #prepend>
-                          <v-icon :color="item.raw.color || 'primary'">
-                            {{ item.raw.icon || 'mdi-account' }}
-                          </v-icon>
-                        </template>
-                        <v-list-item-title>{{ item.raw.name }}</v-list-item-title>
-                        <v-list-item-subtitle>{{ item.raw.description }}</v-list-item-subtitle>
-                      </v-list-item>
-                    </template>
-                  </v-select>
-                </div>
-              </v-col>
-            </v-row>
-          </div>
-
-          <!-- Step 2: Profile Details -->
-          <div v-if="currentStep === 2" key="step2">
-            <div class="form-header mb-4">
-              <h3 class="form-title">Profile Details</h3>
-              <p class="form-subtitle">Additional information and contact details (optional)</p>
-            </div>
-
-            <v-row dense>
-              <!-- Phone -->
-              <v-col cols="12" :md="$vuetify.display.mdAndUp ? 6 : 12">
-                <div class="field-group">
-                  <label class="field-label">Phone Number</label>
-                  <v-text-field
-                    v-model="formattedPhone"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    placeholder="(XXX) XXX-XXXX"
-                    class="auth-field"
-                    :rules="phoneRules"
-                    maxlength="14"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Region -->
-              <v-col cols="12" :md="$vuetify.display.mdAndUp ? 6 : 12">
-                <div class="field-group">
-                  <label class="field-label">Region</label>
-                  <v-select
-                    v-model="form.region"
-                    :items="regionOptions"
-                    variant="solo"
-                    density="compact"
-                    placeholder="Select region"
-                    class="simple-select"
-                    hide-details="auto"
-                    clearable
-                  />
-                </div>
-              </v-col>
-
-              <!-- Department -->
-              <v-col cols="12" :md="$vuetify.display.mdAndUp ? 6 : 12">
-                <div class="field-group">
-                  <label class="field-label">Department</label>
-                  <v-text-field
-                    v-model="form.department"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    placeholder="e.g., Public Health"
-                    class="auth-field"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Title -->
-              <v-col cols="12" :md="$vuetify.display.mdAndUp ? 6 : 12">
-                <div class="field-group">
-                  <label class="field-label">Job Title</label>
-                  <v-text-field
-                    v-model="form.title"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    placeholder="e.g., Health Specialist"
-                    class="auth-field"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Location -->
-              <v-col cols="12">
-                <div class="field-group">
-                  <label class="field-label">Location</label>
-                  <v-text-field
-                    v-model="form.location"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    placeholder="City, State"
-                    class="auth-field"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Bio -->
-              <v-col cols="12">
-                <div class="field-group">
-                  <label class="field-label">Bio</label>
-                  <v-textarea
-                    v-model="form.bio"
-                    variant="solo-filled"
-                    density="compact"
-                    flat
-                    placeholder="Brief description about the user..."
-                    class="auth-field"
-                    rows="2"
-                    hide-details="auto"
-                  />
-                </div>
-              </v-col>
-
-              <!-- Send Welcome Email -->
-              <v-col cols="12">
-                <div class="field-group">
-                  <v-checkbox
-                    v-model="form.sendEmail"
-                    color="primary"
-                    density="compact"
-                  >
-                    <template #label>
-                      <span class="field-label">Send welcome email with login instructions</span>
-                    </template>
-                  </v-checkbox>
-                </div>
-              </v-col>
-            </v-row>
-          </div>
-
-          <!-- Account Creation Info -->
-          <v-alert
-            v-if="currentStep === totalSteps"
-            type="info"
-            variant="tonal"
-            icon="mdi-information"
-            class="mt-4"
-            density="compact"
+          <v-spacer />
+          <v-btn
+            icon
+            variant="text"
+            color="white"
+            @click="handleCancel"
+            class="ma-0"
           >
-            <div class="text-subtitle-2 font-weight-bold mb-1">Ready to Create</div>
-            The user will be able to sign in immediately with the provided credentials.
-            <span v-if="form.sendEmail"> A welcome email will be sent with login instructions.</span>
-          </v-alert>
-        </v-form>
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-toolbar>
+        
+        <!-- Progress Bar -->
+        <v-progress-linear
+          :model-value="(currentStep / totalSteps) * 100"
+          color="white"
+          bg-color="white"
+          bg-opacity="0.3"
+          height="3"
+          class="ma-0"
+        />
+      </div>
+
+      <!-- Form Content with Government Styling -->
+      <v-card-text class="dialog-body pa-0">
+        <v-container fluid class="pa-6">
+          <v-form ref="createUserFormRef" @submit.prevent="handleNext">
+            <!-- Step 1: Account Information -->
+            <v-window v-model="currentStep" class="mt-2">
+              <v-window-item :value="1">
+                <div class="step-content">
+                  <!-- Section Header -->
+                  <div class="section-header mb-6 text-center">
+                    <v-icon color="primary" size="48" class="mb-3">mdi-account-key</v-icon>
+                    <h3 class="text-h6 font-weight-bold text-grey-darken-3">Account Details</h3>
+                    <p class="text-body-2 text-grey-darken-1 mt-1">Essential information for account creation</p>
+                  </div>
+
+                  <!-- Form Fields -->
+                  <v-row>
+                    <!-- Email Address -->
+                    <v-col cols="12">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label required">
+                          Email Address
+                        </label>
+                        <v-text-field
+                          v-model="form.email"
+                          type="email"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="user@example.com"
+                          prepend-inner-icon="mdi-email-outline"
+                          :rules="emailRules"
+                          :error="false"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Display Name -->
+                    <v-col cols="12">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label required">
+                          Display Name
+                        </label>
+                        <v-text-field
+                          v-model="form.displayName"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="Enter full name"
+                          prepend-inner-icon="mdi-account-outline"
+                          :rules="displayNameRules"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Password Row -->
+                    <v-col cols="12" md="6">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label required">
+                          Password
+                        </label>
+                        <v-text-field
+                          v-model="form.password"
+                          :type="showPassword ? 'text' : 'password'"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="Enter password"
+                          prepend-inner-icon="mdi-lock-outline"
+                          :rules="passwordRules"
+                          hide-details="auto"
+                          class="gov-input"
+                        >
+                          <template #append-inner>
+                            <v-btn
+                              :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                              size="x-small"
+                              variant="text"
+                              @click="showPassword = !showPassword"
+                            />
+                            <v-tooltip text="Generate Password" location="top">
+                              <template #activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="mdi-refresh"
+                                  size="x-small"
+                                  variant="text"
+                                  color="primary"
+                                  @click="generatePassword"
+                                />
+                              </template>
+                            </v-tooltip>
+                          </template>
+                        </v-text-field>
+                      </div>
+                    </v-col>
+
+                    <!-- Confirm Password -->
+                    <v-col cols="12" md="6">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label required">
+                          Confirm Password
+                        </label>
+                        <v-text-field
+                          v-model="form.confirmPassword"
+                          :type="showConfirmPassword ? 'text' : 'password'"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="Confirm password"
+                          prepend-inner-icon="mdi-lock-check-outline"
+                          :rules="confirmPasswordRules"
+                          hide-details="auto"
+                          class="gov-input"
+                        >
+                          <template #append-inner>
+                            <v-btn
+                              :icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                              size="x-small"
+                              variant="text"
+                              @click="showConfirmPassword = !showConfirmPassword"
+                            />
+                          </template>
+                        </v-text-field>
+                      </div>
+                    </v-col>
+
+                    <!-- Role Selection -->
+                    <v-col cols="12">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label required">
+                          User Role
+                        </label>
+                        <v-select
+                          v-model="form.role"
+                          :items="availableRoles"
+                          item-title="name"
+                          item-value="id"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="Select user role"
+                          prepend-inner-icon="mdi-shield-account-outline"
+                          :rules="roleRules"
+                          hide-details="auto"
+                          class="gov-input"
+                        >
+                          <template #selection="{ item }">
+                            <v-chip
+                              :color="getRoleColor(item.value)"
+                              size="small"
+                              label
+                              class="font-weight-medium"
+                            >
+                              {{ item.title }}
+                            </v-chip>
+                          </template>
+                          <template #item="{ item, props }">
+                            <v-list-item v-bind="props" class="py-2">
+                              <template #prepend>
+                                <v-chip
+                                  :color="getRoleColor(item.value)"
+                                  size="small"
+                                  label
+                                  class="mr-3"
+                                >
+                                  {{ item.title }}
+                                </v-chip>
+                              </template>
+                            </v-list-item>
+                          </template>
+                        </v-select>
+                      </div>
+                    </v-col>
+                  </v-row>
+                </div>
+              </v-window-item>
+
+              <!-- Step 2: Profile Information -->
+              <v-window-item :value="2">
+                <div class="step-content">
+                  <!-- Section Header -->
+                  <div class="section-header mb-6 text-center">
+                    <v-icon color="primary" size="48" class="mb-3">mdi-account-details</v-icon>
+                    <h3 class="text-h6 font-weight-bold text-grey-darken-3">Profile Information</h3>
+                    <p class="text-body-2 text-grey-darken-1 mt-1">Additional details to complete the user profile</p>
+                  </div>
+
+                  <v-row>
+                    <!-- Phone Number -->
+                    <v-col cols="12" md="6">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label">
+                          Phone Number
+                        </label>
+                        <v-text-field
+                          v-model="formattedPhone"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="(555) 123-4567"
+                          prepend-inner-icon="mdi-phone-outline"
+                          :rules="phoneRules"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Region -->
+                    <v-col cols="12" md="6">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label">
+                          Region
+                        </label>
+                        <v-select
+                          v-model="form.region"
+                          :items="regionOptions"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="Select region"
+                          prepend-inner-icon="mdi-map-marker-outline"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Department -->
+                    <v-col cols="12" md="6">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label">
+                          Department
+                        </label>
+                        <v-text-field
+                          v-model="form.department"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="e.g., Public Health"
+                          prepend-inner-icon="mdi-office-building-outline"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Job Title -->
+                    <v-col cols="12" md="6">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label">
+                          Job Title
+                        </label>
+                        <v-text-field
+                          v-model="form.title"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="e.g., Health Specialist"
+                          prepend-inner-icon="mdi-briefcase-outline"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Location -->
+                    <v-col cols="12">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label">
+                          Location
+                        </label>
+                        <v-text-field
+                          v-model="form.location"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="City, State"
+                          prepend-inner-icon="mdi-map-outline"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Bio -->
+                    <v-col cols="12">
+                      <div class="gov-field-group">
+                        <label class="gov-field-label">
+                          Bio
+                        </label>
+                        <v-textarea
+                          v-model="form.bio"
+                          variant="outlined"
+                          density="comfortable"
+                          placeholder="Brief description about the user..."
+                          prepend-inner-icon="mdi-text"
+                          rows="3"
+                          hide-details="auto"
+                          class="gov-input"
+                        />
+                      </div>
+                    </v-col>
+
+                    <!-- Send Welcome Email -->
+                    <v-col cols="12">
+                      <v-card variant="tonal" color="primary" class="pa-4">
+                        <v-checkbox
+                          v-model="form.sendEmail"
+                          color="primary"
+                          hide-details
+                        >
+                          <template #label>
+                            <div>
+                              <div class="font-weight-medium">Send Welcome Email</div>
+                              <div class="text-caption text-grey-darken-1">
+                                User will receive login instructions via email
+                              </div>
+                            </div>
+                          </template>
+                        </v-checkbox>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </div>
+              </v-window-item>
+            </v-window>
+          </v-form>
+        </v-container>
       </v-card-text>
 
-      <!-- Actions -->
-      <v-card-actions class="dialog-actions px-6 py-4">
-        <div class="d-flex align-center justify-space-between w-100">
-          <v-btn
-            v-if="currentStep > 1"
-            variant="outlined"
-            prepend-icon="mdi-chevron-left"
-            @click="handleBack"
-            :disabled="creating"
-          >
-            Back
-          </v-btn>
-          <div v-else></div>
+      <!-- Professional Footer Actions -->
+      <v-divider />
+      <v-card-actions class="dialog-footer pa-6">
+        <v-btn
+          variant="text"
+          color="grey-darken-2"
+          @click="handleCancel"
+          :disabled="creating"
+          class="px-4"
+        >
+          Cancel
+        </v-btn>
+        
+        <v-spacer />
 
-          <div class="d-flex gap-2">
-            <v-btn
-              variant="outlined"
-              @click="handleCancel"
-              :disabled="creating"
-            >
-              Cancel
-            </v-btn>
+        <v-btn
+          v-if="currentStep > 1"
+          variant="outlined"
+          color="primary"
+          @click="handleBack"
+          :disabled="creating"
+          class="mr-2"
+        >
+          <v-icon start>mdi-chevron-left</v-icon>
+          Back
+        </v-btn>
 
-            <v-btn
-              color="primary"
-              :loading="creating"
-              @click="handleNext"
-              :prepend-icon="currentStep === totalSteps ? 'mdi-check' : 'mdi-chevron-right'"
-            >
-              {{ currentStep === totalSteps ? 'Create User' : 'Next' }}
-            </v-btn>
-          </div>
-        </div>
+        <v-btn
+          color="primary"
+          variant="flat"
+          @click="handleNext"
+          :loading="creating"
+          :disabled="creating"
+          min-width="120"
+          elevation="2"
+          class="text-none font-weight-medium"
+        >
+          <v-icon start>
+            {{ currentStep === totalSteps ? 'mdi-check-circle' : 'mdi-chevron-right' }}
+          </v-icon>
+          {{ currentStep === totalSteps ? 'Create User' : 'Next' }}
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -379,7 +449,7 @@ const totalSteps = 2
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
-// Form data - FIXED: Ensure all fields are properly initialized
+// Form data
 const form = ref({
   email: '',
   password: '',
@@ -403,42 +473,39 @@ const stepTitles = {
 
 const stepTitle = computed(() => stepTitles[currentStep.value])
 
-// FIXED: Enhanced phone formatting with proper data handling
+// Phone formatting
 const formattedPhone = computed({
   get() {
     return formatPhoneNumber(form.value.phone)
   },
   set(value) {
-    // Store raw numeric value for backend
     const numericOnly = String(value).replace(/\D/g, '')
     form.value.phone = numericOnly
-    console.log('📱 Phone updated:', { formatted: value, stored: numericOnly })
   }
 })
 
 const availableRoles = computed(() => {
   return permissionsStore.allRoles.filter(role => {
-    // Only show roles the current user can assign
-    if (role.id === 'owner') return false // Owners can only be created by system
+    if (role.id === 'owner') return false
     return true
   })
 })
 
-// Region options - Louisiana Department of Health regions
+// Region options
 const regionOptions = [
-  { title: 'Region 1', value: '1' },
-  { title: 'Region 2', value: '2' },
-  { title: 'Region 3', value: '3' },
-  { title: 'Region 4', value: '4' },
-  { title: 'Region 5', value: '5' },
-  { title: 'Region 6', value: '6' },
-  { title: 'Region 7', value: '7' },
-  { title: 'Region 8', value: '8' },
-  { title: 'Region 9', value: '9' },
+  { title: 'Region 1 - Orleans', value: '1' },
+  { title: 'Region 2 - Baton Rouge', value: '2' },
+  { title: 'Region 3 - Houma', value: '3' },
+  { title: 'Region 4 - Lafayette', value: '4' },
+  { title: 'Region 5 - Lake Charles', value: '5' },
+  { title: 'Region 6 - Alexandria', value: '6' },
+  { title: 'Region 7 - Shreveport', value: '7' },
+  { title: 'Region 8 - Monroe', value: '8' },
+  { title: 'Region 9 - Hammond', value: '9' },
   { title: 'Central Office', value: 'central' }
 ]
 
-// Validation rules - Brand compliant
+// Validation rules
 const rules = {
   required: value => !!value || 'This field is required'
 }
@@ -455,7 +522,10 @@ const emailRules = [
 
 const passwordRules = [
   rules.required,
-  value => (value && value.length >= 8) || 'Password must be at least 8 characters'
+  value => (value && value.length >= 8) || 'Password must be at least 8 characters',
+  value => /[A-Z]/.test(value) || 'Must contain an uppercase letter',
+  value => /[a-z]/.test(value) || 'Must contain a lowercase letter',
+  value => /[0-9]/.test(value) || 'Must contain a number'
 ]
 
 const confirmPasswordRules = [
@@ -464,7 +534,7 @@ const confirmPasswordRules = [
 ]
 
 const phoneRules = [
-  value => !value || /^\(\d{3}\)\s\d{3}-\d{4}$/.test(formatPhoneNumber(value)) || 'Phone must be in format (XXX) XXX-XXXX'
+  value => !value || /^\(\d{3}\)\s\d{3}-\d{4}$/.test(formatPhoneNumber(value)) || 'Use format: (XXX) XXX-XXXX'
 ]
 
 const roleRules = [
@@ -492,11 +562,36 @@ const generatePassword = () => {
   const length = 12
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
   let password = ''
-  for (let i = 0; i < length; i++) {
+  
+  // Ensure at least one of each required character type
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
+  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
+  password += '0123456789'[Math.floor(Math.random() * 10)]
+  password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
+  
+  // Fill the rest randomly
+  for (let i = 4; i < length; i++) {
     password += charset.charAt(Math.floor(Math.random() * charset.length))
   }
+  
+  // Shuffle the password
+  password = password.split('').sort(() => Math.random() - 0.5).join('')
+  
   form.value.password = password
   form.value.confirmPassword = password
+  showPassword.value = true
+  showConfirmPassword.value = true
+}
+
+const getRoleColor = (roleId) => {
+  const colors = {
+    'owner': 'deep-purple',
+    'admin': 'blue-darken-2', 
+    'user': 'green-darken-1',
+    'viewer': 'cyan-darken-1',
+    'pending': 'orange-darken-1'
+  }
+  return colors[roleId] || 'grey'
 }
 
 const showSnackbar = (message, color = 'success') => {
@@ -555,7 +650,6 @@ const handleNext = async () => {
   }
 }
 
-// FIXED: Enhanced user creation with comprehensive logging and data validation
 const createUser = async () => {
   if (!createUserFormRef.value) return
   
@@ -568,13 +662,12 @@ const createUser = async () => {
   creating.value = true
   
   try {
-    // FIXED: Prepare data payload with comprehensive logging
     const userPayload = {
       email: form.value.email.toLowerCase().trim(),
       password: form.value.password,
       displayName: form.value.displayName.trim(),
       role: form.value.role,
-      phone: form.value.phone, // Raw numeric value
+      phone: form.value.phone,
       department: form.value.department,
       title: form.value.title,
       region: form.value.region,
@@ -583,17 +676,10 @@ const createUser = async () => {
       sendWelcomeEmail: form.value.sendEmail
     }
 
-    console.log('🚀 Creating user with comprehensive payload:', JSON.stringify(userPayload, null, 2))
-
-    // Call the cloud function to create user
     const createUserFunction = httpsCallable(functions, 'createUser')
-    
     const result = await createUserFunction(userPayload)
 
-    console.log('✅ User creation result:', JSON.stringify(result.data, null, 2))
-
     if (result.data.success) {
-      // Log the creation event
       await log.userCreated({
         createdUserId: result.data.userId,
         createdUserEmail: form.value.email,
@@ -609,20 +695,14 @@ const createUser = async () => {
         }
       })
 
-      // Enhanced success message with profile data confirmation
       let message = 'User created successfully!'
       if (result.data.profileFieldsSaved) {
-        console.log('📊 Profile fields saved:', result.data.profileFieldsSaved)
         message += ` Profile data saved: ${Object.values(result.data.profileFieldsSaved).filter(v => v !== 'none').length} fields.`
       }
       
       showSnackbar(message)
-
-      // Refresh the permissions store to reload user list
-      console.log('🔄 Refreshing permissions store to reload user list...')
       await permissionsStore.loadAllData()
 
-      // Emit user created event with comprehensive data
       emit('user-created', {
         userId: result.data.userId,
         email: result.data.email,
@@ -639,7 +719,6 @@ const createUser = async () => {
         profileFieldsSaved: result.data.profileFieldsSaved
       })
 
-      // Reset form and close dialog
       resetForm()
       dialogOpen.value = false
 
@@ -648,7 +727,7 @@ const createUser = async () => {
     }
 
   } catch (error) {
-    console.error('❌ Error creating user:', error)
+    console.error('Error creating user:', error)
     
     let errorMessage = 'Failed to create user'
     
@@ -677,101 +756,210 @@ watch(dialogOpen, (isOpen) => {
 </script>
 
 <style scoped>
-/* Louisiana Department of Health Brand Styling */
+/* Louisiana Department of Health Professional Government Styling */
 
-.create-user-dialog {
+.create-user-card {
+  border-radius: 8px;
   overflow: hidden;
 }
 
+/* Professional Government Header */
 .dialog-header {
-  /* Brand primary color - Louisiana Department of Health Blue */
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  background: linear-gradient(135deg, #003d7a 0%, #0056b3 100%);
   color: white;
+  position: relative;
 }
 
-.header-content {
-  padding: 1.5rem;
+.dialog-header .v-toolbar {
+  background: transparent !important;
 }
 
-.dialog-content {
-  max-height: 70vh;
-  overflow-y: auto;
+/* Content Styling */
+.dialog-body {
+  background-color: #f8f9fa;
+  min-height: 400px;
 }
 
-.dialog-actions {
-  border-top: 1px solid rgba(var(--v-border-color), 0.12);
-  background-color: rgb(var(--v-theme-surface));
+.dialog-footer {
+  background-color: #ffffff;
+  border-top: 1px solid #e0e0e0;
 }
 
-.form-header {
-  text-align: center;
+/* Section Headers */
+.section-header {
+  padding: 1rem 0;
 }
 
-.form-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
-  margin-bottom: 0.5rem;
+.section-header h3 {
+  letter-spacing: -0.02em;
 }
 
-.form-subtitle {
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  font-size: 0.875rem;
+/* Step Content Container */
+.step-content {
+  max-width: 720px;
+  margin: 0 auto;
 }
 
-.field-group {
-  margin-bottom: 1rem;
+/* Government Form Field Styling */
+.gov-field-group {
+  margin-bottom: 1.5rem;
 }
 
-.field-label {
+.gov-field-label {
   display: block;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: rgb(var(--v-theme-on-surface));
+  font-weight: 600;
+  color: #212529;
   margin-bottom: 0.5rem;
+  letter-spacing: 0.01em;
 }
 
-/* Louisiana Department of Health form field styling */
-.auth-field :deep(.v-field) {
-  border-radius: 8px;
-  /* Subtle Louisiana Department of Health accent */
-  background-color: rgb(var(--v-theme-surface-variant));
+.gov-field-label.required::after {
+  content: ' *';
+  color: #dc3545;
 }
 
-.auth-field :deep(.v-field--focused) {
-  /* Primary brand color on focus */
-  background-color: rgba(25, 118, 210, 0.05);
+/* Professional Input Styling */
+.gov-input :deep(.v-field) {
+  background-color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.simple-select :deep(.v-field) {
-  border-radius: 8px;
+.gov-input :deep(.v-field__outline) {
+  --v-field-border-color: #ced4da;
+  --v-field-border-width: 1px;
 }
 
-.simple-select :deep(.v-field__input) {
-  min-height: 40px;
+.gov-input:hover :deep(.v-field__outline) {
+  --v-field-border-color: #6c757d;
 }
 
-.v-alert {
-  border-radius: 8px;
-  /* Louisiana Department of Health info color */
-  background-color: rgba(25, 118, 210, 0.1);
+.gov-input :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-color: #0056b3;
+  --v-field-border-width: 2px;
 }
 
-/* Button styling to match brand */
-.v-btn--variant-elevated {
-  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
+.gov-input :deep(.v-field__input) {
+  font-size: 0.9375rem;
+  padding: 0.5rem 0;
+  min-height: 44px;
 }
 
-.v-btn--variant-outlined {
-  border: 1px solid rgba(25, 118, 210, 0.3);
+.gov-input :deep(.v-field__prepend-inner) {
+  padding-right: 0.75rem;
+  color: #6c757d;
 }
 
-/* Ensure consistent spacing and typography */
-.v-text-field, .v-select, .v-textarea {
-  font-family: 'Cambria', serif; /* Louisiana Department of Health body font */
+.gov-input :deep(.v-field--error .v-field__outline) {
+  --v-field-border-color: #dc3545;
 }
 
-.v-card-title, .form-title {
-  font-family: 'Franklin Gothic', 'Arial Black', sans-serif; /* Louisiana Department of Health header font */
+/* Select Field Styling */
+.gov-input :deep(.v-select__selection) {
+  margin: 0;
+}
+
+/* Textarea Styling */
+.gov-input :deep(textarea) {
+  line-height: 1.5;
+}
+
+/* Button Styling in Fields */
+.gov-input :deep(.v-btn--icon) {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.gov-input :deep(.v-btn--icon:hover) {
+  opacity: 1;
+}
+
+/* Role Chip Styling */
+.v-chip {
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+/* Progress Linear Custom */
+.v-progress-linear {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .dialog-body .v-container {
+    padding: 1rem !important;
+  }
+  
+  .dialog-footer {
+    padding: 1rem !important;
+  }
+  
+  .gov-field-group {
+    margin-bottom: 1rem;
+  }
+  
+  .section-header {
+    margin-bottom: 1.5rem !important;
+  }
+}
+
+/* Animation for step transitions */
+.v-window-item {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Professional Focus States */
+.gov-input:focus-within {
+  position: relative;
+}
+
+.gov-input:focus-within::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 3px solid rgba(0, 86, 179, 0.1);
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Enhanced Button Styling */
+.v-btn {
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+.v-btn--flat {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.v-btn--flat:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Card Shadow for Professional Depth */
+.create-user-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth scrolling */
+.dialog-body {
+  scroll-behavior: smooth;
+}
+
+/* Loading State */
+.v-btn--loading {
+  opacity: 0.8;
+}
+
+/* Validation Messages */
+.v-messages__message {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
 }
 </style>
