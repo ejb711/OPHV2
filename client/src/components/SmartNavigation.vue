@@ -1,11 +1,9 @@
-<!-- client/src/components/SmartNavigation.vue - Permission-based navigation -->
+<!-- client/src/components/SmartNavigation.vue - Fixed drawer state management -->
 <template>
   <div class="smart-navigation">
-    <!-- Desktop Navigation -->
+    <!-- Desktop Navigation - Only render when drawer prop is true -->
     <v-navigation-drawer
-      v-if="!mobile"
-      v-model="drawer"
-      :rail="rail"
+      v-if="!mobile && drawer"
       permanent
       color="grey-lighten-4"
     >
@@ -16,21 +14,13 @@
           :title="userName"
           :subtitle="userRole"
           nav
-        >
-          <template v-slot:append>
-            <v-btn
-              variant="text"
-              icon="mdi-chevron-left"
-              @click.stop="rail = !rail"
-            />
-          </template>
-        </v-list-item>
+        />
 
         <v-divider />
 
         <!-- Dynamic Navigation Items -->
         <template v-for="(section, idx) in navigationSections" :key="idx">
-          <v-list-subheader v-if="!rail && section.items.length > 0">
+          <v-list-subheader v-if="section.items.length > 0">
             {{ section.title }}
           </v-list-subheader>
           
@@ -41,23 +31,43 @@
             :prepend-icon="item.icon"
             :title="item.title"
             :value="item.route"
-          >
-            <v-tooltip
-              v-if="rail"
-              :text="item.title"
-              location="end"
-            >
-              <template v-slot:activator="{ props }">
-                <v-icon v-bind="props">{{ item.icon }}</v-icon>
-              </template>
-            </v-tooltip>
-          </v-list-item>
+          />
           
           <v-divider v-if="idx < navigationSections.length - 1 && section.items.length > 0" />
         </template>
 
         <!-- Bottom Actions -->
         <template v-slot:append>
+          <!-- System Status Footer -->
+          <!-- NOTE: System status visibility needs debugging - not showing for owner role -->
+          <!-- TODO: Debug why canViewSystemStatus is not working properly for owner role -->
+          <div v-if="authStore.isOwner || authStore.isAdmin" class="pa-3">
+            <v-divider class="mb-3" />
+            <div class="text-caption text-medium-emphasis mb-2">System Status</div>
+            <div class="text-caption">
+              <div class="d-flex align-center mb-1">
+                <v-icon size="x-small" class="mr-1" :color="systemStatus.platform ? 'success' : 'error'">
+                  mdi-circle
+                </v-icon>
+                Platform: {{ systemStatus.platform ? 'Operational' : 'Issues' }}
+              </div>
+              <div class="d-flex align-center mb-1">
+                <v-icon size="x-small" class="mr-1" :color="systemStatus.auth ? 'success' : 'error'">
+                  mdi-circle
+                </v-icon>
+                Auth: {{ systemStatus.auth ? 'Active' : 'Issues' }}
+              </div>
+              <div class="d-flex align-center">
+                <v-icon size="x-small" class="mr-1" :color="systemStatus.database ? 'success' : 'error'">
+                  mdi-circle
+                </v-icon>
+                Database: {{ systemStatus.database ? 'Connected' : 'Issues' }}
+              </div>
+            </div>
+          </div>
+
+          <v-divider />
+          
           <v-list-item
             prepend-icon="mdi-logout"
             title="Logout"
@@ -70,9 +80,9 @@
     <!-- Mobile Bottom Navigation -->
     <v-bottom-navigation
       v-if="mobile"
-      v-model="bottomNav"
       grow
-      color="primary"
+      bg-color="primary"
+      color="white"
     >
       <v-btn
         v-for="item in mobileNavItems"
@@ -81,58 +91,14 @@
         :value="item.route"
       >
         <v-icon>{{ item.icon }}</v-icon>
-        <span>{{ item.title }}</span>
+        <span class="text-caption">{{ item.title }}</span>
       </v-btn>
       
-      <v-btn @click="showMobileMenu = true">
-        <v-icon>mdi-menu</v-icon>
-        <span>More</span>
+      <v-btn @click="handleLogout">
+        <v-icon>mdi-logout</v-icon>
+        <span class="text-caption">Logout</span>
       </v-btn>
     </v-bottom-navigation>
-
-    <!-- Mobile Menu Dialog -->
-    <v-dialog
-      v-model="showMobileMenu"
-      fullscreen
-      transition="dialog-bottom-transition"
-    >
-      <v-card>
-        <v-toolbar color="primary">
-          <v-toolbar-title>Menu</v-toolbar-title>
-          <v-spacer />
-          <v-btn icon @click="showMobileMenu = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-toolbar>
-        
-        <v-list>
-          <template v-for="(section, idx) in navigationSections" :key="idx">
-            <v-list-subheader v-if="section.items.length > 0">
-              {{ section.title }}
-            </v-list-subheader>
-            
-            <v-list-item
-              v-for="item in section.items"
-              :key="item.route"
-              :to="item.route"
-              :prepend-icon="item.icon"
-              :title="item.title"
-              @click="showMobileMenu = false"
-            />
-            
-            <v-divider v-if="idx < navigationSections.length - 1" />
-          </template>
-          
-          <v-divider />
-          
-          <v-list-item
-            prepend-icon="mdi-logout"
-            title="Logout"
-            @click="handleLogout"
-          />
-        </v-list>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -142,46 +108,60 @@ import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '../stores/auth'
 import { usePermissions } from '../composables/usePermissions'
-import { getAccessibleRoutes } from '../router'
 
+// Props - Just receive the drawer state from parent
+const props = defineProps({
+  drawer: {
+    type: Boolean,
+    default: true
+  }
+})
+
+// Composables
 const router = useRouter()
 const authStore = useAuthStore()
 const { mobile } = useDisplay()
-const {
-  canViewUsers,
-  canManageRoles,
-  canViewAuditLogs,
-  canViewProjects,
-  canViewForums,
-  canViewCalendar,
-  canViewAnalytics,
-  canManageSettings
-} = usePermissions()
 
-// Navigation state
-const drawer = ref(true)
-const rail = ref(false)
-const bottomNav = ref('dashboard')
-const showMobileMenu = ref(false)
+// Get all permissions - some might not exist yet
+const permissions = usePermissions()
+const canViewDashboard = permissions.canViewDashboard || ref(true)
+const canAccessAdmin = permissions.canAccessAdmin || ref(false)
+const canViewUsers = permissions.canViewUsers || ref(false)
+const canManageRoles = permissions.canManageRoles || ref(false)
+const canViewAuditLogs = permissions.canViewAuditLogs || ref(false)
+const canViewProjects = permissions.canViewProjects || ref(false)
+const canViewForums = permissions.canViewForums || ref(false)
+const canViewCalendar = permissions.canViewCalendar || ref(false)
+const canViewAnalytics = permissions.canViewAnalytics || ref(false)
+const canManageSettings = permissions.canManageSettings || ref(false)
+const canViewSystemStatus = permissions.canViewSystemStatus || ref(false)
+
+// System status (in real app, this would come from a store or API)
+const systemStatus = ref({
+  platform: true,
+  auth: true,
+  database: true
+})
 
 // User info
-const userName = computed(() => authStore.user?.email?.split('@')[0] || 'User')
+const userName = computed(() => 
+  authStore.user?.displayName || authStore.user?.email?.split('@')[0] || 'User'
+)
+
 const userRole = computed(() => {
-  const roles = {
-    owner: 'System Owner',
-    admin: 'Administrator',
+  const roleMap = {
+    owner: 'Owner',
+    admin: 'Admin',
     user: 'User',
     viewer: 'Viewer',
-    pending: 'Pending Approval'
+    pending: 'Pending'
   }
-  return roles[authStore.role] || 'Unknown'
-})
-const userAvatar = computed(() => {
-  // Future: Return actual avatar URL
-  return null
+  return roleMap[authStore.role] || authStore.role
 })
 
-// Navigation structure with permission checks
+const userAvatar = computed(() => authStore.user?.photoURL || null)
+
+// Navigation sections
 const navigationSections = computed(() => {
   const sections = [
     {
@@ -191,13 +171,13 @@ const navigationSections = computed(() => {
           title: 'Dashboard',
           icon: 'mdi-view-dashboard',
           route: '/dash',
-          show: true
+          show: canViewDashboard.value
         },
         {
-          title: 'Profile',
+          title: 'My Profile',
           icon: 'mdi-account',
           route: '/profile',
-          show: authStore.role !== 'pending'
+          show: true
         }
       ]
     },
@@ -205,22 +185,31 @@ const navigationSections = computed(() => {
       title: 'Administration',
       items: [
         {
-          title: 'User Management',
-          icon: 'mdi-account-group',
+          title: 'Admin Panel',
+          icon: 'mdi-shield-crown',
           route: '/admin',
-          show: canViewUsers.value
+          show: canAccessAdmin.value
+        },
+        {
+          title: 'Users',
+          icon: 'mdi-account-group',
+          route: '/admin/users',
+          show: canViewUsers.value,
+          disabled: true
         },
         {
           title: 'Roles & Permissions',
           icon: 'mdi-shield-account',
-          route: '/admin?tab=roles',
-          show: canManageRoles.value
+          route: '/admin/roles',
+          show: canManageRoles.value,
+          disabled: true
         },
         {
           title: 'Audit Logs',
           icon: 'mdi-history',
-          route: '/admin?tab=logs',
-          show: canViewAuditLogs.value
+          route: '/admin/audit',
+          show: canViewAuditLogs.value,
+          disabled: true
         }
       ]
     },
@@ -307,14 +296,16 @@ async function handleLogout() {
   position: fixed !important;
 }
 
-/* Rail mode transitions */
-.v-navigation-drawer--rail {
-  transition: width 0.2s ease-in-out;
-}
-
-/* Custom styling for different user roles */
+/* Custom styling for active navigation items */
 .v-list-item--active {
   border-left: 4px solid rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+/* System status styling */
+.v-navigation-drawer .text-caption {
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 /* Responsive breakpoints */

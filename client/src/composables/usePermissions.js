@@ -1,4 +1,4 @@
-// client/src/composables/usePermissions.js - Permission management composable
+// client/src/composables/usePermissions.js - Complete permission management composable
 import { computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
@@ -19,6 +19,10 @@ export function usePermissions() {
 
   /* ---------- feature-specific permissions ---------- */
   
+  // Dashboard & Navigation
+  const canViewDashboard = computed(() => hasPermission('view_dashboard') || isUser.value || isAdmin.value || isOwner.value)
+  const canViewSystemStatus = computed(() => hasPermission('view_system_status') || isAdmin.value || isOwner.value)
+  
   // User Management
   const canManageUsers = computed(() => hasPermission('manage_users'))
   const canViewUsers = computed(() => hasPermission('view_users') || canManageUsers.value)
@@ -31,7 +35,7 @@ export function usePermissions() {
   const canManagePermissions = computed(() => hasPermission('manage_permissions'))
   const canViewAuditLogs = computed(() => hasPermission('view_audit_logs'))
 
-  // Content Management
+  // Content Management - Projects
   const canManageProjects = computed(() => hasPermission('manage_projects'))
   const canViewProjects = computed(() => hasPermission('view_projects') || canManageProjects.value)
   const canCreateProjects = computed(() => hasPermission('create_projects') || canManageProjects.value)
@@ -137,7 +141,11 @@ export function usePermissions() {
     isPending,
     canManageRole,
 
-    // Feature permissions
+    // Dashboard & System
+    canViewDashboard,
+    canViewSystemStatus,
+
+    // User Management
     canManageUsers,
     canViewUsers,
     canCreateUsers,
@@ -146,22 +154,30 @@ export function usePermissions() {
     canManageRoles,
     canManagePermissions,
     canViewAuditLogs,
+
+    // Projects
     canManageProjects,
     canViewProjects,
     canCreateProjects,
     canEditProjects,
     canDeleteProjects,
+
+    // Forums
     canManageForums,
     canViewForums,
     canCreatePosts,
     canEditPosts,
     canDeletePosts,
     canModeratePosts,
+
+    // Calendar
     canManageCalendar,
     canViewCalendar,
     canCreateEvents,
     canEditEvents,
     canDeleteEvents,
+
+    // System
     canManageSystem,
     canViewAnalytics,
     canManageSettings,

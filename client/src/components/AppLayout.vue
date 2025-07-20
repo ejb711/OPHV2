@@ -1,4 +1,4 @@
-<!-- client/src/components/AppLayout.vue - Enhanced with smart navigation -->
+<!-- client/src/components/AppLayout.vue - Fixed navigation state management -->
 <template>
   <v-app>
     <!-- Top App Bar -->
@@ -7,10 +7,10 @@
       :color="appBarColor"
       :density="mobile ? 'compact' : 'comfortable'"
     >
-      <!-- Menu toggle for mobile/rail mode -->
+      <!-- Menu toggle for mobile or to hide/show drawer -->
       <v-app-bar-nav-icon
         v-if="showNavIcon"
-        @click="navigationDrawer = !navigationDrawer"
+        @click="toggleNavigation"
       />
       
       <!-- App Title/Logo -->
@@ -96,7 +96,7 @@
     <!-- Smart Navigation (Desktop) -->
     <SmartNavigation 
       v-if="showNavigation && !mobile"
-      v-model:drawer="navigationDrawer"
+      v-model:drawer="navigationDrawerVisible"
     />
 
     <!-- Main Content Area -->
@@ -163,7 +163,7 @@
 </template>
 
 <script setup>
-import { ref, computed, provide, watch } from 'vue'
+import { ref, computed, provide, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useAuthStore } from '../stores/auth'
@@ -207,8 +207,11 @@ const { mobile } = useDisplay()
 const { canAccessAdmin } = usePermissions()
 const { isGlobalLoading } = useGlobalLoading()
 
-// State
-const navigationDrawer = ref(!mobile.value)
+// State - Use localStorage to persist drawer state
+const DRAWER_STATE_KEY = 'ophv2-navigation-drawer-state'
+const storedDrawerState = localStorage.getItem(DRAWER_STATE_KEY)
+const navigationDrawerVisible = ref(storedDrawerState !== null ? storedDrawerState === 'true' : true)
+
 const snackbar = ref({
   show: false,
   message: '',
@@ -216,6 +219,21 @@ const snackbar = ref({
   timeout: 4000,
   location: 'bottom'
 })
+
+// Initialize drawer state based on screen size
+onMounted(() => {
+  // On mobile, always start with drawer closed
+  if (mobile.value) {
+    navigationDrawerVisible.value = false
+  }
+})
+
+// Toggle navigation function that preserves state
+function toggleNavigation() {
+  navigationDrawerVisible.value = !navigationDrawerVisible.value
+  // Save state to localStorage
+  localStorage.setItem(DRAWER_STATE_KEY, navigationDrawerVisible.value.toString())
+}
 
 // Computed
 const appTitle = computed(() => props.title)
@@ -316,10 +334,24 @@ function showSnackbar(message, color = 'success', options = {}) {
 // Provide snackbar method to child components
 provide('showSnackbar', showSnackbar)
 
-// Watch for route changes to close navigation on mobile
+// DON'T close navigation on route change - preserve user's choice
+// Only close on mobile when navigating
 watch(() => route.path, () => {
-  if (mobile.value) {
-    navigationDrawer.value = false
+  // On mobile, close drawer when navigating
+  if (mobile.value && navigationDrawerVisible.value) {
+    navigationDrawerVisible.value = false
+  }
+  // On desktop, preserve the drawer state
+})
+
+// Watch for screen size changes
+watch(mobile, (isMobile) => {
+  if (isMobile) {
+    // When switching to mobile, close the drawer
+    navigationDrawerVisible.value = false
+  } else {
+    // When switching to desktop, open the drawer
+    navigationDrawerVisible.value = true
   }
 })
 </script>

@@ -72,7 +72,7 @@ const DEFAULT_ROLES = [
       'manage_projects', 'view_projects', 'create_projects', 'edit_projects', 'delete_projects',
       'manage_forums', 'view_forums', 'create_posts', 'edit_posts', 'delete_posts', 'moderate_posts',
       'manage_calendar', 'view_calendar', 'create_events', 'edit_events', 'delete_events',
-      'view_analytics', 'manage_settings',
+      'view_analytics', 'manage_settings','view_system_status',
       // 🆕 Profile permissions for admin
       'view_own_profile', 'edit_own_profile', 'view_own_activity', 'manage_own_security', 'upload_avatar'
     ],
