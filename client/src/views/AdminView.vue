@@ -1,91 +1,61 @@
-<!-- client/src/views/AdminView.vue - Complete Fixed Admin Panel -->
+<!-- client/src/views/AdminView.vue -->
 <template>
   <AppLayout>
-    <template #header>
-      <div class="d-flex align-center">
-        <v-icon size="large" class="mr-3">mdi-shield-crown</v-icon>
-        <div>
-          <h1 class="text-h4 font-weight-bold">Admin Panel</h1>
-          <p class="text-subtitle-1 text-medium-emphasis mb-0">
-            System administration and user management
-          </p>
-        </div>
-      </div>
-    </template>
-
-    <div class="pa-6">
-      <!-- Error State -->
-      <v-alert
-        v-if="error"
-        type="error"
-        variant="tonal"
-        class="mb-6"
-        closable
-        @click:close="error = ''"
-      >
-        {{ error }}
-      </v-alert>
-
+    <div class="admin-panel">
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-12">
-        <v-progress-circular
-          size="64"
-          color="primary"
-          indeterminate
-        ></v-progress-circular>
-        <p class="text-h6 mt-4">Loading admin panel...</p>
-      </div>
+      <template v-if="loading">
+        <div class="text-center py-8">
+          <v-progress-circular indeterminate size="64" color="primary" />
+          <h2 class="text-h5 mt-4">Loading Admin Panel...</h2>
+          <p class="text-body-1 text-medium-emphasis">Initializing administrative tools</p>
+        </div>
+      </template>
 
-      <!-- Main Content -->
+      <!-- Error State -->
+      <template v-else-if="error">
+        <v-alert type="error" variant="tonal" class="mb-4">
+          <v-alert-title>Admin Panel Error</v-alert-title>
+          {{ error }}
+        </v-alert>
+      </template>
+
+      <!-- Admin Panel Content -->
       <template v-else>
-        <!-- Statistics Cards -->
-        <v-row class="mb-6">
-          <v-col cols="12" sm="6" md="3">
-            <v-card>
-              <v-card-text class="text-center">
-                <v-icon size="36" color="primary" class="mb-2">mdi-account-group</v-icon>
-                <div class="text-h4 font-weight-bold">{{ stats.totalUsers }}</div>
-                <div class="text-subtitle-2 text-medium-emphasis">Total Users</div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-card>
-              <v-card-text class="text-center">
-                <v-icon size="36" color="warning" class="mb-2">mdi-clock-outline</v-icon>
-                <div class="text-h4 font-weight-bold">{{ stats.pendingUsers }}</div>
-                <div class="text-subtitle-2 text-medium-emphasis">Pending Approval</div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-card>
-              <v-card-text class="text-center">
-                <v-icon size="36" color="success" class="mb-2">mdi-check-circle</v-icon>
-                <div class="text-h4 font-weight-bold">{{ stats.activeUsers }}</div>
-                <div class="text-subtitle-2 text-medium-emphasis">Active Users</div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-card>
-              <v-card-text class="text-center">
-                <v-icon size="36" color="info" class="mb-2">mdi-shield-account</v-icon>
-                <div class="text-h4 font-weight-bold">{{ stats.totalRoles }}</div>
-                <div class="text-subtitle-2 text-medium-emphasis">System Roles</div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+        <!-- Header -->
+        <div class="d-flex align-center justify-space-between mb-6">
+          <div>
+            <h1 class="text-h4 font-weight-bold text-primary">Admin Panel</h1>
+            <p class="text-body-1 text-medium-emphasis mt-1">
+              Manage users, roles, permissions, and system settings
+            </p>
+          </div>
+          
+          <!-- Quick Stats -->
+          <v-row class="flex-grow-0" dense>
+            <v-col>
+              <v-card variant="outlined" class="text-center pa-2" min-width="100">
+                <div class="text-h6 font-weight-bold text-primary">{{ stats.totalUsers }}</div>
+                <div class="text-caption">Users</div>
+              </v-card>
+            </v-col>
+            <v-col>
+              <v-card variant="outlined" class="text-center pa-2" min-width="100">
+                <div class="text-h6 font-weight-bold text-warning">{{ stats.pendingUsers }}</div>
+                <div class="text-caption">Pending</div>
+              </v-card>
+            </v-col>
+            <v-col>
+              <v-card variant="outlined" class="text-center pa-2" min-width="100">
+                <div class="text-h6 font-weight-bold text-success">{{ stats.activeUsers }}</div>
+                <div class="text-caption">Active</div>
+              </v-card>
+            </v-col>
+          </v-row>
+        </div>
 
-        <!-- Admin Tabs -->
-        <v-card>
-          <v-tabs
-            v-model="selectedTab"
-            bg-color="surface"
-            color="primary"
-            grow
-          >
+        <!-- Tab Navigation -->
+        <v-card variant="outlined">
+          <v-tabs v-model="selectedTab" color="primary" grow>
             <v-tab
               v-for="tab in availableTabs"
               :key="tab.value"
@@ -131,86 +101,11 @@
     </div>
 
     <!-- Create User Dialog -->
-    <v-dialog v-model="showCreateUserDialog" max-width="600">
-      <v-card>
-        <v-card-title class="text-h5">
-          <v-icon start>mdi-account-plus</v-icon>
-          Create New User
-        </v-card-title>
-        
-        <v-card-text>
-          <v-form ref="createUserFormRef" @submit.prevent="createUser">
-            <v-text-field
-              v-model="createUserForm.email"
-              label="Email Address"
-              type="email"
-              :rules="[rules.required, rules.email]"
-              required
-              class="mb-4"
-            ></v-text-field>
-
-            <div class="d-flex align-center mb-4">
-              <v-text-field
-                v-model="createUserForm.password"
-                label="Temporary Password"
-                type="password"
-                :rules="[rules.required, rules.minLength]"
-                required
-                class="flex-grow-1 mr-2"
-                hint="User will be prompted to change password on first login"
-              ></v-text-field>
-              <v-btn
-                @click="generatePassword"
-                variant="outlined"
-                icon="mdi-dice-6"
-                size="small"
-              ></v-btn>
-            </div>
-
-            <v-select
-              v-model="createUserForm.role"
-              label="Role"
-              :items="availableRoles"
-              item-title="name"
-              item-value="id"
-              :rules="[rules.required]"
-              required
-              class="mb-4"
-            ></v-select>
-
-            <v-checkbox
-              v-model="createUserForm.sendEmail"
-              label="Send welcome email with login instructions"
-              class="mb-4"
-            ></v-checkbox>
-
-            <v-alert type="info" variant="outlined" class="mb-4">
-              <v-alert-title>Account Creation</v-alert-title>
-              The user will be able to sign in immediately with the provided credentials.
-              They should change their password on first login for security.
-            </v-alert>
-          </v-form>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn 
-            variant="text" 
-            @click="showCreateUserDialog = false"
-            :disabled="creatingUser"
-          >
-            Cancel
-          </v-btn>
-          <v-btn 
-            color="primary" 
-            @click="createUser"
-            :loading="creatingUser"
-          >
-            Create User
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <CreateUserDialog
+      v-model="showCreateUserDialog"
+      @user-created="handleUserCreated"
+      @show-snackbar="showSnackbar"
+    />
 
     <!-- Snackbar for notifications -->
     <v-snackbar
@@ -232,15 +127,15 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { db, auth, functions } from '../firebase'
+import { db } from '../firebase'
 import { collection, onSnapshot } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
 import AppLayout from '../components/AppLayout.vue'
 import UserManagement from '../components/admin/UserManagement.vue'
 import RoleManagement from '../components/admin/RoleManagement.vue'
 import PermissionMatrix from '../components/admin/PermissionMatrix.vue'
 import SystemLogs from '../components/admin/SystemLogs.vue'
 import RetentionMonitor from '../components/admin/RetentionMonitor.vue'
+import CreateUserDialog from '../components/admin/CreateUserDialog.vue'
 import { useAuthStore } from '../stores/auth'
 import { usePermissionsStore } from '../stores/permissions'
 import { useAudit } from '../composables/useAudit'
@@ -265,15 +160,6 @@ const stats = ref({
 
 // Create user dialog state
 const showCreateUserDialog = ref(false)
-const creatingUser = ref(false)
-const createUserForm = ref({
-  email: '',
-  password: '',
-  role: 'user',
-  sendEmail: true
-})
-
-const createUserFormRef = ref(null)
 
 const snackbar = ref({
   show: false,
@@ -281,169 +167,156 @@ const snackbar = ref({
   color: 'success'
 })
 
-// Form validation rules
-const rules = {
-  required: value => !!value || 'This field is required',
-  email: value => {
-    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return pattern.test(value) || 'Must be a valid email address'
-  },
-  minLength: value => value?.length >= 6 || 'Password must be at least 6 characters'
-}
-
-// Unsubscribe functions for listeners
-let unsubscribeUsers = null
-let unsubscribeLogs = null
+// Firestore listeners
+let unsubscribers = []
 
 /* ---------- computed ---------- */
 const availableTabs = computed(() => [
-  { value: 'users', title: 'User Management', icon: 'mdi-account-group' },
-  { value: 'roles', title: 'Role Management', icon: 'mdi-shield-account' },
-  { value: 'permissions', title: 'Permission Matrix', icon: 'mdi-view-grid' },
-  { value: 'logs', title: 'System Logs', icon: 'mdi-file-document-outline' },
-  { value: 'retention', title: 'Data Retention', icon: 'mdi-database-clock' }
-])
-
-const availableRoles = computed(() => {
-  const roles = permissionsStore.allRoles.filter(role => {
-    // Only show roles that the current user can assign
-    if (authStore.role === 'owner') return true
-    if (authStore.role === 'admin') return role.id !== 'owner'
-    return false
-  })
-  return roles
-})
+  {
+    value: 'users',
+    title: 'User Management',
+    icon: 'mdi-account-group',
+    permission: 'view_users'
+  },
+  {
+    value: 'roles',
+    title: 'Role Management',
+    icon: 'mdi-shield-account',
+    permission: 'view_roles'
+  },
+  {
+    value: 'permissions',
+    title: 'Permission Matrix',
+    icon: 'mdi-matrix',
+    permission: 'view_permission_matrix'
+  },
+  {
+    value: 'logs',
+    title: 'System Logs',
+    icon: 'mdi-file-document-outline',
+    permission: 'view_audit_logs'
+  },
+  {
+    value: 'retention',
+    title: 'Data Retention',
+    icon: 'mdi-database-clock',
+    permission: 'manage_audit_retention'
+  }
+].filter(tab => authStore.hasPermission(tab.permission)))
 
 /* ---------- lifecycle ---------- */
 onMounted(async () => {
   try {
-    // Check admin permissions
-    if (!authStore.hasPermission('access_admin')) {
-      error.value = 'You do not have permission to access the admin panel'
-      router.push('/dash')
+    loading.value = true
+
+    // Wait for auth to be ready
+    if (!authStore.ready) {
+      await authStore.initializeAuth()
+    }
+
+    // Check admin access
+    if (!authStore.hasPermission('view_admin_panel')) {
+      router.push('/dashboard')
       return
     }
 
-    // Load permissions and roles using the correct method
+    // Load permissions and roles data
     await permissionsStore.loadAllData()
-    
-    // Load statistics
-    await loadStatistics()
 
-  } catch (e) {
-    console.error('Error loading admin panel:', e)
-    error.value = 'Failed to load admin panel: ' + e.message
+    // Setup real-time listeners for stats
+    setupStatsListeners()
+
+    // Load initial stats
+    await loadStats()
+
+  } catch (err) {
+    console.error('Error initializing admin panel:', err)
+    error.value = 'Failed to initialize admin panel. Please refresh and try again.'
   } finally {
     loading.value = false
   }
 })
 
 onUnmounted(() => {
-  if (unsubscribeUsers) unsubscribeUsers()
-  if (unsubscribeLogs) unsubscribeLogs()
+  // Clean up listeners
+  unsubscribers.forEach(unsubscribe => unsubscribe())
 })
 
-/* ---------- data loading ---------- */
-async function loadStatistics() {
+/* ---------- methods ---------- */
+async function setupStatsListeners() {
   try {
-    // Set up real-time listeners for statistics
-    unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const users = snapshot.docs.map(doc => doc.data())
-      stats.value.totalUsers = users.length
-      stats.value.pendingUsers = users.filter(u => u.role === 'pending').length
-      stats.value.activeUsers = users.filter(u => u.status === 'active').length
-    })
+    // Users collection listener
+    const usersUnsubscribe = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        stats.value.totalUsers = snapshot.size
+        stats.value.pendingUsers = snapshot.docs.filter(doc => 
+          doc.data().role === 'pending'
+        ).length
+        stats.value.activeUsers = snapshot.docs.filter(doc => 
+          doc.data().role !== 'pending'
+        ).length
+      },
+      (error) => {
+        console.error('Error listening to users:', error)
+      }
+    )
 
-    // Load other statistics
-    stats.value.totalRoles = permissionsStore.allRoles.length
-    stats.value.totalPermissions = permissionsStore.allPermissions.length
+    // Roles collection listener
+    const rolesUnsubscribe = onSnapshot(
+      collection(db, 'roles'),
+      (snapshot) => {
+        stats.value.totalRoles = snapshot.size
+      },
+      (error) => {
+        console.error('Error listening to roles:', error)
+      }
+    )
 
-  } catch (e) {
-    console.error('Error loading statistics:', e)
+    // Permissions collection listener
+    const permissionsUnsubscribe = onSnapshot(
+      collection(db, 'permissions'),
+      (snapshot) => {
+        stats.value.totalPermissions = snapshot.size
+      },
+      (error) => {
+        console.error('Error listening to permissions:', error)
+      }
+    )
+
+    unsubscribers = [usersUnsubscribe, rolesUnsubscribe, permissionsUnsubscribe]
+
+  } catch (error) {
+    console.error('Error setting up listeners:', error)
   }
 }
 
-/* ---------- create user functionality ---------- */
+async function loadStats() {
+  try {
+    // Initial stats are loaded via listeners
+    // This method can be used for one-time stats calculations if needed
+    stats.value.recentActivity = 0 // This could be calculated from audit logs
+  } catch (error) {
+    console.error('Error loading stats:', error)
+  }
+}
+
+/* ---------- event handlers ---------- */
 function handleCreateUser() {
-  console.log('Create user clicked')
-  resetCreateUserForm()
   showCreateUserDialog.value = true
 }
 
-function resetCreateUserForm() {
-  createUserForm.value = {
-    email: '',
-    password: '',
-    role: 'user',
-    sendEmail: true
-  }
-  // Reset form validation
-  if (createUserFormRef.value) {
-    createUserFormRef.value.resetValidation()
-  }
+function handleUserCreated(userData) {
+  // User was successfully created
+  console.log('User created:', userData)
+  
+  // Update recent activity counter
+  stats.value.recentActivity += 1
+  
+  // You could trigger a refresh of user data here if needed
+  // or the real-time listeners will handle it automatically
 }
 
-async function createUser() {
-  // Validate form first
-  if (createUserFormRef.value) {
-    const { valid } = await createUserFormRef.value.validate()
-    if (!valid) return
-  }
-
-  if (!createUserForm.value.email || !createUserForm.value.password) {
-    showSnackbar('Email and password are required', 'error')
-    return
-  }
-
-  creatingUser.value = true
-  try {
-    // Use the Cloud Function to create the user (FIXED)
-    const createUserFunction = httpsCallable(functions, 'createUser')
-    
-    const result = await createUserFunction({
-      email: createUserForm.value.email,
-      password: createUserForm.value.password,
-      role: createUserForm.value.role,
-      sendWelcomeEmail: createUserForm.value.sendEmail
-    })
-
-    console.log('User created successfully:', result.data)
-
-    // Log the activity
-    await logEvent('user_created_by_admin', {
-      targetEmail: createUserForm.value.email,
-      assignedRole: createUserForm.value.role,
-      createdBy: auth.currentUser.email
-    })
-
-    showSnackbar(`User ${createUserForm.value.email} created successfully`, 'success')
-    showCreateUserDialog.value = false
-
-    // Update recent activity counter
-    stats.value.recentActivity += 1
-
-  } catch (error) {
-    console.error('Error creating user:', error)
-    let errorMessage = 'Failed to create user'
-    
-    // Handle specific Cloud Function errors
-    if (error.code === 'functions/permission-denied') {
-      errorMessage = 'You do not have permission to create users'
-    } else if (error.code === 'functions/invalid-argument') {
-      errorMessage = error.message || 'Invalid user data provided'
-    } else if (error.code === 'functions/already-exists') {
-      errorMessage = 'A user with this email already exists'
-    } else if (error.message) {
-      errorMessage = error.message
-    }
-    
-    showSnackbar(errorMessage, 'error')
-  } finally {
-    creatingUser.value = false
-  }
-}
-
-/* ---------- activity logging ---------- */
 async function handleActivity(action, details) {
   try {
     // Use logEvent for custom actions passed from child components
@@ -459,16 +332,6 @@ async function handleActivity(action, details) {
 /* ---------- utilities ---------- */
 function showSnackbar(message, color = 'success') {
   snackbar.value = { show: true, message, color }
-}
-
-function generatePassword() {
-  const length = 12
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
-  let password = ''
-  for (let i = 0; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length))
-  }
-  createUserForm.value.password = password
 }
 </script>
 
