@@ -1,10 +1,12 @@
-// functions/src/users/management.js - Complete User Management Functions
-// CRUD operations for user accounts with proper permission checks
+// functions/src/users/management.js
+// OPHV2 User Management Functions - Complete Implementation
+// Handles user CRUD operations with proper permissions and audit logging
 
 const functions = require('firebase-functions/v1')
 const admin = require('firebase-admin')
+
+// Import utility functions
 const { 
-  getUserPermissions, 
   validateAuth, 
   validatePermission, 
   validateUserManagement,
@@ -12,18 +14,35 @@ const {
   validateEmail,
   validateRole,
   preventSelfTargeting,
-  checkRateLimit
+  getUserPermissions 
 } = require('../utils/permissions')
-const { createAuditLog } = require('../audit/logging')
 
-/* ---------- Delete User Function ---------- */
+/* ---------- Helper Functions ---------- */
 
 /**
- * Securely delete a user account and all associated data
- * Only admins can delete users, with proper permission checks
+ * Create simple audit log entry directly to Firestore
+ * @param {Object} logData - Audit log data
+ */
+async function createSimpleAuditLog(logData) {
+  try {
+    await admin.firestore().collection('audit_logs').add({
+      ...logData,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      source: 'cloud_function'
+    })
+  } catch (error) {
+    console.error('Error creating audit log:', error)
+    // Don't throw - audit logging shouldn't break main functionality
+  }
+}
+
+/* ---------- User Deletion Function ---------- */
+
+/**
+ * Securely delete a user from both Firebase Auth and Firestore
+ * Includes proper permission checking and audit logging
  */
 exports.deleteUser = functions.https.onCall(async (data, context) => {
-  // Validate authentication
   validateAuth(context)
   
   const { userId, reason } = data
@@ -32,13 +51,8 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
   // Prevent self-deletion
   preventSelfTargeting(context.auth.uid, userId, 'delete your own account')
   
-  // Rate limiting for delete operations
-  if (!checkRateLimit(context.auth.uid, 'delete_user', 5)) {
-    throw new functions.https.HttpsError('resource-exhausted', 'Too many deletion attempts. Please wait.')
-  }
-  
   try {
-    // Get caller permissions
+    // Check permissions
     const callerPerms = await getUserPermissions(context.auth.uid)
     validatePermission(callerPerms, 'delete_users', 'delete users')
     
@@ -50,42 +64,55 @@ exports.deleteUser = functions.https.onCall(async (data, context) => {
     
     const targetUserData = targetUserDoc.data()
     
-    // Prevent deletion of higher-privilege users
+    // Validate management permissions
     validateUserManagement(callerPerms, targetUserData.role, 'delete this user')
     
-    // Create audit log before deletion
-    await createSimpleAuditLog({
-      action: 'user_deleted_by_admin',
-      userId: context.auth.uid,
-      userEmail: context.auth.token.email || 'unknown',
-      targetUserId: userId,
-      targetUserEmail: targetUserData.email,
-      details: {
-        deletedUserRole: targetUserData.role,
-        deletedBy: context.auth.uid,
-        deleterRole: callerPerms.role,
-        reason: reason || 'Administrative action',
-        userData: {
-          displayName: targetUserData.displayName,
-          email: targetUserData.email,
-          role: targetUserData.role,
-          createdAt: targetUserData.createdAt
-        }
+    // Prevent deletion of the last owner
+    if (targetUserData.role === 'owner') {
+      const ownerCount = await admin.firestore().collection('users')
+        .where('role', '==', 'owner')
+        .count()
+        .get()
+      
+      if (ownerCount.data().count <= 1) {
+        throw new functions.https.HttpsError(
+          'failed-precondition', 
+          'Cannot delete the last owner account'
+        )
       }
-    })
+    }
     
     // Delete from Firebase Auth first
     try {
       await admin.auth().deleteUser(userId)
     } catch (authError) {
-      console.warn('Firebase Auth deletion failed (user may not exist):', authError.message)
+      if (authError.code !== 'auth/user-not-found') {
+        throw authError
+      }
+      // Continue if user not found in Auth but exists in Firestore
     }
     
     // Delete from Firestore
     await admin.firestore().collection('users').doc(userId).delete()
     
-    // Clean up related data (user-specific documents, etc.)
-    // TODO: Add cleanup of user-specific subcollections if they exist
+    // Create audit log for successful deletion
+    await createSimpleAuditLog({
+      action: 'user_deleted',
+      userId: context.auth.uid,
+      userEmail: context.auth.token.email || 'unknown',
+      targetUserId: userId,
+      details: {
+        deletedUserEmail: targetUserData.email,
+        deletedUserRole: targetUserData.role,
+        reason: reason || 'Administrative action',
+        deletedFields: {
+          displayName: targetUserData.displayName,
+          department: targetUserData.department,
+          title: targetUserData.title,
+          region: targetUserData.region
+        }
+      }
+    })
     
     return {
       success: true,
@@ -142,17 +169,8 @@ exports.createUser = functions.https.onCall(async (data, context) => {
     sendWelcomeEmail 
   } = data
   
-  /**
- * Validate email parameter
- * @param {string} email - Email to validate
- * @throws {functions.https.HttpsError} If validation fails
- */
-function validateEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!email || typeof email !== 'string' || !emailRegex.test(email)) {
-    throw new functions.https.HttpsError('invalid-argument', 'Valid email is required')
-  }
-}
+  // Validate inputs
+  validateEmail(email)
   validateRole(role)
   
   if (!password || password.length < 6) {
@@ -181,118 +199,81 @@ function validateEmail(email) {
       await admin.auth().getUserByEmail(email.toLowerCase().trim())
       throw new functions.https.HttpsError('already-exists', 'A user with this email already exists')
     } catch (error) {
-      // If user doesn't exist, continue (this is what we want)
+      // If user not found, continue with creation
       if (error.code !== 'auth/user-not-found') {
         throw error
       }
     }
     
-    // Validate region if provided
-    const validRegions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'central']
-    if (region && !validRegions.includes(region)) {
-      throw new functions.https.HttpsError('invalid-argument', 'Invalid region specified')
-    }
-
-    // Validate phone format if provided
-    if (phone && !/^\(\d{3}\)\s\d{3}-\d{4}$/.test(phone)) {
-      throw new functions.https.HttpsError('invalid-argument', 'Phone number must be in format (XXX) XXX-XXXX')
-    }
-    
-    // Create Firebase Auth user with display name
+    // Create user in Firebase Auth
     const userRecord = await admin.auth().createUser({
       email: email.toLowerCase().trim(),
-      password,
+      password: password,
       displayName: displayName.trim(),
       emailVerified: false
     })
     
-    // Create comprehensive Firestore user document with all profile fields
+    // Create user document in Firestore
     const userData = {
-      // Basic account info
       email: email.toLowerCase().trim(),
       displayName: displayName.trim(),
-      photoURL: null,
-      role: role || 'user',
+      role: role,
       status: 'active',
-      
-      // Profile information
       phone: phone || '',
       department: department || '',
       title: title || '',
       region: region || '',
       location: location || '',
       bio: bio || '',
-      
-      // Permissions
       customPermissions: [],
       deniedPermissions: [],
-      
-      // Timestamps
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastActive: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      
-      // Metadata
       createdBy: context.auth.uid,
-      
-      // Preferences
-      preferences: {
-        theme: 'light',
-        notifications: true,
-        language: 'en'
-      }
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }
     
     await admin.firestore().collection('users').doc(userRecord.uid).set(userData)
     
-    // Create detailed audit log
+    // Set custom claims for role-based access
+    await admin.auth().setCustomUserClaims(userRecord.uid, {
+      role: role,
+      status: 'active'
+    })
+    
+    // Create audit log
     await createSimpleAuditLog({
-      action: 'user_created_by_admin',
+      action: 'user_created',
       userId: context.auth.uid,
       userEmail: context.auth.token.email || 'unknown',
       targetUserId: userRecord.uid,
-      targetUserEmail: email,
       details: {
+        createdUserEmail: email.toLowerCase().trim(),
         assignedRole: role,
-        createdBy: context.auth.uid,
-        creatorRole: callerPerms.role,
+        method: 'admin_creation',
         sendWelcomeEmail: sendWelcomeEmail || false,
         profileData: {
-          displayName: displayName.trim(),
-          department: department || null,
-          title: title || null,
-          region: region || null,
-          location: location || null,
+          hasDisplayName: !!displayName,
+          hasDepartment: !!department,
+          hasTitle: !!title,
+          hasRegion: !!region,
+          hasLocation: !!location,
           hasPhone: !!phone,
           hasBio: !!bio
         }
       }
     })
     
-    // TODO: Send welcome email if requested
+    // Send welcome email if requested
     if (sendWelcomeEmail) {
-      console.log(`📧 Welcome email should be sent to: ${email}`)
-      console.log(`   Display Name: ${displayName}`)
-      console.log(`   Role: ${role}`)
-      console.log(`   Department: ${department || 'Not specified'}`)
-      console.log(`   Region: ${region || 'Not specified'}`)
+      // TODO: Implement email sending functionality
+      console.log(`Welcome email should be sent to ${email}`)
     }
     
     return {
       success: true,
-      message: 'User created successfully with complete profile',
+      message: 'User created successfully',
       userId: userRecord.uid,
-      email: email,
-      displayName: displayName.trim(),
-      role: role,
-      profileFields: {
-        department: department || null,
-        title: title || null,
-        region: region || null,
-        location: location || null,
-        phone: phone || null,
-        bio: bio || null
-      }
+      email: email.toLowerCase().trim()
     }
     
   } catch (error) {
@@ -304,12 +285,11 @@ function validateEmail(email) {
       userId: context.auth.uid,
       userEmail: context.auth.token.email || 'unknown',
       details: {
-        targetEmail: email,
+        attemptedEmail: email,
         attemptedRole: role,
-        displayName: displayName || null,
         error: error.message,
         errorCode: error.code || 'unknown',
-        profileFieldsAttempted: {
+        profileData: {
           hasDisplayName: !!displayName,
           hasDepartment: !!department,
           hasTitle: !!title,
@@ -374,32 +354,50 @@ exports.updateUserRole = functions.https.onCall(async (data, context) => {
       lastModifiedBy: context.auth.uid
     })
     
+    // Update custom claims
+    await admin.auth().setCustomUserClaims(userId, {
+      role: newRole,
+      status: targetUserData.status || 'active'
+    })
+    
     // Create audit log
     await createSimpleAuditLog({
-      action: 'user_role_updated',
+      action: 'user_role_changed',
       userId: context.auth.uid,
       userEmail: context.auth.token.email || 'unknown',
       targetUserId: userId,
-      targetUserEmail: targetUserData.email,
       details: {
-        oldRole,
-        newRole,
-        updatedBy: context.auth.uid,
-        updaterRole: callerPerms.role,
+        targetUserEmail: targetUserData.email,
+        oldRole: oldRole,
+        newRole: newRole,
         reason: reason || 'Administrative action'
       }
     })
     
     return {
       success: true,
-      message: `User role updated from ${oldRole} to ${newRole}`,
-      userId,
-      oldRole,
-      newRole
+      message: 'User role updated successfully',
+      userId: userId,
+      oldRole: oldRole,
+      newRole: newRole
     }
     
   } catch (error) {
     console.error('Error updating user role:', error)
+    
+    // Create audit log for failed role update
+    await createSimpleAuditLog({
+      action: 'user_role_change_failed',
+      userId: context.auth.uid,
+      userEmail: context.auth.token.email || 'unknown',
+      targetUserId: userId,
+      details: {
+        attemptedNewRole: newRole,
+        reason: reason || 'Administrative action',
+        error: error.message,
+        errorCode: error.code || 'unknown'
+      }
+    })
     
     if (error instanceof functions.https.HttpsError) {
       throw error
@@ -412,89 +410,102 @@ exports.updateUserRole = functions.https.onCall(async (data, context) => {
 /* ---------- Update User Profile Function ---------- */
 
 /**
- * Update user profile information including region field
+ * Update user profile information
  */
 exports.updateUserProfile = functions.https.onCall(async (data, context) => {
   validateAuth(context)
   
   const { 
     userId, 
-    displayName,
-    phone,
-    department,
-    title,
-    region,
-    location,
-    bio
+    displayName, 
+    phone, 
+    department, 
+    title, 
+    region, 
+    location, 
+    bio 
   } = data
   
-  if (!userId) {
-    throw new functions.https.HttpsError('invalid-argument', 'User ID is required')
-  }
+  validateUserId(userId)
   
   try {
-    // Check permissions - users can edit their own profile, admins can edit others
-    const callerPerms = await getUserPermissions(context.auth.uid)
-    const isEditingSelf = context.auth.uid === userId
+    // Check permissions - users can edit their own profile, or admins can edit others
+    const isOwnProfile = context.auth.uid === userId
     
-    if (!isEditingSelf && !callerPerms.hasPermission('edit_users')) {
-      throw new functions.https.HttpsError('permission-denied', 'Cannot edit other users profiles')
+    if (!isOwnProfile) {
+      const callerPerms = await getUserPermissions(context.auth.uid)
+      validatePermission(callerPerms, 'edit_users', 'edit user profiles')
+      
+      // Get target user for management validation
+      const targetUserDoc = await admin.firestore().collection('users').doc(userId).get()
+      if (!targetUserDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'User not found')
+      }
+      
+      validateUserManagement(callerPerms, targetUserDoc.data().role, 'edit this user profile')
     }
     
-    // Validate region if provided
-    const validRegions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'central']
-    if (region && !validRegions.includes(region)) {
-      throw new functions.https.HttpsError('invalid-argument', 'Invalid region specified')
-    }
-
-    // Validate phone format if provided
-    if (phone && !/^\(\d{3}\)\s\d{3}-\d{4}$/.test(phone)) {
-      throw new functions.https.HttpsError('invalid-argument', 'Phone number must be in format (XXX) XXX-XXXX')
-    }
-    
-    // Get current user data
-    const userDoc = await admin.firestore().collection('users').doc(userId).get()
-    if (!userDoc.exists) {
+    // Get current user data for audit comparison
+    const currentUserDoc = await admin.firestore().collection('users').doc(userId).get()
+    if (!currentUserDoc.exists) {
       throw new functions.https.HttpsError('not-found', 'User not found')
     }
     
-    const currentData = userDoc.data()
+    const currentData = currentUserDoc.data()
     
     // Prepare update data
     const updateData = {
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastModifiedBy: context.auth.uid
     }
     
-    // Only update fields that are provided
-    if (displayName !== undefined) updateData.displayName = displayName.trim()
-    if (phone !== undefined) updateData.phone = phone
-    if (department !== undefined) updateData.department = department
-    if (title !== undefined) updateData.title = title
-    if (region !== undefined) updateData.region = region
-    if (location !== undefined) updateData.location = location
-    if (bio !== undefined) updateData.bio = bio
-    
-    // Update Firestore document
-    await admin.firestore().collection('users').doc(userId).update(updateData)
-    
-    // Update Firebase Auth displayName if changed
-    if (displayName !== undefined && displayName.trim() !== currentData.displayName) {
+    // Only update fields that are provided and different
+    if (displayName !== undefined && displayName !== currentData.displayName) {
+      updateData.displayName = displayName.trim()
+      
+      // Also update Firebase Auth displayName
       await admin.auth().updateUser(userId, {
         displayName: displayName.trim()
       })
     }
     
+    if (phone !== undefined && phone !== currentData.phone) {
+      updateData.phone = phone
+    }
+    
+    if (department !== undefined && department !== currentData.department) {
+      updateData.department = department
+    }
+    
+    if (title !== undefined && title !== currentData.title) {
+      updateData.title = title
+    }
+    
+    if (region !== undefined && region !== currentData.region) {
+      updateData.region = region
+    }
+    
+    if (location !== undefined && location !== currentData.location) {
+      updateData.location = location
+    }
+    
+    if (bio !== undefined && bio !== currentData.bio) {
+      updateData.bio = bio
+    }
+    
+    // Update Firestore document
+    await admin.firestore().collection('users').doc(userId).update(updateData)
+    
     // Create audit log
     await createSimpleAuditLog({
-      action: isEditingSelf ? 'profile_updated' : 'user_profile_updated_by_admin',
+      action: 'user_profile_updated',
       userId: context.auth.uid,
       userEmail: context.auth.token.email || 'unknown',
       targetUserId: userId,
       details: {
-        updatedBy: context.auth.uid,
-        updaterRole: callerPerms.role,
-        isEditingSelf,
-        changes: {
+        targetUserEmail: currentData.email,
+        isOwnProfile: isOwnProfile,
+        updatedFields: {
           displayName: displayName !== currentData.displayName ? displayName : null,
           department: department !== currentData.department ? department : null,
           title: title !== currentData.title ? title : null,
@@ -539,10 +550,13 @@ exports.updateUserStatus = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', `Invalid status. Must be one of: ${validStatuses.join(', ')}`)
   }
   
+  // Prevent self-status changes to avoid lockouts
+  preventSelfTargeting(context.auth.uid, userId, 'change your own account status')
+  
   try {
-    // Get permissions
+    // Check permissions
     const callerPerms = await getUserPermissions(context.auth.uid)
-    validatePermission(callerPerms, 'edit_users', 'update user status')
+    validatePermission(callerPerms, 'edit_users', 'change user status')
     
     // Get target user
     const targetUserDoc = await admin.firestore().collection('users').doc(userId).get()
@@ -551,45 +565,48 @@ exports.updateUserStatus = functions.https.onCall(async (data, context) => {
     }
     
     const targetUserData = targetUserDoc.data()
-    validateUserManagement(callerPerms, targetUserData.role, 'modify this user')
-    
     const oldStatus = targetUserData.status || 'active'
+    
+    // Validate management permissions
+    validateUserManagement(callerPerms, targetUserData.role, 'modify this user status')
     
     // Update status
     await admin.firestore().collection('users').doc(userId).update({
-      status,
+      status: status,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       lastModifiedBy: context.auth.uid
     })
     
-    // Disable Firebase Auth account if suspended or disabled
-    if (status === 'suspended' || status === 'disabled') {
-      await admin.auth().updateUser(userId, { disabled: true })
-    } else if (status === 'active') {
-      await admin.auth().updateUser(userId, { disabled: false })
-    }
+    // Update custom claims
+    await admin.auth().setCustomUserClaims(userId, {
+      role: targetUserData.role,
+      status: status
+    })
+    
+    // Disable/enable user in Firebase Auth based on status
+    const disabled = status === 'suspended' || status === 'disabled'
+    await admin.auth().updateUser(userId, { disabled })
     
     // Create audit log
     await createSimpleAuditLog({
-      action: 'user_status_updated',
+      action: 'user_status_changed',
       userId: context.auth.uid,
       userEmail: context.auth.token.email || 'unknown',
       targetUserId: userId,
-      targetUserEmail: targetUserData.email,
       details: {
-        oldStatus,
+        targetUserEmail: targetUserData.email,
+        oldStatus: oldStatus,
         newStatus: status,
-        updatedBy: context.auth.uid,
-        updaterRole: callerPerms.role,
-        reason: reason || 'Administrative action'
+        reason: reason || 'Administrative action',
+        authDisabled: disabled
       }
     })
     
     return {
       success: true,
-      message: `User status updated from ${oldStatus} to ${status}`,
-      userId,
-      oldStatus,
+      message: 'User status updated successfully',
+      userId: userId,
+      oldStatus: oldStatus,
       newStatus: status
     }
     
@@ -604,108 +621,171 @@ exports.updateUserStatus = functions.https.onCall(async (data, context) => {
   }
 })
 
-/* ---------- Bulk User Operations ---------- */
+/* ---------- Bulk User Operations Function ---------- */
 
 /**
- * Bulk update multiple users (role, status, etc.)
+ * Perform bulk operations on multiple users
  */
 exports.bulkUpdateUsers = functions.https.onCall(async (data, context) => {
   validateAuth(context)
   
-  const { userIds, updates, reason } = data
+  const { userIds, operation, operationData } = data
   
   if (!Array.isArray(userIds) || userIds.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'User IDs array is required')
   }
   
   if (userIds.length > 50) {
-    throw new functions.https.HttpsError('invalid-argument', 'Cannot update more than 50 users at once')
+    throw new functions.https.HttpsError('invalid-argument', 'Cannot process more than 50 users at once')
   }
   
-  if (!updates || typeof updates !== 'object') {
-    throw new functions.https.HttpsError('invalid-argument', 'Updates object is required')
+  const validOperations = ['role_change', 'status_change', 'delete']
+  if (!validOperations.includes(operation)) {
+    throw new functions.https.HttpsError('invalid-argument', `Invalid operation. Must be one of: ${validOperations.join(', ')}`)
   }
   
   try {
-    // Get permissions
+    // Check permissions
     const callerPerms = await getUserPermissions(context.auth.uid)
-    validatePermission(callerPerms, 'edit_users', 'bulk update users')
     
-    const results = []
-    const batch = admin.firestore().batch()
+    switch (operation) {
+      case 'role_change':
+        validatePermission(callerPerms, 'edit_users', 'change user roles')
+        break
+      case 'status_change':
+        validatePermission(callerPerms, 'edit_users', 'change user status')
+        break
+      case 'delete':
+        validatePermission(callerPerms, 'delete_users', 'delete users')
+        break
+    }
+    
+    const results = {
+      success: [],
+      failed: [],
+      totalProcessed: 0
+    }
     
     // Process each user
     for (const userId of userIds) {
       try {
-        validateUserId(userId)
+        // Prevent self-targeting for dangerous operations
+        if (operation === 'delete' || operation === 'status_change') {
+          if (context.auth.uid === userId) {
+            results.failed.push({
+              userId,
+              reason: 'Cannot perform this operation on your own account'
+            })
+            continue
+          }
+        }
         
         // Get user data
         const userDoc = await admin.firestore().collection('users').doc(userId).get()
         if (!userDoc.exists) {
-          results.push({ userId, success: false, error: 'User not found' })
+          results.failed.push({
+            userId,
+            reason: 'User not found'
+          })
           continue
         }
         
         const userData = userDoc.data()
-        validateUserManagement(callerPerms, userData.role, 'bulk update this user')
         
-        // Prepare update
-        const updateData = {
-          ...updates,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          lastModifiedBy: context.auth.uid
+        // Validate management permissions
+        try {
+          validateUserManagement(callerPerms, userData.role, `perform ${operation} on this user`)
+        } catch (error) {
+          results.failed.push({
+            userId,
+            reason: error.message
+          })
+          continue
         }
         
-        batch.update(admin.firestore().collection('users').doc(userId), updateData)
-        results.push({ userId, success: true })
+        // Perform the operation
+        switch (operation) {
+          case 'role_change':
+            await admin.firestore().collection('users').doc(userId).update({
+              role: operationData.newRole,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              lastModifiedBy: context.auth.uid
+            })
+            await admin.auth().setCustomUserClaims(userId, {
+              role: operationData.newRole,
+              status: userData.status || 'active'
+            })
+            break
+            
+          case 'status_change':
+            await admin.firestore().collection('users').doc(userId).update({
+              status: operationData.newStatus,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              lastModifiedBy: context.auth.uid
+            })
+            const disabled = operationData.newStatus === 'suspended' || operationData.newStatus === 'disabled'
+            await admin.auth().updateUser(userId, { disabled })
+            break
+            
+          case 'delete':
+            await admin.auth().deleteUser(userId)
+            await admin.firestore().collection('users').doc(userId).delete()
+            break
+        }
+        
+        results.success.push({
+          userId,
+          email: userData.email
+        })
         
       } catch (error) {
-        results.push({ userId, success: false, error: error.message })
+        console.error(`Error processing user ${userId}:`, error)
+        results.failed.push({
+          userId,
+          reason: error.message || 'Unknown error'
+        })
       }
+      
+      results.totalProcessed++
     }
     
-    // Commit batch update
-    await batch.commit()
-    
-    // Create audit log
+    // Create audit log for bulk operation
     await createSimpleAuditLog({
-      action: 'bulk_user_update',
+      action: 'bulk_user_operation',
       userId: context.auth.uid,
       userEmail: context.auth.token.email || 'unknown',
       details: {
-        targetUserIds: userIds,
-        updates,
-        updatedBy: context.auth.uid,
-        updaterRole: callerPerms.role,
-        reason: reason || 'Bulk administrative action',
-        results
+        operation: operation,
+        operationData: operationData,
+        totalRequested: userIds.length,
+        totalProcessed: results.totalProcessed,
+        successCount: results.success.length,
+        failureCount: results.failed.length,
+        reason: operationData.reason || 'Bulk administrative action'
       }
     })
     
     return {
       success: true,
-      message: `Bulk update completed`,
-      results,
-      totalProcessed: userIds.length,
-      successCount: results.filter(r => r.success).length,
-      errorCount: results.filter(r => !r.success).length
+      message: `Bulk operation completed. ${results.success.length} succeeded, ${results.failed.length} failed.`,
+      results: results
     }
     
   } catch (error) {
-    console.error('Error in bulk user update:', error)
+    console.error('Error in bulk user operation:', error)
     
     if (error instanceof functions.https.HttpsError) {
       throw error
     }
     
-    throw new functions.https.HttpsError('internal', 'Failed to perform bulk user update')
+    throw new functions.https.HttpsError('internal', 'Failed to complete bulk operation')
   }
 })
 
 /* ---------- Get User Details Function ---------- */
 
 /**
- * Get detailed user information (for admin use)
+ * Get detailed user information including permissions
  */
 exports.getUserDetails = functions.https.onCall(async (data, context) => {
   validateAuth(context)
@@ -714,15 +794,15 @@ exports.getUserDetails = functions.https.onCall(async (data, context) => {
   validateUserId(userId)
   
   try {
-    // Get permissions
-    const callerPerms = await getUserPermissions(context.auth.uid)
-    const isViewingSelf = context.auth.uid === userId
+    // Check if requesting own data or if admin
+    const isOwnData = context.auth.uid === userId
     
-    if (!isViewingSelf && !callerPerms.hasPermission('view_users')) {
-      throw new functions.https.HttpsError('permission-denied', 'Cannot view other users details')
+    if (!isOwnData) {
+      const callerPerms = await getUserPermissions(context.auth.uid)
+      validatePermission(callerPerms, 'view_users', 'view user details')
     }
     
-    // Get user data
+    // Get user data from Firestore
     const userDoc = await admin.firestore().collection('users').doc(userId).get()
     if (!userDoc.exists) {
       throw new functions.https.HttpsError('not-found', 'User not found')
@@ -733,52 +813,38 @@ exports.getUserDetails = functions.https.onCall(async (data, context) => {
     // Get Firebase Auth data
     let authData = null
     try {
-      authData = await admin.auth().getUser(userId)
+      const authUser = await admin.auth().getUser(userId)
+      authData = {
+        emailVerified: authUser.emailVerified,
+        disabled: authUser.disabled,
+        lastSignInTime: authUser.metadata.lastSignInTime,
+        creationTime: authUser.metadata.creationTime,
+        customClaims: authUser.customClaims
+      }
     } catch (error) {
-      console.warn('Could not fetch Firebase Auth data:', error.message)
+      console.warn(`Could not get auth data for user ${userId}:`, error.message)
     }
     
-    // Sanitize data based on permissions
-    const response = {
-      uid: userId,
-      email: userData.email,
-      displayName: userData.displayName,
-      role: userData.role,
-      status: userData.status || 'active',
-      createdAt: userData.createdAt,
-      lastActive: userData.lastActive,
-      customPermissions: userData.customPermissions || [],
-      deniedPermissions: userData.deniedPermissions || []
-    }
-    
-    // Add profile information if viewing self or has permission
-    if (isViewingSelf || callerPerms.hasPermission('view_user_profiles')) {
-      response.profile = {
-        phone: userData.phone || '',
-        department: userData.department || '',
-        title: userData.title || '',
-        region: userData.region || '',
-        location: userData.location || '',
-        bio: userData.bio || ''
-      }
-    }
-    
-    // Add administrative information if admin
-    if (callerPerms.hasPermission('view_user_admin_info')) {
-      response.adminInfo = {
-        createdBy: userData.createdBy,
-        lastModifiedBy: userData.lastModifiedBy,
-        emailVerified: authData?.emailVerified || false,
-        disabled: authData?.disabled || false,
-        lastSignInTime: authData?.metadata?.lastSignInTime,
-        creationTime: authData?.metadata?.creationTime,
-        preferences: userData.preferences || {}
-      }
+    // Create audit log for viewing user details (except for own data)
+    if (!isOwnData) {
+      await createSimpleAuditLog({
+        action: 'user_details_viewed',
+        userId: context.auth.uid,
+        userEmail: context.auth.token.email || 'unknown',
+        targetUserId: userId,
+        details: {
+          targetUserEmail: userData.email,
+          viewedBy: 'admin_panel'
+        }
+      })
     }
     
     return {
       success: true,
-      user: response
+      userData: {
+        ...userData,
+        authData: authData
+      }
     }
     
   } catch (error) {
@@ -791,3 +857,6 @@ exports.getUserDetails = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', 'Failed to get user details')
   }
 })
+
+console.log('✅ User Management Functions loaded - 7 functions available')
+console.log('📋 Functions: deleteUser, createUser, updateUserRole, updateUserProfile, updateUserStatus, bulkUpdateUsers, getUserDetails')
