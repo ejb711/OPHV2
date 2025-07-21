@@ -1,4 +1,4 @@
-// firestore.rules - Enhanced with proper user deletion support
+// firestore.rules - Enhanced with proper user deletion support and security settings
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -40,10 +40,11 @@ service cloud.firestore {
       
       // Update users - Allow self-updates and admin updates
       allow update: if request.auth != null && (
-        // Users can update their own activity and limited fields
+        // Users can update their own activity and limited fields (including security settings)
+        // Security settings are stored as a nested object in the user document
         (request.auth.uid == userId && 
          request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['displayName', 'photoURL', 'lastActive', 'preferences'])) ||
+           .hasOnly(['displayName', 'photoURL', 'lastActive', 'preferences', 'securitySettings', 'updatedAt'])) ||
         // Users with edit_users permission can update others
         (hasPermission('edit_users') && 
          // Check if they can manage the target user's current role
@@ -60,6 +61,7 @@ service cloud.firestore {
         canManageUserWithRole(resource.data.role);
     }
     
+
     // Roles collection - authenticated users can read
     match /roles/{roleId} {
       allow read: if request.auth != null;
@@ -72,16 +74,27 @@ service cloud.firestore {
       allow write: if request.auth != null && hasPermission('manage_permissions');
     }
     
-    // Audit logs - Enhanced to support Cloud Functions
-    match /audit_logs/{document} {
-      allow read: if request.auth != null && hasPermission('view_audit_logs');
-      // Allow authenticated users to create audit logs
+    // Audit logs - ENHANCED to allow users to read their own logs
+    match /audit_logs/{logId} {
+      // Users can read their own audit logs OR admins can read all
+      allow read: if request.auth != null && (
+        // User reading their own logs
+        (resource.data.userId == request.auth.uid) ||
+        // Admin/owner reading any logs
+        hasPermission('view_audit_logs')
+      );
+      
+      // Allow authenticated users to create audit logs for themselves
       allow create: if request.auth != null && 
-        // Ensure they can only write their own audit logs (unless system operation)
-        (request.resource.data.userId == request.auth.uid || 
-         request.resource.data.userId == 'system');
-      // Cloud Functions can write any audit logs
-      allow write: if request.auth != null && request.auth.token.admin == true;
+        // Ensure they can only write their own audit logs
+        request.resource.data.userId == request.auth.uid &&
+        // Ensure required fields are present
+        request.resource.data.keys().hasAll(['action', 'userId', 'timestamp']) &&
+        request.resource.data.action is string &&
+        request.resource.data.timestamp is timestamp;
+      
+      // No updates or deletes allowed - audit logs are immutable
+      allow update, delete: if false;
     }
     
     // Projects collection (future)
@@ -113,6 +126,20 @@ service cloud.firestore {
       allow create: if request.auth != null && hasPermission('create_events');
       allow update: if request.auth != null && hasPermission('edit_events');
       allow delete: if request.auth != null && hasPermission('delete_events');
+    }
+    
+    // Activity tracking collection (if using separate collection)
+    match /user_activity/{userId} {
+      // Users can read their own activity
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can update their own activity tracking
+      allow create, update: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasOnly(['lastActive', 'lastPage', 'sessionStart']);
+      
+      // No deletion of activity records
+      allow delete: if false;
     }
   }
 }
