@@ -1,5 +1,8 @@
 # CHANGELOG - July 2025
 
+July 21, 2025 - 3:00 PM - Component Modularization & Role Hierarchy Fix 🏗️
+Major Refactoring: Successfully modularized the monolithic 808-line RoleManagement.vue component into 7 focused modules (all under 250 lines each): main orchestrator, role cards, dialogs for create/edit/delete, reusable permission selector, and business logic composable. This refactoring improves maintainability, enables component reuse, reduces merge conflicts, and establishes a pattern for future modularization efforts. Role Hierarchy Fix: Corrected the role hierarchy system to use proper values (Owner=100, Admin=90, User=50, Viewer=20, Pending=10) instead of the incorrect 1-3 range. Custom roles can now be assigned appropriate intermediate hierarchy levels. Created migration script to fix existing database values. All functionality preserved with improved architecture and correct permission inheritance based on hierarchy levels.
+
 📅 July 21, 2025 - 12:45 PM - AppLayout Modularization
 ✅ REFACTORED: AppLayout Component Architecture
 Issue: AppLayout.vue exceeded 350 lines (was ~400 lines), violating project maintainability guidelines
