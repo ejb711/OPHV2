@@ -57,6 +57,18 @@ export function usePermissions() {
   const canEditEvents = computed(() => hasPermission('edit_events') || canManageCalendar.value)
   const canDeleteEvents = computed(() => hasPermission('delete_events') || canManageCalendar.value)
 
+  // Communications Dashboard
+  const canManageComms = computed(() => hasPermission('manage_comms'))
+  const canViewComms = computed(() => hasPermission('view_comms') || canManageComms.value)
+  const canCreateCommsProjects = computed(() => hasPermission('create_comms_projects') || canManageComms.value)
+  const canEditCommsProjects = computed(() => hasPermission('edit_comms_projects') || canManageComms.value)
+  const canDeleteCommsProjects = computed(() => hasPermission('delete_comms_projects') || canManageComms.value)
+  const canManageCommsCoordinators = computed(() => hasPermission('manage_comms_coordinators') || canManageComms.value)
+  const canViewAllRegions = computed(() => hasPermission('view_all_regions') || canManageComms.value)
+  const canManageCommsTemplates = computed(() => hasPermission('manage_comms_templates') || canManageComms.value)
+  const canExportCommsData = computed(() => hasPermission('export_comms_data') || canManageComms.value)
+  const canApproveCommsProjects = computed(() => hasPermission('approve_comms_projects') || canManageComms.value)
+
   // System Management
   const canManageSystem = computed(() => hasPermission('manage_system'))
   const canViewAnalytics = computed(() => hasPermission('view_analytics'))
@@ -70,6 +82,7 @@ export function usePermissions() {
   const showProjectsNav = computed(() => canViewProjects.value)
   const showForumsNav = computed(() => canViewForums.value)
   const showCalendarNav = computed(() => canViewCalendar.value)
+  const showCommsNav = computed(() => canViewComms.value)
 
   // Button visibility helpers
   const showCreateButton = (feature) => {
@@ -78,6 +91,7 @@ export function usePermissions() {
       case 'projects': return canCreateProjects.value
       case 'posts': return canCreatePosts.value
       case 'events': return canCreateEvents.value
+      case 'comms_projects': return canCreateCommsProjects.value
       default: return false
     }
   }
@@ -91,6 +105,7 @@ export function usePermissions() {
       case 'projects': return canEditProjects.value
       case 'posts': return canEditPosts.value
       case 'events': return canEditEvents.value
+      case 'comms_projects': return canEditCommsProjects.value || isOwner
       default: return false
     }
   }
@@ -102,6 +117,7 @@ export function usePermissions() {
       case 'projects': return canDeleteProjects.value || isOwner
       case 'posts': return canDeletePosts.value || isOwner
       case 'events': return canDeleteEvents.value || isOwner
+      case 'comms_projects': return canDeleteCommsProjects.value || isOwner
       default: return false
     }
   }
@@ -177,6 +193,18 @@ export function usePermissions() {
     canEditEvents,
     canDeleteEvents,
 
+    // Communications
+    canManageComms,
+    canViewComms,
+    canCreateCommsProjects,
+    canEditCommsProjects,
+    canDeleteCommsProjects,
+    canManageCommsCoordinators,
+    canViewAllRegions,
+    canManageCommsTemplates,
+    canExportCommsData,
+    canApproveCommsProjects,
+
     // System
     canManageSystem,
     canViewAnalytics,
@@ -188,6 +216,7 @@ export function usePermissions() {
     showProjectsNav,
     showForumsNav,
     showCalendarNav,
+    showCommsNav,
     showCreateButton,
     showEditButton,
     showDeleteButton,

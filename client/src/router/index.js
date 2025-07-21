@@ -1,10 +1,11 @@
-// client/src/router/index.js - Enhanced with User Profile Edit Route
+// client/src/router/index.js - Enhanced with User Profile Edit Route and Communications Dashboard
 import { createRouter, createWebHistory } from 'vue-router'
 
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AwaitingApprovalView from '../views/AwaitingApproval.vue'
 import AdminView from '../views/AdminView.vue'
+const CommsView = () => import('../views/CommsView.vue')
 
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -69,6 +70,102 @@ export const router = createRouter({
         requiresAuth: true,
         requiresPermission: 'edit_users'
       }
+    },
+
+    // Communications Dashboard Routes
+    {
+      path: '/comms',
+      name: 'communications',
+      component: CommsView,
+      meta: { 
+        requiresAuth: true,
+        requiresPermission: 'view_comms',
+        title: 'Communications Dashboard'
+      },
+      children: [
+        {
+          path: '',
+          name: 'comms-dashboard',
+          component: CommsView, // Will show the dashboard by default
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'view_comms',
+            title: 'Communications Dashboard'
+          }
+        },
+        {
+          path: 'projects',
+          name: 'comms-projects',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'view_comms',
+            title: 'Communications Projects'
+          }
+        },
+        {
+          path: 'projects/new',
+          name: 'comms-project-new',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'create_comms_projects',
+            title: 'New Communications Project'
+          }
+        },
+        {
+          path: 'projects/:id',
+          name: 'comms-project-detail',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          props: true,
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'view_comms',
+            title: 'Project Details'
+          }
+        },
+        {
+          path: 'projects/:id/edit',
+          name: 'comms-project-edit',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          props: true,
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'edit_comms_projects',
+            title: 'Edit Project'
+          }
+        },
+        {
+          path: 'templates',
+          name: 'comms-templates',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'manage_comms_templates',
+            title: 'Project Templates'
+          }
+        },
+        {
+          path: 'coordinators',
+          name: 'comms-coordinators',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'manage_comms_coordinators',
+            title: 'Regional Coordinators'
+          }
+        },
+        {
+          path: 'reports',
+          name: 'comms-reports',
+          component: () => import('@/views/CommsView.vue'), // Placeholder for now
+          meta: { 
+            requiresAuth: true,
+            requiresPermission: 'export_comms_data',
+            title: 'Communications Reports'
+          }
+        }
+      ]
     },
     
     // Catch-all 404

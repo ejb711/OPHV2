@@ -31,7 +31,15 @@
             :prepend-icon="item.icon"
             :title="item.title"
             :value="item.route"
-          />
+          >
+            <template v-slot:append v-if="item.badge">
+              <v-badge
+                :content="item.badge.content"
+                :color="item.badge.color"
+                inline
+              />
+            </template>
+          </v-list-item>
           
           <v-divider v-if="idx < navigationSections.length - 1 && section.items.length > 0" />
         </template>
@@ -132,6 +140,7 @@ const canViewAuditLogs = permissions.canViewAuditLogs || ref(false)
 const canViewProjects = permissions.canViewProjects || ref(false)
 const canViewForums = permissions.canViewForums || ref(false)
 const canViewCalendar = permissions.canViewCalendar || ref(false)
+const canViewComms = permissions.canViewComms || ref(false)
 const canViewAnalytics = permissions.canViewAnalytics || ref(false)
 const canManageSettings = permissions.canManageSettings || ref(false)
 const canViewSystemStatus = permissions.canViewSystemStatus || ref(false)
@@ -236,6 +245,16 @@ const navigationSections = computed(() => {
           route: '/calendar',
           show: canViewCalendar.value,
           disabled: true
+        },
+        {
+          title: 'Communications',
+          icon: 'mdi-bullhorn',
+          route: '/comms',
+          show: canViewComms.value,
+          badge: {
+            content: 'NEW',
+            color: 'success'
+          }
         }
       ]
     },

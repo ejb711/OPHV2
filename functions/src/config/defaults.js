@@ -1,4 +1,4 @@
-// functions/src/config/permissions.js - Permission System Configuration
+// functions/src/config/defaults.js - Permission System Configuration
 // Centralized permission and role definitions for OPHV2
 
 /* ---------- Default Permissions ---------- */
@@ -20,27 +20,39 @@ const DEFAULT_PERMISSIONS = [
   { id: 'view_projects', name: 'View Projects', description: 'View projects and project data', category: 'content_management' },
   { id: 'create_projects', name: 'Create Projects', description: 'Create new projects', category: 'content_management' },
   { id: 'edit_projects', name: 'Edit Projects', description: 'Edit project details and data', category: 'content_management' },
-  { id: 'delete_projects', name: 'Delete Projects', description: 'Delete projects and project data', category: 'content_management' },
+  { id: 'delete_projects', name: 'Delete Projects', description: 'Delete projects', category: 'content_management' },
   
-  // Forum Management
-  { id: 'manage_forums', name: 'Manage Forums', description: 'Full forum administration access', category: 'community' },
-  { id: 'view_forums', name: 'View Forums', description: 'View forum discussions', category: 'community' },
-  { id: 'create_posts', name: 'Create Posts', description: 'Create new forum posts', category: 'community' },
-  { id: 'edit_posts', name: 'Edit Posts', description: 'Edit forum posts', category: 'community' },
-  { id: 'delete_posts', name: 'Delete Posts', description: 'Delete forum posts', category: 'community' },
+  // Community Features
+  { id: 'manage_forums', name: 'Manage Forums', description: 'Forum administration and moderation', category: 'community' },
+  { id: 'view_forums', name: 'View Forums', description: 'View and read forum content', category: 'community' },
+  { id: 'create_posts', name: 'Create Posts', description: 'Create new forum posts and topics', category: 'community' },
+  { id: 'edit_posts', name: 'Edit Posts', description: 'Edit forum posts and topics', category: 'community' },
+  { id: 'delete_posts', name: 'Delete Posts', description: 'Delete forum posts and topics', category: 'community' },
   { id: 'moderate_posts', name: 'Moderate Posts', description: 'Moderate forum content', category: 'community' },
   
-  // Calendar Management
+  // Calendar & Events
   { id: 'manage_calendar', name: 'Manage Calendar', description: 'Full calendar administration', category: 'scheduling' },
-  { id: 'view_calendar', name: 'View Calendar', description: 'View calendar events', category: 'scheduling' },
-  { id: 'create_events', name: 'Create Events', description: 'Create calendar events', category: 'scheduling' },
+  { id: 'view_calendar', name: 'View Calendar', description: 'View calendar and events', category: 'scheduling' },
+  { id: 'create_events', name: 'Create Events', description: 'Create new calendar events', category: 'scheduling' },
   { id: 'edit_events', name: 'Edit Events', description: 'Edit calendar events', category: 'scheduling' },
   { id: 'delete_events', name: 'Delete Events', description: 'Delete calendar events', category: 'scheduling' },
   
+  // Communications Dashboard Permissions
+  { id: 'manage_comms', name: 'Manage Communications', description: 'Full communications dashboard access', category: 'communications' },
+  { id: 'view_comms', name: 'View Communications', description: 'View communications dashboard and projects', category: 'communications' },
+  { id: 'create_comms_projects', name: 'Create Communications Projects', description: 'Create new communications projects', category: 'communications' },
+  { id: 'edit_comms_projects', name: 'Edit Communications Projects', description: 'Edit communications project details', category: 'communications' },
+  { id: 'delete_comms_projects', name: 'Delete Communications Projects', description: 'Delete communications projects', category: 'communications' },
+  { id: 'manage_comms_coordinators', name: 'Manage Communications Coordinators', description: 'Assign and manage regional coordinators', category: 'communications' },
+  { id: 'view_all_regions', name: 'View All Regions', description: 'View projects from all Louisiana regions', category: 'communications' },
+  { id: 'manage_comms_templates', name: 'Manage Communications Templates', description: 'Create and manage project templates', category: 'communications' },
+  { id: 'export_comms_data', name: 'Export Communications Data', description: 'Export project data and reports', category: 'communications' },
+  { id: 'approve_comms_projects', name: 'Approve Communications Projects', description: 'Approve projects in pending status', category: 'communications' },
+  
   // Profile Management
-  { id: 'view_own_profile', name: 'View Own Profile', description: 'View own profile information', category: 'profile' },
-  { id: 'edit_own_profile', name: 'Edit Own Profile', description: 'Edit own profile information', category: 'profile' },
-  { id: 'view_own_activity', name: 'View Own Activity', description: 'View own activity history', category: 'profile' },
+  { id: 'view_own_profile', name: 'View Own Profile', description: 'View personal profile information', category: 'profile' },
+  { id: 'edit_own_profile', name: 'Edit Own Profile', description: 'Edit personal profile information', category: 'profile' },
+  { id: 'view_own_activity', name: 'View Own Activity', description: 'View personal activity history', category: 'profile' },
   { id: 'manage_own_security', name: 'Manage Own Security', description: 'Change password and security settings', category: 'profile' },
   { id: 'upload_avatar', name: 'Upload Avatar', description: 'Upload and change profile photo', category: 'profile' },
   
@@ -75,7 +87,10 @@ const DEFAULT_ROLES = [
       'view_own_profile', 'edit_own_profile', 'view_own_activity', 'manage_own_security', 'upload_avatar',
       'manage_forums', 'view_forums', 'create_posts', 'edit_posts', 'delete_posts', 'moderate_posts',
       'manage_calendar', 'view_calendar', 'create_events', 'edit_events', 'delete_events',
-      'view_system_status', 'view_analytics', 'manage_settings'
+      'view_system_status', 'view_analytics', 'manage_settings',
+      // Communications permissions
+      'manage_comms', 'view_comms', 'create_comms_projects', 'edit_comms_projects', 'delete_comms_projects',
+      'manage_comms_coordinators', 'view_all_regions', 'manage_comms_templates', 'export_comms_data', 'approve_comms_projects'
     ]
   },
   {
@@ -88,7 +103,9 @@ const DEFAULT_ROLES = [
       'view_users', 'view_projects', 'create_projects', 'edit_projects',
       'view_own_profile', 'edit_own_profile', 'view_own_activity', 'manage_own_security', 'upload_avatar',
       'view_forums', 'create_posts', 'edit_posts',
-      'view_calendar', 'create_events', 'edit_events'
+      'view_calendar', 'create_events', 'edit_events',
+      // Basic communications permissions
+      'view_comms', 'create_comms_projects', 'edit_comms_projects'
     ]
   },
   {
@@ -100,7 +117,8 @@ const DEFAULT_ROLES = [
     permissions: [
       'view_users', 'view_projects',
       'view_own_profile', 'view_own_activity',
-      'view_forums', 'view_calendar'
+      'view_forums', 'view_calendar',
+      'view_comms' // Can view communications dashboard
     ]
   },
   {
@@ -119,6 +137,7 @@ const PERMISSION_CATEGORIES = {
   content_management: 'Content Management', 
   community: 'Community Features',
   scheduling: 'Calendar & Events',
+  communications: 'Communications Dashboard',
   profile: 'Profile Management',
   system: 'System Administration'
 }
