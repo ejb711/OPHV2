@@ -102,7 +102,7 @@ import PasswordResetDialog from './PasswordResetDialog.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 const permissionsStore = usePermissionsStore()
-const { logActivity } = useAudit()
+const { logEvent } = useAudit()
 
 // State
 const users = ref([])
@@ -258,7 +258,7 @@ const updateUserRole = async (user, newRole) => {
       updatedAt: new Date()
     })
     
-    await logActivity('user_role_updated', {
+    await logEvent('user_role_updated', {
       targetUserId: user.uid,
       oldRole: user.role,
       newRole: newRole
@@ -278,7 +278,7 @@ const toggleUserStatus = async (user) => {
       updatedAt: new Date()
     })
     
-    await logActivity('user_status_updated', {
+    await logEvent('user_status_updated', {
       targetUserId: user.uid,
       oldStatus: user.status,
       newStatus: newStatus

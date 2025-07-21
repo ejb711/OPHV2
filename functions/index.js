@@ -40,6 +40,7 @@ exports.updateUserProfile = userManagement.updateUserProfile
 exports.updateUserRole = userManagement.updateUserRole
 exports.updateUserStatus = userManagement.updateUserStatus
 exports.bulkUpdateUsers = userManagement.bulkUpdateUsers
+exports.resetUserPassword = userManagement.resetUserPassword
 
 // Authentication Triggers
 exports.onUserCreated = authTriggers.onUserCreated

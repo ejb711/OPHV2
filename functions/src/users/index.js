@@ -17,6 +17,9 @@ const { updateUserStatus } = require('./status')
 // Import bulk operations
 const { bulkUpdateUsers } = require('./bulk')
 
+// Import password management
+const { resetUserPassword } = require('./password')
+
 /* ---------- Main Exports ---------- */
 
 // Export all user management functions
@@ -36,25 +39,30 @@ module.exports = {
   updateUserStatus,
   
   // Bulk Operations
-  bulkUpdateUsers
+  bulkUpdateUsers,
+  
+  // Password Management
+  resetUserPassword
 }
 
 /* ---------- Module Information ---------- */
 
 console.log('✅ OPHV2 User Management Module loaded - Modular Architecture')
 console.log('📊 Module Statistics:')
-console.log('   - Total Functions: 7')
+console.log('   - Total Functions: 8')
 console.log('   - CRUD Operations: 3 (createUser, deleteUser, getUserDetails)')
 console.log('   - Profile Management: 1 (updateUserProfile)')
 console.log('   - Role Management: 1 (updateUserRole)')
 console.log('   - Status Management: 1 (updateUserStatus)')
 console.log('   - Bulk Operations: 1 (bulkUpdateUsers)')
+console.log('   - Password Management: 1 (resetUserPassword)')
 console.log('📁 File Structure:')
 console.log('   - crud.js: ~280 lines (CRUD operations)')
 console.log('   - profile.js: ~120 lines (Profile updates)')
 console.log('   - role.js: ~120 lines (Role management)')
 console.log('   - status.js: ~120 lines (Status management)')
 console.log('   - bulk.js: ~180 lines (Bulk operations)')
+console.log('   - password.js: ~115 lines (Password management)')
 console.log('   - helpers.js: ~40 lines (Shared utilities)')
-console.log('   - index.js: ~60 lines (Main exports)')
+console.log('   - index.js: ~65 lines (Main exports)')
 console.log('🎯 All files under 350 line limit for optimal maintainability')
