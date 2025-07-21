@@ -39,6 +39,15 @@ export const router = createRouter({
         requiresPermission: 'access_admin'
       } 
     },
+    { 
+      path: '/auth/action', 
+      name: 'auth-action', 
+      component: () => import('../views/PasswordResetView.vue'),
+      meta: { 
+        requiresAuth: false, 
+        isPublic: true
+      } 
+    },    
     
     // PHASE 2: User Profile Management
     { 
