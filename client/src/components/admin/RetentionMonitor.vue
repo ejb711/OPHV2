@@ -2,10 +2,11 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { httpsCallable } from 'firebase/functions'
-import { functions } from '../../firebase'
+import { functions, db } from '../../firebase'
+import { collection, query, where, orderBy, limit, getDocs, Timestamp } from 'firebase/firestore'
 import { useAudit } from '../../composables/useAudit'
 
-const { getRetentionStats: getClientStats, RETENTION_CONFIG } = useAudit()
+const { RETENTION_CONFIG } = useAudit()
 
 /* ---------- state ---------- */
 const loading = ref(false)
@@ -45,12 +46,21 @@ const healthIcon = computed(() => {
 
 const storageEstimate = computed(() => {
   // Rough estimate: ~500 bytes per log
-  const totalBytes = stats.value.totalLogs * 500
+  const totalBytes = (stats.value.totalLogs || 0) * 500
   
   if (totalBytes < 1024) return `${totalBytes} B`
   if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`
   return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
 })
+
+// Safe formatting functions
+const formatNumber = (value) => {
+  return (value || 0).toLocaleString()
+}
+
+const formatHealthStatus = (status) => {
+  return (status || 'unknown').toUpperCase()
+}
 
 /* ---------- lifecycle ---------- */
 onMounted(() => {
@@ -66,27 +76,90 @@ async function loadRetentionStats() {
     // Try to get stats from Cloud Function first
     const getRetentionStats = httpsCallable(functions, 'getRetentionStats')
     const result = await getRetentionStats()
-    stats.value = result.data
+    console.log('Raw Cloud Function response:', result) // Debug full response
+    console.log('Cloud Function result.data:', result.data) // Debug data property
+    
+    // Handle different possible response structures
+    let statsData = null
+    
+    // Case 1: Nested structure with success flag and data property
+    if (result.data && result.data.success && result.data.data) {
+      statsData = result.data.data
+      console.log('Found nested structure with success flag')
+    }
+    // Case 2: Direct data structure
+    else if (result.data && result.data.overview) {
+      statsData = result.data
+      console.log('Found direct data structure')
+    }
+    // Case 3: Maybe the overview is at the top level
+    else if (result.data && result.data.totalLogs !== undefined) {
+      statsData = { overview: result.data }
+      console.log('Found flat structure, wrapping in overview')
+    }
+    
+    if (statsData && statsData.overview) {
+      stats.value = {
+        totalLogs: statsData.overview.totalLogs || 0,
+        compressedLogs: statsData.overview.compressedLogs || 0,
+        recentLogs: statsData.overview.recentLogs || 0,
+        compressionRate: parseFloat(statsData.overview.compressionRate) || 0,
+        retentionHealth: statsData.overview.retentionHealth || 'unknown',
+        lastUpdated: statsData.lastUpdated || null
+      }
+      console.log('Successfully loaded stats:', stats.value)
+    } else {
+      console.error('Unexpected response structure:', result.data)
+      throw new Error('Invalid response structure from Cloud Function')
+    }
     
   } catch (e) {
-    console.warn('Cloud Function stats failed, using client-side:', e)
+    console.warn('Cloud Function stats failed, using client-side fallback:', e)
     
-    // Fallback to client-side stats
+    // Simple client-side fallback - just get basic counts
     try {
-      const clientStats = await getClientStats()
-      if (clientStats) {
-        stats.value = {
-          ...clientStats,
-          retentionHealth: clientStats.retentionHealth || 'unknown',
-          lastUpdated: new Date().toISOString()
-        }
+      const totalLogs = await getClientSideStats()
+      stats.value = {
+        totalLogs,
+        compressedLogs: 0, // Would need more complex query
+        recentLogs: totalLogs, // Simplified
+        compressionRate: 0,
+        retentionHealth: totalLogs > 0 ? 'good' : 'unknown',
+        lastUpdated: new Date().toISOString()
       }
     } catch (clientError) {
       console.error('Client stats also failed:', clientError)
       error.value = 'Failed to load retention statistics'
+      
+      // Set default values to prevent UI errors
+      stats.value = {
+        totalLogs: 0,
+        compressedLogs: 0,
+        recentLogs: 0,
+        compressionRate: 0,
+        retentionHealth: 'unknown',
+        lastUpdated: new Date().toISOString()
+      }
     }
   } finally {
     loading.value = false
+  }
+}
+
+// Simple client-side stats as fallback
+async function getClientSideStats() {
+  try {
+    // Get recent logs count (simplified)
+    const recentQuery = query(
+      collection(db, 'audit_logs'),
+      orderBy('timestamp', 'desc'),
+      limit(100)
+    )
+    const snapshot = await getDocs(recentQuery)
+    return snapshot.size
+  } catch (error) {
+    console.error('Error getting client-side stats:', error)
+    return 0
   }
 }
 
@@ -99,7 +172,8 @@ async function triggerManualCleanup() {
     const manualCleanup = httpsCallable(functions, 'manualCleanupAuditLogs')
     const result = await manualCleanup()
     
-    success.value = `Cleanup completed! Compressed: ${result.data.stats.compressed}, Deleted: ${result.data.stats.deleted}`
+    const cleanupStats = result.data.stats || {}
+    success.value = `Cleanup completed! Compressed: ${cleanupStats.compressed || 0}, Deleted: ${cleanupStats.deleted || 0}`
     
     // Reload stats to reflect changes
     setTimeout(() => loadRetentionStats(), 2000)
@@ -144,7 +218,7 @@ function formatDate(dateString) {
             class="mb-0"
           >
             <v-alert-title>
-              Retention Status: {{ stats.retentionHealth.toUpperCase() }}
+              Retention Status: {{ formatHealthStatus(stats.retentionHealth) }}
             </v-alert-title>
             <div class="text-caption">
               Last updated: {{ formatDate(stats.lastUpdated) }}
@@ -158,7 +232,7 @@ function formatDate(dateString) {
         <v-col cols="6" md="3">
           <div class="text-center">
             <div class="text-h4 font-weight-bold text-primary">
-              {{ stats.totalLogs.toLocaleString() }}
+              {{ formatNumber(stats.totalLogs) }}
             </div>
             <div class="text-caption text-medium-emphasis">Total Logs</div>
           </div>
@@ -167,7 +241,7 @@ function formatDate(dateString) {
         <v-col cols="6" md="3">
           <div class="text-center">
             <div class="text-h4 font-weight-bold text-success">
-              {{ stats.recentLogs.toLocaleString() }}
+              {{ formatNumber(stats.recentLogs) }}
             </div>
             <div class="text-caption text-medium-emphasis">Recent (30 days)</div>
           </div>
@@ -176,7 +250,7 @@ function formatDate(dateString) {
         <v-col cols="6" md="3">
           <div class="text-center">
             <div class="text-h4 font-weight-bold text-warning">
-              {{ stats.compressedLogs.toLocaleString() }}
+              {{ formatNumber(stats.compressedLogs) }}
             </div>
             <div class="text-caption text-medium-emphasis">Compressed</div>
           </div>
@@ -228,66 +302,76 @@ function formatDate(dateString) {
             <v-list-subheader>Compression Rate</v-list-subheader>
             
             <v-progress-linear
-              :model-value="stats.compressionRate"
+              :model-value="stats.compressionRate || 0"
               :color="healthColor"
               height="20"
               class="mb-2"
             >
-              <strong>{{ stats.compressionRate }}%</strong>
+              <strong>{{ stats.compressionRate || 0 }}%</strong>
             </v-progress-linear>
             
-            <div class="text-caption text-medium-emphasis mb-4">
-              {{ stats.compressedLogs }} of {{ stats.totalLogs }} logs compressed
-            </div>
-            
-            <!-- Manual Cleanup Button -->
-            <v-btn
-              color="warning"
-              variant="outlined"
-              :loading="cleanupLoading"
-              @click="triggerManualCleanup"
-              prepend-icon="mdi-broom"
-              block
-            >
-              Manual Cleanup
-            </v-btn>
-            
-            <div class="text-caption text-medium-emphasis mt-2">
-              Automatically runs daily at 2 AM
+            <div class="text-caption text-medium-emphasis">
+              Logs older than {{ RETENTION_CONFIG.FULL_RETENTION_DAYS }} days are compressed to save storage
             </div>
           </v-list>
         </v-col>
       </v-row>
 
-      <!-- Alerts -->
-      <v-alert
-        v-if="error"
-        type="error"
-        variant="tonal"
-        closable
-        @click:close="error = ''"
-        class="mt-4"
-      >
-        {{ error }}
-      </v-alert>
+      <!-- Actions -->
+      <v-divider class="my-4" />
       
+      <div class="d-flex justify-space-between align-center">
+        <div>
+          <v-btn
+            color="warning"
+            variant="outlined"
+            size="small"
+            @click="triggerManualCleanup"
+            :loading="cleanupLoading"
+            :disabled="loading"
+          >
+            <v-icon left size="small">mdi-broom</v-icon>
+            Manual Cleanup
+          </v-btn>
+          <div class="text-caption text-medium-emphasis mt-1">
+            Manually trigger compression and deletion
+          </div>
+        </div>
+        
+        <div class="text-caption text-end text-medium-emphasis">
+          Automatic cleanup runs weekly on Sundays
+        </div>
+      </div>
+
+      <!-- Success/Error Messages -->
       <v-alert
         v-if="success"
         type="success"
         variant="tonal"
         closable
-        @click:close="success = ''"
         class="mt-4"
+        @click:close="success = ''"
       >
         {{ success }}
       </v-alert>
 
-      <!-- Cost Projection -->
-      <v-expansion-panels variant="accordion" class="mt-4">
+      <v-alert
+        v-if="error"
+        type="error"
+        variant="tonal"
+        closable
+        class="mt-4"
+        @click:close="error = ''"
+      >
+        {{ error }}
+      </v-alert>
+
+      <!-- Expandable Details -->
+      <v-expansion-panels class="mt-4">
         <v-expansion-panel>
           <v-expansion-panel-title>
-            <v-icon class="me-2">mdi-calculator</v-icon>
-            Cost Projection
+            <v-icon class="me-2">mdi-information-outline</v-icon>
+            Firebase Free Tier Usage Projections
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-table density="compact">
