@@ -1,5 +1,28 @@
 # CHANGELOG - July 2025
 
+📅 July 21, 2025 - UserManagement.vue Audit Logging Fix
+✅ FIXED: UserManagement Component Error
+Issue: logEvent is not defined error when changing user roles
+Impact: Prevented administrators from updating user roles in the admin panel
+Root Cause: Incorrect import statement - component was importing logActivity but trying to use logEvent
+Solution Applied:
+javascript// ❌ Before (incorrect import)
+const { logActivity } = useAudit()
+// Trying to use: logEvent('role_changed', {...})
+
+// ✅ After (correct import) 
+const { logEvent } = useAudit()
+// Now properly uses: logEvent('role_changed', {...})
+Files Modified:
+
+client/src/components/admin/UserManagement.vue - Fixed import and usage of audit logging
+
+Testing Validated:
+
+✅ Role changes work without console errors
+✅ Audit logs properly created for role changes
+✅ All user management functions operational
+
 ## 📅 July 20, 2025 (Evening Session) - CSS Modularization & Dropdown Fix
 
 ### **✅ CSS ARCHITECTURE REFACTORING**

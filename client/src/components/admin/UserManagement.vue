@@ -1,84 +1,69 @@
-<!-- client/src/components/admin/UserManagement.vue -->
 <template>
   <div class="user-management">
-    <!-- Action Bar -->
-    <v-toolbar flat class="mb-4">
+    <!-- User Management Header -->
+    <v-toolbar flat color="transparent" class="mb-4">
       <v-toolbar-title class="text-h5 font-weight-bold">
-        <v-icon class="mr-2">mdi-account-group</v-icon>
+        <v-icon left>mdi-account-group</v-icon>
         User Management
       </v-toolbar-title>
-      
       <v-spacer />
-      
       <PermissionGuard permission="create_users">
         <v-btn
           color="primary"
-          prepend-icon="mdi-account-plus"
           @click="showCreateDialog = true"
+          prepend-icon="mdi-plus"
         >
           Add User
         </v-btn>
       </PermissionGuard>
     </v-toolbar>
 
-    <!-- Filters and Search -->
-    <v-card class="mb-4" variant="outlined">
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="search"
-              prepend-inner-icon="mdi-magnify"
-              label="Search users..."
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="filterRole"
-              :items="roleFilterOptions"
-              item-title="name"
-              item-value="id"
-              label="Filter by Role"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="filterStatus"
-              :items="statusFilterOptions"
-              item-title="name"
-              item-value="id"
-              label="Filter by Status"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          
-          <v-col cols="12" md="2">
-            <v-btn
-              variant="outlined"
-              block
-              @click="refresh"
-              :loading="loading"
-            >
-              <v-icon>mdi-refresh</v-icon>
-              Refresh
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+    <!-- Search and Filters -->
+    <v-row class="mb-4">
+      <v-col cols="12" sm="4">
+        <v-text-field
+          v-model="search"
+          prepend-inner-icon="mdi-magnify"
+          label="Search users..."
+          variant="outlined"
+          density="compact"
+          clearable
+          hide-details
+        />
+      </v-col>
+      <v-col cols="12" sm="4">
+        <v-select
+          v-model="filterRole"
+          :items="roleFilterOptions"
+          label="Filter by Role"
+          variant="outlined"
+          density="compact"
+          hide-details
+        />
+      </v-col>
+      <v-col cols="12" sm="4">
+        <v-select
+          v-model="filterStatus"
+          :items="statusFilterOptions"
+          label="Filter by Status"
+          variant="outlined"
+          density="compact"
+          hide-details
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Refresh Button -->
+    <div class="text-right mb-4">
+      <v-btn
+        variant="text"
+        @click="refresh"
+        :loading="loading"
+      >
+        <v-icon>mdi-refresh</v-icon>
+        Refresh
+      </v-btn>
+    </div>
 
     <!-- User Table -->
     <UserTable
@@ -117,22 +102,11 @@
                   label="Role"
                   variant="outlined"
                   :rules="[v => !!v || 'Role is required']"
-                >
-                  <template v-slot:selection="{ item }">
-                    <RoleChip :role="item.value" size="small" />
-                  </template>
-                  <template v-slot:item="{ item, props }">
-                    <v-list-item v-bind="props">
-                      <template v-slot:prepend>
-                        <RoleChip :role="item.value" size="small" />
-                      </template>
-                    </v-list-item>
-                  </template>
-                </v-select>
+                />
               </v-col>
               
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editForm.customPermissions"
                   :items="availablePermissions"
                   item-title="name"
@@ -146,7 +120,7 @@
               </v-col>
               
               <v-col cols="12">
-                <v-select
+                <v-autocomplete
                   v-model="editForm.deniedPermissions"
                   :items="availablePermissions"
                   item-title="name"
@@ -184,11 +158,11 @@
       </v-card>
     </v-dialog>
 
-    <!-- Delete Confirmation Dialog -->
+    <!-- Delete User Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
       <v-card>
         <v-card-title class="text-h5">
-          Delete User?
+          Confirm Delete
         </v-card-title>
         
         <v-card-text>
@@ -227,14 +201,16 @@ import { usePermissionsStore } from '@/stores/permissions'
 import { useAudit } from '@/composables/useAudit'
 import UserTable from './user-management/UserTable.vue'
 import CreateUserDialog from './CreateUserDialog.vue'
-import RoleChip from './RoleChip.vue'
 import PermissionGuard from '@/components/PermissionGuard.vue'
+
+// Props and emits
+const emit = defineEmits(['activity'])
 
 // Composables
 const router = useRouter()
 const authStore = useAuthStore()
 const permissionsStore = usePermissionsStore()
-const { logActivity } = useAudit()
+const { logEvent } = useAudit() // FIX: Changed from logActivity to logEvent
 
 // Reactive state
 const loading = ref(false)
@@ -470,7 +446,10 @@ const saveUserEdit = async () => {
 // Utility function for notifications
 const showSnackbar = (message, type = 'info') => {
   // Emit to parent or use a global notification system
-  console.log(`[${type}] ${message}`)
+  emit('activity', {
+    type: type === 'success' ? 'info' : type,
+    message: message
+  })
 }
 
 // Lifecycle
