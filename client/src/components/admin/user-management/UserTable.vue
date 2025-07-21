@@ -6,15 +6,16 @@
       :items="users"
       :loading="loading"
       :items-per-page="itemsPerPage"
+      :search="search"
       class="elevation-0"
     >
       <!-- User column with email and name -->
       <template v-slot:[`item.user`]="{ item }">
         <div class="py-2">
           <div class="text-body-2 font-weight-medium">
-            {{ item.displayName || 'No Name' }}
+            {{ item.displayName || item.firstName + ' ' + item.lastName || 'No Name' }}
           </div>
-          <div class="text-caption text-primary user-email">
+          <div class="text-caption text-primary user-email" @click="$emit('edit', item)">
             {{ item.email }}
           </div>
         </div>
@@ -37,6 +38,7 @@
           density="compact"
           hide-details
           @update:model-value="$emit('update-role', item, $event)"
+          style="min-width: 120px;"
         >
           <template v-slot:selection="{ item: role }">
             <RoleChip :role="role.value" size="small" />
@@ -76,41 +78,38 @@
         </div>
       </template>
 
-      <!-- Created date column -->
+      <!-- Created column -->
       <template v-slot:[`item.created`]="{ item }">
-        <span class="text-caption">
-          {{ formatDate(item.createdAt) }}
-        </span>
+        <span class="text-caption">{{ formatDate(item.createdAt) }}</span>
       </template>
 
-      <!-- Last active column -->
+      <!-- Last Active column -->
       <template v-slot:[`item.lastActive`]="{ item }">
-        <span class="text-caption">
-          {{ formatDate(item.lastActiveAt) || 'Never' }}
-        </span>
+        <span class="text-caption">{{ formatDate(item.lastActive) }}</span>
       </template>
 
       <!-- Actions column -->
       <template v-slot:[`item.actions`]="{ item }">
         <UserActions
           :user="item"
+          :can-edit="canEditRole(item)"
+          :can-delete="canToggleStatus(item)"
           @edit="$emit('edit', item)"
-          @reset-password="$emit('reset-password', item)"
           @delete="$emit('delete', item)"
+          @reset-password="$emit('reset-password', item)"
         />
       </template>
 
-      <!-- Loading slot -->
-      <template v-slot:loading>
-        <v-skeleton-loader type="table-row@5" />
-      </template>
-
-      <!-- No data slot -->
+      <!-- No data message -->
       <template v-slot:no-data>
         <div class="text-center py-8">
-          <v-icon size="48" color="grey">mdi-account-group-outline</v-icon>
-          <p class="text-h6 mt-2">No users found</p>
-          <p class="text-body-2 text-medium-emphasis">
+          <v-icon size="48" color="grey-lighten-1" class="mb-4">
+            mdi-account-search
+          </v-icon>
+          <p class="text-h6 text-grey-lighten-1 mb-2">
+            {{ search ? 'No matching users found' : 'No users found' }}
+          </p>
+          <p class="text-body-2 text-grey">
             {{ search ? 'Try adjusting your search or filters' : 'No users in the system yet' }}
           </p>
         </div>
@@ -192,8 +191,9 @@ const canToggleStatus = (user) => {
   return authStore.hasPermission('manage_users')
 }
 
+// FIXED: Use allRoles instead of roles
 const getAvailableRoles = (user) => {
-  const roles = permissionsStore.roles
+  const roles = permissionsStore.allRoles || [] // Fixed property name
   
   if (authStore.role === 'owner') {
     return roles
@@ -204,7 +204,7 @@ const getAvailableRoles = (user) => {
 }
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return null
+  if (!timestamp) return 'Never'
   
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
   const now = new Date()
@@ -237,6 +237,15 @@ const formatDate = (timestamp) => {
 }
 
 :deep(.v-select__selection) {
+  margin: 0 !important;
+}
+
+/* Fix for dropdown text overlay */
+:deep(.v-select .v-field__input) {
+  align-items: center;
+}
+
+:deep(.v-select .v-field__input > .v-chip) {
   margin: 0 !important;
 }
 </style>
