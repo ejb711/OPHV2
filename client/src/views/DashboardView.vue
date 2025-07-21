@@ -1,127 +1,165 @@
-<!-- client/src/views/DashboardView.vue - Cleaned up version -->
+<!-- client/src/views/DashboardView.vue -->
 <template>
-  <AppLayout>
-    <!-- Navigation buttons in app bar actions slot -->
-    <template #actions>
-      <!-- Admin Button - Only for Admins/Owners -->
-      <v-btn
-        v-if="auth.isAdmin"
-        class="mr-2"
-        color="secondary"
-        variant="flat"
-        size="small"
-        @click="goToAdmin"
-      >
-        <v-icon start size="small">mdi-shield-account</v-icon>
-        Admin
-      </v-btn>
-
-      <!-- Profile Button - Universal with high contrast -->
-      <v-btn
-        class="mr-2"
-        color="white"
-        variant="outlined"
-        size="small"
-        @click="goToProfile"
-        style="color: white !important; border-color: rgba(255,255,255,0.7) !important;"
-      >
-        <v-icon start size="small" style="color: white !important;">mdi-account</v-icon>
-        Profile
-      </v-btn>
-
-      <!-- Logout Button -->
-      <v-btn
-        color="warning"
-        variant="flat"
-        size="small"
-        @click="handleLogout"
-      >
-        <v-icon start size="small">mdi-logout</v-icon>
-        Log out
-      </v-btn>
-    </template>
-
-    <!-- Main dashboard content -->
+  <AppLayout title="Dashboard" :show-navigation="true">
     <div class="dashboard-container">
-      <!-- Welcome Header -->
-      <div class="mb-6">
-        <h1 class="text-h4 font-weight-bold mb-2">
-          Welcome, {{ auth.user?.displayName || auth.user?.email || 'User' }}!
-        </h1>
-        <p class="text-subtitle-1 text-medium-emphasis">
-          Here's what's happening in your workspace today.
-        </p>
-      </div>
+      <!-- Welcome Section -->
+      <v-card class="mb-6" elevation="0" border>
+        <v-card-text class="pa-6">
+          <h1 class="text-h4 font-weight-bold mb-2">
+            Welcome back, {{ userName }}!
+          </h1>
+          <p class="text-subtitle-1 text-medium-emphasis">
+            You are logged in as <strong>{{ userRole }}</strong>
+          </p>
+        </v-card-text>
+      </v-card>
 
-      <!-- Actions Section (renamed from Quick Actions) -->
-      <v-row class="mb-6">
-        <v-col cols="12">
-          <v-card elevation="2">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="me-2" color="primary">mdi-rocket-launch</v-icon>
-              Get Started
-            </v-card-title>
-            
-            <v-row class="pa-4">
-              <!-- Profile Card -->
-              <v-col cols="12" sm="6" :md="auth.isAdmin ? 6 : 12">
-                <v-card
-                  variant="outlined"
-                  class="text-center pa-4"
-                  hover
-                  @click="goToProfile"
-                  style="cursor: pointer; height: 100%;"
-                >
-                  <v-icon size="48" color="primary" class="mb-2">
-                    mdi-account-circle
-                  </v-icon>
-                  <h3 class="text-h6 font-weight-bold">My Profile</h3>
-                  <p class="text-body-2 text-medium-emphasis">
-                    View and manage your profile information
-                  </p>
-                </v-card>
-              </v-col>
-
-              <!-- Admin Card (only for admins) -->
-              <v-col v-if="auth.isAdmin" cols="12" sm="6" md="6">
-                <v-card
-                  variant="outlined"
-                  class="text-center pa-4"
-                  hover
-                  @click="goToAdmin"
-                  style="cursor: pointer; height: 100%;"
-                >
-                  <v-icon size="48" color="secondary" class="mb-2">
-                    mdi-shield-account
-                  </v-icon>
-                  <h3 class="text-h6 font-weight-bold">Administration</h3>
-                  <p class="text-body-2 text-medium-emphasis">
-                    Manage users, roles, and system settings
-                  </p>
-                </v-card>
-              </v-col>
-            </v-row>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- Recent Activity or Announcements (Future Enhancement) -->
+      <!-- Main Content Grid -->
       <v-row>
-        <v-col cols="12">
-          <v-card elevation="1">
+        <!-- Profile Card -->
+        <v-col cols="12" md="6">
+          <v-card 
+            class="h-100" 
+            hover
+            @click="goToProfile"
+          >
             <v-card-title class="d-flex align-center">
-              <v-icon class="me-2" color="info">mdi-information-outline</v-icon>
-              Recent Updates
+              <v-icon color="primary" class="mr-2">mdi-account-circle</v-icon>
+              My Profile
             </v-card-title>
             <v-card-text>
-              <v-alert 
-                type="info" 
+              <p class="text-body-2 mb-4">
+                Manage your personal information, security settings, and preferences.
+              </p>
+              <v-btn
+                color="primary"
+                variant="text"
+                append-icon="mdi-arrow-right"
+              >
+                View Profile
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <!-- Admin Panel Card (conditional) -->
+        <v-col v-if="auth.isAdmin" cols="12" md="6">
+          <v-card 
+            class="h-100" 
+            hover
+            @click="goToAdmin"
+          >
+            <v-card-title class="d-flex align-center">
+              <v-icon color="error" class="mr-2">mdi-shield-crown</v-icon>
+              Admin Panel
+            </v-card-title>
+            <v-card-text>
+              <p class="text-body-2 mb-4">
+                Access administrative tools, manage users, and configure system settings.
+              </p>
+              <v-btn
+                color="error"
+                variant="text"
+                append-icon="mdi-arrow-right"
+              >
+                Open Admin Panel
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <!-- Quick Actions Card -->
+        <v-col cols="12" md="6">
+          <v-card class="h-100">
+            <v-card-title class="d-flex align-center">
+              <v-icon color="secondary" class="mr-2">mdi-lightning-bolt</v-icon>
+              Quick Actions
+            </v-card-title>
+            <v-card-text>
+              <v-list density="compact">
+                <v-list-item
+                  prepend-icon="mdi-account-edit"
+                  @click="goToProfile"
+                >
+                  <v-list-item-title>Update Profile</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item
+                  prepend-icon="mdi-shield-lock"
+                  @click="goToProfile"
+                >
+                  <v-list-item-title>Security Settings</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item
+                  prepend-icon="mdi-logout"
+                  @click="handleLogout"
+                >
+                  <v-list-item-title>Sign Out</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <!-- System Status Card -->
+        <v-col cols="12" md="6">
+          <v-card class="h-100">
+            <v-card-title class="d-flex align-center">
+              <v-icon color="success" class="mr-2">mdi-check-circle</v-icon>
+              System Status
+            </v-card-title>
+            <v-card-text>
+              <v-list density="compact">
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-icon color="success" size="small">mdi-circle</v-icon>
+                  </template>
+                  <v-list-item-title>All Systems Operational</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-icon color="success" size="small">mdi-database-check</v-icon>
+                  </template>
+                  <v-list-item-title>Database Connected</v-list-item-title>
+                </v-list-item>
+                
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-icon color="success" size="small">mdi-shield-check</v-icon>
+                  </template>
+                  <v-list-item-title>Security Active</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <!-- Coming Soon Card -->
+        <v-col cols="12">
+          <v-card>
+            <v-card-title>
+              <v-icon color="info" class="mr-2">mdi-rocket-launch</v-icon>
+              Coming Soon
+            </v-card-title>
+            <v-card-text>
+              <v-alert
+                type="info"
                 variant="tonal"
                 class="mb-0"
               >
-                <strong>Welcome to OPHV2!</strong> This platform is currently in development. 
+                <div class="font-weight-medium mb-2">New Features in Development</div>
+                <ul class="ml-4">
+                  <li>Project Management System</li>
+                  <li>Discussion Forums</li>
+                  <li>Event Calendar</li>
+                  <li>Analytics Dashboard</li>
+                </ul>
+                <div class="mt-3">
                 More features will be added soon. If you have any questions or need assistance, 
                 please contact your system administrator.
+              </div>
               </v-alert>
             </v-card-text>
           </v-card>
@@ -140,10 +178,32 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 
+// Computed properties
+const userName = computed(() => {
+  if (!auth.user) return 'User'
+  return auth.user.displayName || auth.user.email?.split('@')[0] || 'User'
+})
+
+const userRole = computed(() => {
+  const roleNames = {
+    owner: 'System Owner',
+    admin: 'Administrator',
+    user: 'User',
+    viewer: 'Viewer',
+    pending: 'Pending Approval'
+  }
+  return roleNames[auth.role] || 'Unknown Role'
+})
+
 /* Navigation functions */
 async function handleLogout() {
-  await auth.logout()
-  router.push('/')
+  try {
+    await auth.logout()
+    router.push('/')
+  } catch (error) {
+    console.error('Logout error:', error)
+    // Error is handled in the store, just log it here
+  }
 }
 
 function goToProfile() {

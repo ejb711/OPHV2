@@ -1,4 +1,4 @@
-// client/src/stores/auth/index.js - Main auth store definition (150 lines)
+// client/src/stores/auth/index.js - Main auth store definition with login logging
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { auth } from '@/firebase'
@@ -66,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
   
   // Authentication actions
   const {
-    login,
+    login: loginAction,
     signup,
     logout: logoutAction
   } = createAuthActions({ auth, error })
@@ -89,9 +89,66 @@ export const useAuthStore = defineStore('auth', () => {
     clearPermissionCache
   })
   
+  // ========== Enhanced Login with Audit Logging ==========
+  async function login(email, password) {
+    try {
+      const result = await loginAction(email, password)
+      
+      if (result.success) {
+        // Log successful login
+        try {
+          const auditModule = await import('@/composables/useAudit')
+          const { logEvent } = auditModule.useAudit()
+          await logEvent('user_login', {
+            email: email,
+            method: 'email',
+            browser: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          })
+          console.log('[auth] Login event logged successfully')
+        } catch (auditError) {
+          console.warn('[auth] Failed to log login event:', auditError)
+          // Don't fail the login if audit logging fails
+        }
+      }
+      
+      return result
+    } catch (err) {
+      // Log failed login attempt
+      try {
+        const auditModule = await import('@/composables/useAudit')
+        const { logEvent } = auditModule.useAudit()
+        await logEvent('failed_login_attempt', {
+          email: email,
+          error: err.code || err.message,
+          timestamp: new Date().toISOString()
+        })
+      } catch (auditError) {
+        console.warn('[auth] Failed to log failed login attempt:', auditError)
+      }
+      
+      error.value = err.message
+      return { success: false, error: err.message, errorCode: err.code }
+    }
+  }
+  
   // ========== Enhanced Logout ==========
   async function logout() {
     try {
+      // Log logout event before clearing state
+      if (user.value) {
+        try {
+          const auditModule = await import('@/composables/useAudit')
+          const { logEvent } = auditModule.useAudit()
+          await logEvent('user_logout', {
+            email: user.value.email,
+            timestamp: new Date().toISOString()
+          })
+        } catch (auditError) {
+          console.warn('[auth] Failed to log logout event:', auditError)
+        }
+      }
+      
       // Clean up listeners first
       cleanupListeners()
       
@@ -108,9 +165,13 @@ export const useAuthStore = defineStore('auth', () => {
       clearPermissionCache()
       ready.value = false
       error.value = null
+      
+      // Return success for compatibility with AppLayout
+      return { success: true }
     } catch (err) {
       error.value = err.message
-      throw err
+      // Return error object for AppLayout
+      return { success: false, error: err.message }
     }
   }
   
@@ -149,6 +210,9 @@ export const useAuthStore = defineStore('auth', () => {
   // Initialize on store creation
   initAuthListener()
   
+  // ========== Alias logout for compatibility ==========
+  const signOut = logout
+  
   // ========== Public API ==========
   return {
     // State
@@ -177,6 +241,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     signup,
     logout,
+    signOut, // Alias for compatibility
     
     // User methods
     refreshPermissions: () => fetchUserPermissions(user.value?.uid),

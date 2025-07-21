@@ -1,47 +1,96 @@
-// client/src/composables/useActivityTracker.js - Complete Fixed Version
+// client/src/composables/useActivityTracker.js
 import { onMounted, onUnmounted } from 'vue'
+import { updateDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import { useAuthStore } from '../stores/auth'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import { signOut } from 'firebase/auth'
 
 export function useActivityTracker() {
-  const auth = useAuthStore()
+  const authStore = useAuthStore()
+  
   let activityInterval = null
   let hasPermissionError = false
   let retryCount = 0
   const maxRetries = 3
   let lastSuccessfulUpdate = 0
-
-  // Update user's last active timestamp with improved error handling
-  async function updateActivity() {
-    if (!auth.user || hasPermissionError) return
+  
+  // Session timeout tracking
+  let lastActivityTime = Date.now()
+  let inactivityCheckInterval = null
+  let sessionTimeoutMinutes = 60 // Default
+  
+  // Check for inactivity and log out if needed
+  async function checkInactivity() {
+    if (!authStore.user || hasPermissionError) return
     
-    // Throttle updates - don't update more than once per minute
+    // Get the user's session timeout setting
+    const userDoc = authStore.userDocument
+    if (userDoc?.securitySettings?.sessionTimeout) {
+      sessionTimeoutMinutes = Number(userDoc.securitySettings.sessionTimeout)
+    }
+    
     const now = Date.now()
-    if (now - lastSuccessfulUpdate < 60000) return
+    const inactiveMinutes = (now - lastActivityTime) / (1000 * 60)
+    
+    console.log(`[Activity Tracker] Inactive for ${inactiveMinutes.toFixed(1)} minutes (timeout: ${sessionTimeoutMinutes} minutes)`)
+    
+    if (inactiveMinutes >= sessionTimeoutMinutes) {
+      console.log('[Activity Tracker] Session timeout reached, logging out user')
+      
+      try {
+        // Log the timeout event before signing out
+        const auditModule = await import('./useAudit')
+        const { logEvent } = auditModule.useAudit()
+        await logEvent('session_timeout', {
+          inactiveMinutes: Math.floor(inactiveMinutes),
+          sessionTimeoutSetting: sessionTimeoutMinutes
+        })
+        
+        // Sign out the user
+        await signOut(auth)
+        
+        // Clear auth store
+        authStore.signOut()
+        
+        // Show notification if possible
+        if (window.alert) {
+          alert('Your session has expired due to inactivity. Please log in again.')
+        }
+      } catch (error) {
+        console.error('[Activity Tracker] Error during session timeout:', error)
+      }
+    }
+  }
+  
+  // Update user's last active timestamp with better error handling
+  async function updateActivity() {
+    if (!authStore.user || hasPermissionError) return
+    
+    const now = Date.now()
+    
+    // Don't update more than once per minute
+    if (now - lastSuccessfulUpdate < 60 * 1000) {
+      return
+    }
     
     try {
-      // Only update the lastActive field to minimize permission issues
-      await updateDoc(doc(db, 'users', auth.user.uid), {
+      await updateDoc(doc(db, 'users', authStore.user.uid), {
         lastActive: serverTimestamp()
       })
       
-      // Reset error state on success
-      hasPermissionError = false
-      retryCount = 0
       lastSuccessfulUpdate = now
+      lastActivityTime = now // Reset inactivity timer
+      retryCount = 0 // Reset retry count on success
       
       if (import.meta.env.DEV) {
-        console.log('Activity updated successfully')
+        console.log('[Activity Tracker] Updated activity at', new Date().toLocaleTimeString())
       }
-      
     } catch (error) {
       retryCount++
       
       // Handle permission errors
-      if (error.code === 'permission-denied' || 
-          error.message.includes('Missing or insufficient permissions')) {
-        console.warn('Activity tracking permission denied - stopping tracker')
+      if (error.code === 'permission-denied') {
+        console.warn('[Activity Tracker] Permission denied - stopping activity tracking')
         hasPermissionError = true
         stopTracking()
         return
@@ -52,7 +101,7 @@ export function useActivityTracker() {
           error.code === 'unavailable' || 
           error.code === 'deadline-exceeded') {
         if (retryCount >= maxRetries) {
-          console.warn('Activity tracking failed after max retries - temporary pause')
+          console.warn('[Activity Tracker] Failed after max retries - temporary pause')
           hasPermissionError = true
           // Auto-retry after 5 minutes
           setTimeout(() => {
@@ -65,16 +114,16 @@ export function useActivityTracker() {
       
       // Handle network errors
       if (error.code === 'unavailable' || !navigator.onLine) {
-        console.warn('Network unavailable - activity tracking paused')
+        console.warn('[Activity Tracker] Network unavailable - activity tracking paused')
         return
       }
       
       // Log other errors but don't stop tracking
-      console.error('Activity update error:', error.code, error.message)
+      console.error('[Activity Tracker] Update error:', error.code, error.message)
       
       // Stop trying if we get too many consecutive errors
       if (retryCount >= maxRetries) {
-        console.warn('Too many activity tracking errors - pausing for 10 minutes')
+        console.warn('[Activity Tracker] Too many errors - pausing for 10 minutes')
         hasPermissionError = true
         setTimeout(() => {
           hasPermissionError = false
@@ -86,11 +135,13 @@ export function useActivityTracker() {
 
   // Start tracking activity with better error handling
   function startTracking() {
-    if (!auth.user || hasPermissionError) return
+    if (!authStore.user || hasPermissionError) return
+    
+    console.log('[Activity Tracker] Starting activity tracking')
     
     // Update immediately after a short delay to allow auth to settle
     setTimeout(() => {
-      if (auth.user && !hasPermissionError) {
+      if (authStore.user && !hasPermissionError) {
         updateActivity()
       }
     }, 3000)
@@ -104,14 +155,23 @@ export function useActivityTracker() {
       }, 5 * 60 * 1000)
     }
     
+    // Check for inactivity every minute
+    if (!inactivityCheckInterval) {
+      inactivityCheckInterval = setInterval(() => {
+        checkInactivity()
+      }, 60 * 1000) // Check every minute
+    }
+    
     // Update on user interaction (throttled to once per minute)
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click']
     let lastInteractionUpdate = 0
     
     const handleActivity = () => {
       const now = Date.now()
-      // Only update if it's been more than 1 minute since last update
-      if (now - lastInteractionUpdate > 60 * 1000 && !hasPermissionError && auth.user) {
+      lastActivityTime = now // Reset inactivity timer
+      
+      // Only update database if it's been more than 1 minute since last update
+      if (now - lastInteractionUpdate > 60 * 1000 && !hasPermissionError && authStore.user) {
         updateActivity()
         lastInteractionUpdate = now
       }
@@ -136,15 +196,20 @@ export function useActivityTracker() {
     }
     
     if (import.meta.env.DEV) {
-      console.log('Activity tracking started')
+      console.log('[Activity Tracker] Activity tracking started')
     }
   }
 
-  // Stop tracking - COMPLETE FUNCTION (this was cut off before)
+  // Stop tracking
   function stopTracking() {
     if (activityInterval) {
-      clearInterval(activityInterval)  // This was truncated to "clea" in the original
+      clearInterval(activityInterval)
       activityInterval = null
+    }
+    
+    if (inactivityCheckInterval) {
+      clearInterval(inactivityCheckInterval)
+      inactivityCheckInterval = null
     }
     
     if (window._activityCleanup) {
@@ -153,7 +218,7 @@ export function useActivityTracker() {
     }
     
     if (import.meta.env.DEV) {
-      console.log('Activity tracking stopped')
+      console.log('[Activity Tracker] Activity tracking stopped')
     }
   }
 
@@ -163,7 +228,7 @@ export function useActivityTracker() {
     retryCount = 0
     lastSuccessfulUpdate = 0
     if (import.meta.env.DEV) {
-      console.log('Activity tracker error state reset')
+      console.log('[Activity Tracker] Error state reset')
     }
   }
 
@@ -178,11 +243,11 @@ export function useActivityTracker() {
   onMounted(() => {
     // Wait for auth to be ready before starting
     const checkAuthReady = () => {
-      if (auth.ready && auth.user && !hasPermissionError) {
+      if (authStore.ready && authStore.user && !hasPermissionError) {
         startTracking()
-      } else if (auth.ready && !auth.user) {
+      } else if (authStore.ready && !authStore.user) {
         stopTracking()
-      } else if (!auth.ready) {
+      } else if (!authStore.ready) {
         // Check again in 200ms if auth not ready
         setTimeout(checkAuthReady, 200)
       }
@@ -191,7 +256,7 @@ export function useActivityTracker() {
     checkAuthReady()
     
     // Watch for auth changes
-    const unwatchAuth = auth.$subscribe((mutation, state) => {
+    const unwatchAuth = authStore.$subscribe((mutation, state) => {
       if (state.user && state.ready && !hasPermissionError && !activityInterval) {
         startTracking()
       } else if (!state.user && activityInterval) {
@@ -206,7 +271,7 @@ export function useActivityTracker() {
     })
   })
 
-  // Return all functions - THIS IS WHAT WAS MISSING!
+  // Return all functions
   return {
     updateActivity,
     startTracking,

@@ -138,6 +138,8 @@
     <!-- Smart Navigation (Mobile) -->
     <SmartNavigation 
       v-if="showNavigation && mobile"
+      v-model:drawer="navigationDrawerVisible"
+      :mobile="true"
     />
     
     <!-- Global Snackbar -->
@@ -210,7 +212,8 @@ const { isGlobalLoading } = useGlobalLoading()
 // State - Use localStorage to persist drawer state
 const DRAWER_STATE_KEY = 'ophv2-navigation-drawer-state'
 const storedDrawerState = localStorage.getItem(DRAWER_STATE_KEY)
-const navigationDrawerVisible = ref(storedDrawerState !== null ? storedDrawerState === 'true' : true)
+const navigationDrawerVisible = ref(storedDrawerState !== null ? 
+  storedDrawerState === 'true' : true)
 
 const snackbar = ref({
   show: false,
@@ -312,11 +315,20 @@ const breadcrumbs = computed(() => {
 
 // Methods
 async function handleLogout() {
-  const result = await authStore.logout()
-  if (result.success) {
+  try {
+    const result = await authStore.logout()
+    
+    // Check if logout was successful
+    if (result && result.success === false) {
+      showSnackbar('Error logging out: ' + (result.error || 'Unknown error'), 'error')
+      return
+    }
+    
+    // Successful logout
     router.push('/')
     showSnackbar('Logged out successfully')
-  } else {
+  } catch (error) {
+    console.error('Logout error:', error)
     showSnackbar('Error logging out', 'error')
   }
 }
