@@ -1,165 +1,137 @@
-<!-- client/src/views/DashboardView.vue -->
+<!-- client/src/views/DashboardView.vue - Clean version without duplicate menu -->
 <template>
-  <AppLayout title="Dashboard" :show-navigation="true">
-    <div class="dashboard-container">
-      <!-- Welcome Section -->
-      <v-card class="mb-6" elevation="0" border>
-        <v-card-text class="pa-6">
-          <h1 class="text-h4 font-weight-bold mb-2">
-            Welcome back, {{ userName }}!
-          </h1>
-          <p class="text-subtitle-1 text-medium-emphasis">
-            You are logged in as <strong>{{ userRole }}</strong>
-          </p>
-        </v-card-text>
-      </v-card>
+  <AppLayout>
+    <div class="dashboard-container pa-4">
+      <!-- Welcome Header with Role Badge -->
+      <v-row class="mb-6">
+        <v-col cols="12">
+          <div class="d-flex align-center justify-space-between flex-wrap">
+            <h1 class="text-h3 font-weight-bold">
+              Welcome back, {{ auth.user?.displayName || auth.user?.email?.split('@')[0] || 'User' }}!
+            </h1>
+            <v-chip 
+              color="primary" 
+              variant="flat"
+              size="small"
+              prepend-icon="mdi-shield-check"
+            >
+              {{ getRoleDisplay(auth.role) }}
+            </v-chip>
+          </div>
+        </v-col>
+      </v-row>
 
       <!-- Main Content Grid -->
       <v-row>
-        <!-- Profile Card -->
+        <!-- My Profile Card -->
         <v-col cols="12" md="6">
           <v-card 
-            class="h-100" 
+            elevation="2" 
+            class="h-100 d-flex flex-column"
             hover
             @click="goToProfile"
           >
             <v-card-title class="d-flex align-center">
-              <v-icon color="primary" class="mr-2">mdi-account-circle</v-icon>
+              <v-icon class="me-2" color="primary">mdi-account-circle</v-icon>
               My Profile
             </v-card-title>
-            <v-card-text>
-              <p class="text-body-2 mb-4">
+            <v-card-text class="flex-grow-1">
+              <p class="text-body-1 mb-3">
                 Manage your personal information, security settings, and preferences.
               </p>
-              <v-btn
-                color="primary"
-                variant="text"
+            </v-card-text>
+            <v-card-actions>
+              <v-btn 
+                color="primary" 
+                variant="text" 
                 append-icon="mdi-arrow-right"
               >
                 View Profile
               </v-btn>
-            </v-card-text>
+            </v-card-actions>
           </v-card>
         </v-col>
 
         <!-- Admin Panel Card (conditional) -->
         <v-col v-if="auth.isAdmin" cols="12" md="6">
           <v-card 
-            class="h-100" 
+            elevation="2" 
+            class="h-100 d-flex flex-column"
             hover
             @click="goToAdmin"
           >
             <v-card-title class="d-flex align-center">
-              <v-icon color="error" class="mr-2">mdi-shield-crown</v-icon>
+              <v-icon class="me-2" color="error">mdi-shield-crown</v-icon>
               Admin Panel
             </v-card-title>
-            <v-card-text>
-              <p class="text-body-2 mb-4">
+            <v-card-text class="flex-grow-1">
+              <p class="text-body-1 mb-3">
                 Access administrative tools, manage users, and configure system settings.
               </p>
-              <v-btn
-                color="error"
-                variant="text"
+            </v-card-text>
+            <v-card-actions>
+              <v-btn 
+                color="error" 
+                variant="text" 
                 append-icon="mdi-arrow-right"
               >
                 Open Admin Panel
               </v-btn>
-            </v-card-text>
+            </v-card-actions>
           </v-card>
         </v-col>
 
-        <!-- Quick Actions Card -->
-        <v-col cols="12" md="6">
-          <v-card class="h-100">
+        <!-- System Status Card (Admin/Owner only) -->
+        <v-col v-if="auth.isAdmin || auth.isOwner" cols="12" md="6">
+          <v-card elevation="2" class="h-100">
             <v-card-title class="d-flex align-center">
-              <v-icon color="secondary" class="mr-2">mdi-lightning-bolt</v-icon>
-              Quick Actions
-            </v-card-title>
-            <v-card-text>
-              <v-list density="compact">
-                <v-list-item
-                  prepend-icon="mdi-account-edit"
-                  @click="goToProfile"
-                >
-                  <v-list-item-title>Update Profile</v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item
-                  prepend-icon="mdi-shield-lock"
-                  @click="goToProfile"
-                >
-                  <v-list-item-title>Security Settings</v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item
-                  prepend-icon="mdi-logout"
-                  @click="handleLogout"
-                >
-                  <v-list-item-title>Sign Out</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
-        <!-- System Status Card -->
-        <v-col cols="12" md="6">
-          <v-card class="h-100">
-            <v-card-title class="d-flex align-center">
-              <v-icon color="success" class="mr-2">mdi-check-circle</v-icon>
+              <v-icon class="me-2" color="success">mdi-check-circle</v-icon>
               System Status
             </v-card-title>
             <v-card-text>
-              <v-list density="compact">
-                <v-list-item>
+              <v-list density="compact" class="pa-0">
+                <v-list-item
+                  v-for="(status, system) in systemStatus"
+                  :key="system"
+                  class="px-0"
+                >
                   <template v-slot:prepend>
-                    <v-icon color="success" size="small">mdi-circle</v-icon>
+                    <v-icon 
+                      :color="status ? 'success' : 'error'" 
+                      size="small"
+                    >
+                      {{ status ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                    </v-icon>
                   </template>
-                  <v-list-item-title>All Systems Operational</v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item>
-                  <template v-slot:prepend>
-                    <v-icon color="success" size="small">mdi-database-check</v-icon>
+                  <v-list-item-title>
+                    {{ getSystemName(system) }}
+                  </v-list-item-title>
+                  <template v-slot:append>
+                    <span :class="status ? 'text-success' : 'text-error'">
+                      {{ status ? 'Operational' : 'Issues' }}
+                    </span>
                   </template>
-                  <v-list-item-title>Database Connected</v-list-item-title>
-                </v-list-item>
-                
-                <v-list-item>
-                  <template v-slot:prepend>
-                    <v-icon color="success" size="small">mdi-shield-check</v-icon>
-                  </template>
-                  <v-list-item-title>Security Active</v-list-item-title>
                 </v-list-item>
               </v-list>
             </v-card-text>
           </v-card>
         </v-col>
 
-        <!-- Coming Soon Card -->
-        <v-col cols="12">
-          <v-card>
-            <v-card-title>
-              <v-icon color="info" class="mr-2">mdi-rocket-launch</v-icon>
-              Coming Soon
+        <!-- Recent Updates -->
+        <v-col cols="12" :md="auth.isAdmin || auth.isOwner ? 6 : 12">
+          <v-card elevation="1" class="h-100">
+            <v-card-title class="d-flex align-center">
+              <v-icon class="me-2" color="info">mdi-information-outline</v-icon>
+              Recent Updates
             </v-card-title>
             <v-card-text>
-              <v-alert
-                type="info"
+              <v-alert 
+                type="info" 
                 variant="tonal"
                 class="mb-0"
               >
-                <div class="font-weight-medium mb-2">New Features in Development</div>
-                <ul class="ml-4">
-                  <li>Project Management System</li>
-                  <li>Discussion Forums</li>
-                  <li>Event Calendar</li>
-                  <li>Analytics Dashboard</li>
-                </ul>
-                <div class="mt-3">
-                More features will be added soon. If you have any questions or need assistance, 
-                please contact your system administrator.
-              </div>
+                <strong>Welcome to OPHV2!</strong> This platform is continuously evolving. 
+                Stay tuned for upcoming features and enhancements.
               </v-alert>
             </v-card-text>
           </v-card>
@@ -170,7 +142,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import { useAuthStore } from '../stores/auth'
@@ -178,32 +150,40 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 
-// Computed properties
-const userName = computed(() => {
-  if (!auth.user) return 'User'
-  return auth.user.displayName || auth.user.email?.split('@')[0] || 'User'
+// System status (in a real app, this would come from an API or store)
+const systemStatus = ref({
+  platform: true,
+  database: true,
+  authentication: true,
+  functions: true
 })
 
-const userRole = computed(() => {
-  const roleNames = {
+// Helper functions
+const getRoleDisplay = (role) => {
+  const roleMap = {
     owner: 'System Owner',
     admin: 'Administrator',
     user: 'User',
     viewer: 'Viewer',
     pending: 'Pending Approval'
   }
-  return roleNames[auth.role] || 'Unknown Role'
-})
+  return roleMap[role] || role
+}
 
-/* Navigation functions */
-async function handleLogout() {
-  try {
-    await auth.logout()
-    router.push('/')
-  } catch (error) {
-    console.error('Logout error:', error)
-    // Error is handled in the store, just log it here
+const getSystemName = (system) => {
+  const systemMap = {
+    platform: 'Platform',
+    database: 'Database',
+    authentication: 'Authentication',
+    functions: 'Cloud Functions'
   }
+  return systemMap[system] || system
+}
+
+// Navigation functions
+async function handleLogout() {
+  await auth.logout()
+  router.push('/')
 }
 
 function goToProfile() {
@@ -217,43 +197,67 @@ function goToAdmin() {
 
 <style scoped>
 .dashboard-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
 /* Brand-compliant typography */
-.text-h4, .text-h5, .text-h6 {
-  font-family: 'ITC Franklin Gothic', 'Arial', sans-serif;
+.text-h3, .text-h4, .text-h5, .text-h6 {
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-weight: 600;
 }
 
 .text-body-1, .text-body-2, .text-subtitle-1 {
-  font-family: 'Cambria', serif;
+  font-family: 'Cambria', Georgia, serif;
 }
 
-/* Card hover effects */
+/* Card styling */
+.v-card {
+  transition: all 0.3s ease;
+}
+
 .v-card[hover]:hover {
   transform: translateY(-2px);
-  transition: transform 0.2s ease;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
 
-/* Equal height cards */
+/* Ensure equal height cards */
 .v-row > .v-col {
   display: flex;
 }
 
 .v-row > .v-col > .v-card {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Responsive design */
-@media (max-width: 600px) {
-  .dashboard-container {
-    padding: 0 16px;
+/* Custom list styling */
+.v-list-item {
+  min-height: 40px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .d-flex.align-center.justify-space-between {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
   }
   
-  .v-col[class*="md-6"] {
-    flex: 0 0 100%;
-    max-width: 100%;
+  .text-h3 {
+    font-size: 1.875rem !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-container {
+    padding: 12px !important;
+  }
+  
+  .text-h3 {
+    font-size: 1.5rem !important;
   }
 }
 </style>
