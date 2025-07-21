@@ -1,4 +1,4 @@
-<!-- client/src/components/admin/CreateUserDialog.vue - COMPLETE Professional Louisiana DOH Styling -->
+<!-- client/src/components/admin/CreateUserDialog.vue -->
 <template>
   <v-dialog
     v-model="dialogOpen"
@@ -8,409 +8,127 @@
     :fullscreen="$vuetify.display.smAndDown"
     transition="dialog-bottom-transition"
   >
-    <v-card class="create-user-card elevation-12">
-      <!-- Professional Government Header -->
+    <v-card class="create-user-dialog">
+      <!-- Modern Header -->
       <div class="dialog-header">
-        <v-toolbar color="transparent" flat>
-          <v-icon color="white" size="32" class="mr-3">mdi-account-plus-outline</v-icon>
-          <div>
-            <v-toolbar-title class="text-h5 font-weight-bold text-white">
-              Create New User
-            </v-toolbar-title>
-            <div class="text-caption text-white-darken-1 mt-n1">
-              Step {{ currentStep }} of {{ totalSteps }}: {{ stepTitle }}
-            </div>
+        <div class="header-content">
+          <div class="header-icon">
+            <v-icon size="28" color="primary">mdi-account-plus</v-icon>
           </div>
-          <v-spacer />
-          <v-btn
-            icon
-            variant="text"
-            color="white"
-            @click="handleCancel"
-            class="ma-0"
-          >
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-toolbar>
-        
-        <!-- Progress Bar -->
-        <v-progress-linear
-          :model-value="(currentStep / totalSteps) * 100"
-          color="white"
-          bg-color="white"
-          bg-opacity="0.3"
-          height="3"
-          class="ma-0"
-        />
+          <div>
+            <h2 class="header-title">Create New User</h2>
+            <p class="header-subtitle">Add a new user to the system</p>
+          </div>
+        </div>
+        <v-btn
+          icon
+          variant="text"
+          size="small"
+          @click="handleCancel"
+          class="close-btn"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
       </div>
 
-      <!-- Form Content with Government Styling -->
-      <v-card-text class="dialog-body pa-0">
-        <v-container fluid class="pa-6">
-          <v-form ref="createUserFormRef" @submit.prevent="handleNext">
-            <!-- Step 1: Account Information -->
-            <v-window v-model="currentStep" class="mt-2">
-              <v-window-item :value="1">
-                <div class="step-content">
-                  <!-- Section Header -->
-                  <div class="section-header mb-6 text-center">
-                    <v-icon color="primary" size="48" class="mb-3">mdi-account-key</v-icon>
-                    <h3 class="text-h6 font-weight-bold text-grey-darken-3">Account Details</h3>
-                    <p class="text-body-2 text-grey-darken-1 mt-1">Essential information for account creation</p>
-                  </div>
+      <!-- Modern Stepper -->
+      <div class="stepper-container">
+        <div class="stepper-wrapper">
+          <div 
+            class="stepper-step"
+            :class="{ active: currentStep === 1, completed: currentStep > 1 }"
+          >
+            <div class="step-number">
+              <v-icon v-if="currentStep > 1" size="20">mdi-check</v-icon>
+              <span v-else>1</span>
+            </div>
+            <div class="step-info">
+              <div class="step-title">Account Details</div>
+              <div class="step-subtitle">Login credentials</div>
+            </div>
+          </div>
+          
+          <div class="stepper-divider" :class="{ completed: currentStep > 1 }"></div>
+          
+          <div 
+            class="stepper-step"
+            :class="{ active: currentStep === 2, completed: currentStep > 2 }"
+          >
+            <div class="step-number">
+              <v-icon v-if="currentStep > 2" size="20">mdi-check</v-icon>
+              <span v-else>2</span>
+            </div>
+            <div class="step-info">
+              <div class="step-title">Profile Information</div>
+              <div class="step-subtitle">Additional details</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                  <!-- Form Fields -->
-                  <v-row>
-                    <!-- Email Address -->
-                    <v-col cols="12">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label required">
-                          Email Address
-                        </label>
-                        <v-text-field
-                          v-model="form.email"
-                          type="email"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="user@example.com"
-                          prepend-inner-icon="mdi-email-outline"
-                          :rules="emailRules"
-                          :error="false"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
+      <!-- Form Content -->
+      <v-card-text class="dialog-content">
+        <v-window v-model="currentStep">
+          <v-window-item :value="1">
+            <v-form ref="step1Form" v-model="step1Valid">
+              <AccountDetailsStep
+                v-model="form"
+                :available-roles="availableRoles"
+                :show-password="showPassword"
+                :show-confirm-password="showConfirmPassword"
+                @toggle-password="showPassword = !showPassword"
+                @toggle-confirm-password="showConfirmPassword = !showConfirmPassword"
+                @generate-password="generatePassword"
+              />
+            </v-form>
+          </v-window-item>
 
-                    <!-- Display Name -->
-                    <v-col cols="12">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label required">
-                          Display Name
-                        </label>
-                        <v-text-field
-                          v-model="form.displayName"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="Enter full name"
-                          prepend-inner-icon="mdi-account-outline"
-                          :rules="displayNameRules"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Password Row -->
-                    <v-col cols="12" md="6">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label required">
-                          Password
-                        </label>
-                        <v-text-field
-                          v-model="form.password"
-                          :type="showPassword ? 'text' : 'password'"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="Enter password"
-                          prepend-inner-icon="mdi-lock-outline"
-                          :rules="passwordRules"
-                          hide-details="auto"
-                          class="gov-input"
-                        >
-                          <template #append-inner>
-                            <v-btn
-                              :icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                              size="x-small"
-                              variant="text"
-                              @click="showPassword = !showPassword"
-                            />
-                            <v-tooltip text="Generate Password" location="top">
-                              <template #activator="{ props }">
-                                <v-btn
-                                  v-bind="props"
-                                  icon="mdi-refresh"
-                                  size="x-small"
-                                  variant="text"
-                                  color="primary"
-                                  @click="generatePassword"
-                                />
-                              </template>
-                            </v-tooltip>
-                          </template>
-                        </v-text-field>
-                      </div>
-                    </v-col>
-
-                    <!-- Confirm Password -->
-                    <v-col cols="12" md="6">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label required">
-                          Confirm Password
-                        </label>
-                        <v-text-field
-                          v-model="form.confirmPassword"
-                          :type="showConfirmPassword ? 'text' : 'password'"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="Confirm password"
-                          prepend-inner-icon="mdi-lock-check-outline"
-                          :rules="confirmPasswordRules"
-                          hide-details="auto"
-                          class="gov-input"
-                        >
-                          <template #append-inner>
-                            <v-btn
-                              :icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                              size="x-small"
-                              variant="text"
-                              @click="showConfirmPassword = !showConfirmPassword"
-                            />
-                          </template>
-                        </v-text-field>
-                      </div>
-                    </v-col>
-
-                    <!-- Role Selection -->
-                    <v-col cols="12">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label required">
-                          User Role
-                        </label>
-                        <v-select
-                          v-model="form.role"
-                          :items="availableRoles"
-                          item-title="name"
-                          item-value="id"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="Select user role"
-                          prepend-inner-icon="mdi-shield-account-outline"
-                          :rules="roleRules"
-                          hide-details="auto"
-                          class="gov-input"
-                        >
-                          <template #selection="{ item }">
-                            <v-chip
-                              :color="getRoleColor(item.value)"
-                              size="small"
-                              label
-                              class="font-weight-medium"
-                            >
-                              {{ item.title }}
-                            </v-chip>
-                          </template>
-                          <template #item="{ item, props }">
-                            <v-list-item v-bind="props" class="py-2">
-                              <template #prepend>
-                                <v-chip
-                                  :color="getRoleColor(item.value)"
-                                  size="small"
-                                  label
-                                  class="mr-3"
-                                >
-                                  {{ item.title }}
-                                </v-chip>
-                              </template>
-                            </v-list-item>
-                          </template>
-                        </v-select>
-                      </div>
-                    </v-col>
-                  </v-row>
-                </div>
-              </v-window-item>
-
-              <!-- Step 2: Profile Information -->
-              <v-window-item :value="2">
-                <div class="step-content">
-                  <!-- Section Header -->
-                  <div class="section-header mb-6 text-center">
-                    <v-icon color="primary" size="48" class="mb-3">mdi-account-details</v-icon>
-                    <h3 class="text-h6 font-weight-bold text-grey-darken-3">Profile Information</h3>
-                    <p class="text-body-2 text-grey-darken-1 mt-1">Additional details to complete the user profile</p>
-                  </div>
-
-                  <v-row>
-                    <!-- Phone Number -->
-                    <v-col cols="12" md="6">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label">
-                          Phone Number
-                        </label>
-                        <v-text-field
-                          v-model="formattedPhone"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="(555) 123-4567"
-                          prepend-inner-icon="mdi-phone-outline"
-                          :rules="phoneRules"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Region -->
-                    <v-col cols="12" md="6">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label">
-                          Region
-                        </label>
-                        <v-select
-                          v-model="form.region"
-                          :items="regionOptions"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="Select region"
-                          prepend-inner-icon="mdi-map-marker-outline"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Department -->
-                    <v-col cols="12" md="6">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label">
-                          Department
-                        </label>
-                        <v-text-field
-                          v-model="form.department"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="e.g., Public Health"
-                          prepend-inner-icon="mdi-office-building-outline"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Job Title -->
-                    <v-col cols="12" md="6">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label">
-                          Job Title
-                        </label>
-                        <v-text-field
-                          v-model="form.title"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="e.g., Health Specialist"
-                          prepend-inner-icon="mdi-briefcase-outline"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Location -->
-                    <v-col cols="12">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label">
-                          Location
-                        </label>
-                        <v-text-field
-                          v-model="form.location"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="City, State"
-                          prepend-inner-icon="mdi-map-outline"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Bio -->
-                    <v-col cols="12">
-                      <div class="gov-field-group">
-                        <label class="gov-field-label">
-                          Bio
-                        </label>
-                        <v-textarea
-                          v-model="form.bio"
-                          variant="outlined"
-                          density="comfortable"
-                          placeholder="Brief description about the user..."
-                          prepend-inner-icon="mdi-text"
-                          rows="3"
-                          hide-details="auto"
-                          class="gov-input"
-                        />
-                      </div>
-                    </v-col>
-
-                    <!-- Send Welcome Email -->
-                    <v-col cols="12">
-                      <v-card variant="tonal" color="primary" class="pa-4">
-                        <v-checkbox
-                          v-model="form.sendEmail"
-                          color="primary"
-                          hide-details
-                        >
-                          <template #label>
-                            <div>
-                              <div class="font-weight-medium">Send Welcome Email</div>
-                              <div class="text-caption text-grey-darken-1">
-                                User will receive login instructions via email
-                              </div>
-                            </div>
-                          </template>
-                        </v-checkbox>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </div>
-              </v-window-item>
-            </v-window>
-          </v-form>
-        </v-container>
+          <v-window-item :value="2">
+            <v-form ref="step2Form" v-model="step2Valid">
+              <ProfileDetailsStep
+                v-model="form"
+              />
+            </v-form>
+          </v-window-item>
+        </v-window>
       </v-card-text>
 
-      <!-- Professional Footer Actions -->
-      <v-divider />
-      <v-card-actions class="dialog-footer pa-6">
+      <!-- Modern Actions -->
+      <v-card-actions class="dialog-actions">
         <v-btn
           variant="text"
-          color="grey-darken-2"
+          size="large"
           @click="handleCancel"
           :disabled="creating"
-          class="px-4"
+          class="cancel-btn"
         >
           Cancel
         </v-btn>
-        
         <v-spacer />
-
         <v-btn
           v-if="currentStep > 1"
           variant="outlined"
-          color="primary"
+          size="large"
           @click="handleBack"
           :disabled="creating"
-          class="mr-2"
+          class="back-btn"
         >
-          <v-icon start>mdi-chevron-left</v-icon>
+          <v-icon start>mdi-arrow-left</v-icon>
           Back
         </v-btn>
-
         <v-btn
           color="primary"
-          variant="flat"
+          variant="elevated"
+          size="large"
           @click="handleNext"
           :loading="creating"
           :disabled="creating"
-          min-width="120"
-          elevation="2"
-          class="text-none font-weight-medium"
+          class="next-btn"
         >
-          <v-icon start>
-            {{ currentStep === totalSteps ? 'mdi-check-circle' : 'mdi-chevron-right' }}
+          {{ currentStep === totalSteps ? 'Create User' : 'Continue' }}
+          <v-icon end>
+            {{ currentStep === totalSteps ? 'mdi-check' : 'mdi-arrow-right' }}
           </v-icon>
-          {{ currentStep === totalSteps ? 'Create User' : 'Next' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -419,10 +137,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '../../firebase'
-import { usePermissionsStore } from '../../stores/permissions'
-import { useAudit } from '../../composables/useAudit'
+import AccountDetailsStep from './user-form/AccountDetailsStep.vue'
+import ProfileDetailsStep from './user-form/ProfileDetailsStep.vue'
+import { useCreateUser } from '../../composables/useCreateUser'
 
 const emit = defineEmits(['update:modelValue', 'user-created', 'showSnackbar'])
 const props = defineProps({
@@ -432,197 +149,37 @@ const props = defineProps({
   }
 })
 
-const permissionsStore = usePermissionsStore()
-const { log } = useAudit()
-
 // Dialog state
 const dialogOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
 
-// Form state
-const createUserFormRef = ref(null)
-const creating = ref(false)
-const currentStep = ref(1)
-const totalSteps = 2
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
+// Form refs
+const step1Form = ref(null)
+const step2Form = ref(null)
+const step1Valid = ref(false)
+const step2Valid = ref(false)
 
-// Form data
-const form = ref({
-  email: '',
-  password: '',
-  confirmPassword: '',
-  displayName: '',
-  role: 'user',
-  phone: '',
-  department: '',
-  title: '',
-  region: '',
-  location: '',
-  bio: '',
-  sendEmail: true
-})
+// Form management
+const {
+  form,
+  currentStep,
+  totalSteps,
+  creating,
+  showPassword,
+  showConfirmPassword,
+  availableRoles,
+  resetForm,
+  generatePassword,
+  createUser
+} = useCreateUser()
 
-// Step titles
-const stepTitles = {
-  1: 'Account Details',
-  2: 'Profile Details'
-}
-
-const stepTitle = computed(() => stepTitles[currentStep.value])
-
-// Phone formatting
-const formattedPhone = computed({
-  get() {
-    return formatPhoneNumber(form.value.phone)
-  },
-  set(value) {
-    const numericOnly = String(value).replace(/\D/g, '')
-    form.value.phone = numericOnly
-  }
-})
-
-const availableRoles = computed(() => {
-  return permissionsStore.allRoles.filter(role => {
-    if (role.id === 'owner') return false
-    return true
-  })
-})
-
-// Region options
-const regionOptions = [
-  { title: 'Region 1 - Orleans', value: '1' },
-  { title: 'Region 2 - Baton Rouge', value: '2' },
-  { title: 'Region 3 - Houma', value: '3' },
-  { title: 'Region 4 - Lafayette', value: '4' },
-  { title: 'Region 5 - Lake Charles', value: '5' },
-  { title: 'Region 6 - Alexandria', value: '6' },
-  { title: 'Region 7 - Shreveport', value: '7' },
-  { title: 'Region 8 - Monroe', value: '8' },
-  { title: 'Region 9 - Hammond', value: '9' },
-  { title: 'Central Office', value: 'central' }
-]
-
-// Validation rules
-const rules = {
-  required: value => !!value || 'This field is required'
-}
-
-const displayNameRules = [
-  rules.required,
-  value => (value && value.length >= 2) || 'Display name must be at least 2 characters'
-]
-
-const emailRules = [
-  rules.required,
-  value => /.+@.+\..+/.test(value) || 'Email must be valid'
-]
-
-const passwordRules = [
-  rules.required,
-  value => (value && value.length >= 8) || 'Password must be at least 8 characters',
-  value => /[A-Z]/.test(value) || 'Must contain an uppercase letter',
-  value => /[a-z]/.test(value) || 'Must contain a lowercase letter',
-  value => /[0-9]/.test(value) || 'Must contain a number'
-]
-
-const confirmPasswordRules = [
-  rules.required,
-  value => value === form.value.password || 'Passwords must match'
-]
-
-const phoneRules = [
-  value => !value || /^\(\d{3}\)\s\d{3}-\d{4}$/.test(formatPhoneNumber(value)) || 'Use format: (XXX) XXX-XXXX'
-]
-
-const roleRules = [
-  rules.required
-]
-
-// Methods
-const formatPhoneNumber = (value) => {
-  if (!value) return ''
-  
-  const numericOnly = String(value).replace(/\D/g, '')
-  
-  if (numericOnly.length === 0) return ''
-  if (numericOnly.length <= 3) return numericOnly
-  if (numericOnly.length <= 6) {
-    return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3)}`
-  }
-  if (numericOnly.length <= 10) {
-    return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3, 6)}-${numericOnly.slice(6)}`
-  }
-  return `(${numericOnly.slice(0, 3)}) ${numericOnly.slice(3, 6)}-${numericOnly.slice(6, 10)}`
-}
-
-const generatePassword = () => {
-  const length = 12
-  const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
-  let password = ''
-  
-  // Ensure at least one of each required character type
-  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
-  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
-  password += '0123456789'[Math.floor(Math.random() * 10)]
-  password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
-  
-  // Fill the rest randomly
-  for (let i = 4; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length))
-  }
-  
-  // Shuffle the password
-  password = password.split('').sort(() => Math.random() - 0.5).join('')
-  
-  form.value.password = password
-  form.value.confirmPassword = password
-  showPassword.value = true
-  showConfirmPassword.value = true
-}
-
-const getRoleColor = (roleId) => {
-  const colors = {
-    'owner': 'deep-purple',
-    'admin': 'blue-darken-2', 
-    'user': 'green-darken-1',
-    'viewer': 'cyan-darken-1',
-    'pending': 'orange-darken-1'
-  }
-  return colors[roleId] || 'grey'
-}
-
-const showSnackbar = (message, color = 'success') => {
-  emit('showSnackbar', message, color)
-}
-
-const resetForm = () => {
-  form.value = {
-    email: '',
-    password: '',
-    confirmPassword: '',
-    displayName: '',
-    role: 'user',
-    phone: '',
-    department: '',
-    title: '',
-    region: '',
-    location: '',
-    bio: '',
-    sendEmail: true
-  }
-  currentStep.value = 1
-  showPassword.value = false
-  showConfirmPassword.value = false
-  if (createUserFormRef.value) {
-    createUserFormRef.value.resetValidation()
-  }
-}
-
+// Navigation handlers
 const handleCancel = () => {
   resetForm()
+  step1Valid.value = false
+  step2Valid.value = false
   dialogOpen.value = false
 }
 
@@ -632,118 +189,34 @@ const handleBack = () => {
   }
 }
 
-const validateCurrentStep = async () => {
-  if (!createUserFormRef.value) return false
-  
-  const { valid } = await createUserFormRef.value.validate()
-  return valid
-}
-
 const handleNext = async () => {
-  const isValid = await validateCurrentStep()
+  // Validate current step
+  let isValid = false
+  
+  if (currentStep.value === 1 && step1Form.value) {
+    const { valid } = await step1Form.value.validate()
+    isValid = valid
+  } else if (currentStep.value === 2 && step2Form.value) {
+    const { valid } = await step2Form.value.validate()
+    isValid = valid
+  }
+
   if (!isValid) return
 
   if (currentStep.value < totalSteps) {
     currentStep.value++
   } else {
-    await createUser()
-  }
-}
-
-const createUser = async () => {
-  if (!createUserFormRef.value) return
-  
-  const { valid } = await createUserFormRef.value.validate()
-  if (!valid) {
-    showSnackbar('Please fill in all required fields correctly.', 'error')
-    return
-  }
-
-  creating.value = true
-  
-  try {
-    const userPayload = {
-      email: form.value.email.toLowerCase().trim(),
-      password: form.value.password,
-      displayName: form.value.displayName.trim(),
-      role: form.value.role,
-      phone: form.value.phone,
-      department: form.value.department,
-      title: form.value.title,
-      region: form.value.region,
-      location: form.value.location,
-      bio: form.value.bio,
-      sendWelcomeEmail: form.value.sendEmail
-    }
-
-    const createUserFunction = httpsCallable(functions, 'createUser')
-    const result = await createUserFunction(userPayload)
-
-    if (result.data.success) {
-      await log.userCreated({
-        createdUserId: result.data.userId,
-        createdUserEmail: form.value.email,
-        assignedRole: form.value.role,
-        method: 'admin_creation',
-        profileFields: {
-          phone: form.value.phone || 'none',
-          department: form.value.department || 'none',
-          title: form.value.title || 'none',
-          region: form.value.region || 'none',
-          location: form.value.location || 'none',
-          bio: form.value.bio || 'none'
-        }
-      })
-
-      let message = 'User created successfully!'
-      if (result.data.profileFieldsSaved) {
-        message += ` Profile data saved: ${Object.values(result.data.profileFieldsSaved).filter(v => v !== 'none').length} fields.`
-      }
-      
-      showSnackbar(message)
-      await permissionsStore.loadAllData()
-
-      emit('user-created', {
-        userId: result.data.userId,
-        email: result.data.email,
-        displayName: form.value.displayName,
-        role: form.value.role,
-        profileData: {
-          phone: form.value.phone,
-          department: form.value.department,
-          title: form.value.title,
-          region: form.value.region,
-          location: form.value.location,
-          bio: form.value.bio
-        },
-        profileFieldsSaved: result.data.profileFieldsSaved
-      })
-
+    const result = await createUser()
+    if (result.success) {
+      emit('showSnackbar', result.message)
+      emit('user-created', result.userData)
       resetForm()
+      step1Valid.value = false
+      step2Valid.value = false
       dialogOpen.value = false
-
     } else {
-      throw new Error(result.data.message || 'Failed to create user')
+      emit('showSnackbar', result.message, 'error')
     }
-
-  } catch (error) {
-    console.error('Error creating user:', error)
-    
-    let errorMessage = 'Failed to create user'
-    
-    if (error.code === 'functions/already-exists') {
-      errorMessage = 'A user with this email already exists'
-    } else if (error.code === 'functions/invalid-argument') {
-      errorMessage = 'Please check your input and try again'
-    } else if (error.code === 'functions/permission-denied') {
-      errorMessage = 'You do not have permission to create users'
-    } else if (error.message) {
-      errorMessage = error.message
-    }
-    
-    showSnackbar(errorMessage, 'error')
-  } finally {
-    creating.value = false
   }
 }
 
@@ -751,215 +224,222 @@ const createUser = async () => {
 watch(dialogOpen, (isOpen) => {
   if (!isOpen && !creating.value) {
     resetForm()
+    currentStep.value = 1
+    step1Valid.value = false
+    step2Valid.value = false
   }
 })
 </script>
 
 <style scoped>
-/* Louisiana Department of Health Professional Government Styling */
-
-.create-user-card {
-  border-radius: 8px;
+/* Modern dialog styling */
+.create-user-dialog {
+  border-radius: 16px !important;
   overflow: hidden;
 }
 
-/* Professional Government Header */
+/* Header styling */
 .dialog-header {
-  background: linear-gradient(135deg, #003d7a 0%, #0056b3 100%);
-  color: white;
-  position: relative;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-.dialog-header .v-toolbar {
-  background: transparent !important;
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-/* Content Styling */
-.dialog-body {
-  background-color: #f8f9fa;
-  min-height: 400px;
+.header-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(25, 118, 210, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.dialog-footer {
-  background-color: #ffffff;
-  border-top: 1px solid #e0e0e0;
+.header-title {
+  font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  line-height: 1.2;
 }
 
-/* Section Headers */
-.section-header {
-  padding: 1rem 0;
+.header-subtitle {
+  font-family: 'Cambria', Georgia, serif;
+  font-size: 0.875rem;
+  color: #666;
+  margin: 0;
+  margin-top: 2px;
 }
 
-.section-header h3 {
-  letter-spacing: -0.02em;
+.close-btn {
+  margin: -8px -8px -8px 0;
 }
 
-/* Step Content Container */
-.step-content {
-  max-width: 720px;
+/* Modern stepper */
+.stepper-container {
+  background-color: #fafafa;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.stepper-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 500px;
   margin: 0 auto;
 }
 
-/* Government Form Field Styling */
-.gov-field-group {
-  margin-bottom: 1.5rem;
-}
-
-.gov-field-label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #212529;
-  margin-bottom: 0.5rem;
-  letter-spacing: 0.01em;
-}
-
-.gov-field-label.required::after {
-  content: ' *';
-  color: #dc3545;
-}
-
-/* Professional Input Styling */
-.gov-input :deep(.v-field) {
-  background-color: #ffffff;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.gov-input :deep(.v-field__outline) {
-  --v-field-border-color: #ced4da;
-  --v-field-border-width: 1px;
-}
-
-.gov-input:hover :deep(.v-field__outline) {
-  --v-field-border-color: #6c757d;
-}
-
-.gov-input :deep(.v-field--focused .v-field__outline) {
-  --v-field-border-color: #0056b3;
-  --v-field-border-width: 2px;
-}
-
-.gov-input :deep(.v-field__input) {
-  font-size: 0.9375rem;
-  padding: 0.5rem 0;
-  min-height: 44px;
-}
-
-.gov-input :deep(.v-field__prepend-inner) {
-  padding-right: 0.75rem;
-  color: #6c757d;
-}
-
-.gov-input :deep(.v-field--error .v-field__outline) {
-  --v-field-border-color: #dc3545;
-}
-
-/* Select Field Styling */
-.gov-input :deep(.v-select__selection) {
-  margin: 0;
-}
-
-/* Textarea Styling */
-.gov-input :deep(textarea) {
-  line-height: 1.5;
-}
-
-/* Button Styling in Fields */
-.gov-input :deep(.v-btn--icon) {
+.stepper-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   opacity: 0.6;
-  transition: opacity 0.2s;
+  transition: all 0.3s ease;
 }
 
-.gov-input :deep(.v-btn--icon:hover) {
+.stepper-step.active {
   opacity: 1;
 }
 
-/* Role Chip Styling */
-.v-chip {
-  font-weight: 500;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.05em;
+.stepper-step.completed {
+  opacity: 1;
 }
 
-/* Progress Linear Custom */
-.v-progress-linear {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+.step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e0e0e0;
+  color: #666;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
 }
 
-/* Responsive Design */
-@media (max-width: 600px) {
-  .dialog-body .v-container {
-    padding: 1rem !important;
+.stepper-step.active .step-number {
+  background-color: #1976d2;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.12);
+}
+
+.stepper-step.completed .step-number {
+  background-color: #4caf50;
+  color: white;
+}
+
+.step-info {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .step-info {
+    display: block;
   }
   
-  .dialog-footer {
-    padding: 1rem !important;
+  .step-title {
+    font-family: 'ITC Franklin Gothic', Arial, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    line-height: 1.3;
   }
   
-  .gov-field-group {
-    margin-bottom: 1rem;
+  .step-subtitle {
+    font-family: 'Cambria', Georgia, serif;
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 2px;
   }
   
-  .section-header {
-    margin-bottom: 1.5rem !important;
+  .stepper-step.active .step-title {
+    color: #1976d2;
   }
 }
 
-/* Animation for step transitions */
-.v-window-item {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Professional Focus States */
-.gov-input:focus-within {
+.stepper-divider {
+  flex: 1;
+  height: 2px;
+  background-color: #e0e0e0;
+  margin: 0 16px;
   position: relative;
+  overflow: hidden;
 }
 
-.gov-input:focus-within::after {
+.stepper-divider::after {
   content: '';
   position: absolute;
-  inset: -4px;
-  border: 3px solid rgba(0, 86, 179, 0.1);
-  border-radius: 6px;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background-color: #4caf50;
+  transition: width 0.3s ease;
 }
 
-/* Enhanced Button Styling */
-.v-btn {
-  letter-spacing: 0.02em;
+.stepper-divider.completed::after {
+  width: 100%;
+}
+
+/* Content area */
+.dialog-content {
+  padding: 0 !important;
+  background-color: #ffffff;
+}
+
+/* Action buttons */
+.dialog-actions {
+  padding: 20px 24px !important;
+  background-color: #fafafa;
+  border-top: 1px solid #e0e0e0;
+  gap: 12px;
+}
+
+.cancel-btn {
+  color: #666 !important;
   font-weight: 500;
 }
 
-.v-btn--flat {
+.back-btn {
+  border-color: #e0e0e0 !important;
+  color: #666 !important;
+}
+
+.next-btn {
+  min-width: 140px;
+  font-weight: 600;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.v-btn--flat:hover {
+.next-btn:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Card Shadow for Professional Depth */
-.create-user-card {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-/* Smooth scrolling */
-.dialog-body {
-  scroll-behavior: smooth;
-}
-
-/* Loading State */
-.v-btn--loading {
-  opacity: 0.8;
-}
-
-/* Validation Messages */
-.v-messages__message {
-  font-size: 0.75rem;
-  margin-top: 0.25rem;
+/* Responsive adjustments */
+@media (max-width: 599px) {
+  .dialog-header {
+    padding: 20px;
+  }
+  
+  .stepper-container {
+    padding: 16px 20px;
+  }
+  
+  .dialog-actions {
+    padding: 16px 20px !important;
+  }
 }
 </style>
