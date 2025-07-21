@@ -1,0 +1,169 @@
+/* client/src/assets/styles/vuetify-components.css - Vuetify Component Overrides */
+
+/* ========================================
+   CARDS
+   ======================================== */
+
+.v-card {
+  border-radius: var(--border-radius) !important;
+  box-shadow: var(--shadow-md) !important;
+  overflow: visible !important;
+  border: 1px solid var(--ldh-gray-200) !important;
+}
+
+.v-card--variant-tonal {
+  border: none !important;
+}
+
+.v-card-title {
+  font-family: var(--font-primary) !important;
+  font-weight: 600 !important;
+  color: var(--ldh-navy) !important;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) var(--spacing-lg) !important;
+}
+
+.v-card-text {
+  font-family: var(--font-secondary) !important;
+  line-height: 1.6 !important;
+  padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+.v-card-actions {
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.v-btn {
+  border-radius: var(--border-radius-sm) !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all 0.2s ease !important;
+  min-height: 36px !important;
+}
+
+.v-btn:hover {
+  box-shadow: var(--shadow-md) !important;
+  transform: translateY(-1px) !important;
+}
+
+.v-btn--variant-elevated {
+  background-color: var(--ldh-blue) !important;
+  color: white !important;
+}
+
+.v-btn--variant-tonal {
+  background-color: rgba(66, 109, 169, 0.12) !important;
+  color: var(--ldh-blue) !important;
+}
+
+.v-btn--variant-outlined {
+  border-color: var(--ldh-gray-300) !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+.v-btn--variant-text {
+  color: var(--ldh-blue) !important;
+}
+
+/* Ensure proper icon spacing in buttons */
+.v-btn__prepend {
+  margin-inline-end: 4px !important;
+}
+
+/* ========================================
+   TABS
+   ======================================== */
+
+.v-tabs {
+  background-color: transparent !important;
+}
+
+.v-tab {
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+.v-tab--selected {
+  color: var(--ldh-blue) !important;
+}
+
+/* ========================================
+   DIALOGS
+   ======================================== */
+
+.v-dialog > .v-overlay__content > .v-card {
+  border-radius: var(--border-radius-lg) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+/* ========================================
+   CHIPS
+   ======================================== */
+
+.v-chip {
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  border-radius: var(--border-radius-sm) !important;
+}
+
+/* ========================================
+   LISTS
+   ======================================== */
+
+.v-list-item {
+  border-radius: var(--border-radius-sm) !important;
+  margin: 0 var(--spacing-sm) !important;
+}
+
+.v-list-item--active {
+  background-color: rgba(66, 109, 169, 0.12) !important;
+  color: var(--ldh-blue) !important;
+}
+
+/* ========================================
+   PROGRESS INDICATORS
+   ======================================== */
+
+.v-progress-linear {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-progress-circular {
+  color: var(--ldh-blue) !important;
+}
+
+/* ========================================
+   ALERTS
+   ======================================== */
+
+.v-alert {
+  border-radius: var(--border-radius) !important;
+  font-family: var(--font-secondary) !important;
+}
+
+.v-alert--variant-tonal {
+  border: 1px solid currentColor !important;
+  border-left-width: 4px !important;
+}
+
+/* ========================================
+   TOOLTIPS
+   ======================================== */
+
+.v-tooltip > .v-overlay__content {
+  background-color: var(--ldh-gray-900) !important;
+  color: white !important;
+  font-family: var(--font-secondary) !important;
+  font-size: 0.875rem !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  border-radius: var(--border-radius-sm) !important;
+}

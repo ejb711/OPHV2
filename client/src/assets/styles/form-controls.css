@@ -1,0 +1,252 @@
+/* client/src/assets/styles/form-controls.css - Form Control Styles */
+
+/* ========================================
+   GENERAL FIELD STYLES
+   ======================================== */
+
+.v-field {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-field--variant-outlined .v-field__outline {
+  color: var(--ldh-gray-300) !important;
+}
+
+.v-field--focused .v-field__outline {
+  color: var(--ldh-blue) !important;
+}
+
+/* ========================================
+   TEXT FIELDS & TEXTAREAS ONLY
+   ======================================== */
+
+.v-text-field .v-field,
+.v-textarea .v-field {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-text-field .v-field__input,
+.v-textarea .v-field__input {
+  min-height: 56px !important;
+  padding: 20px 16px 8px 16px !important;
+  line-height: 1.5 !important;
+  font-size: 16px !important;
+}
+
+/* Text Field Labels */
+.v-text-field .v-field__label,
+.v-textarea .v-field__label {
+  position: absolute !important;
+  top: 50% !important;
+  left: 16px !important;
+  transform: translateY(-50%) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 10 !important;
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+  font-size: 16px !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+  font-family: var(--font-secondary) !important;
+}
+
+/* Active/focused text field labels */
+.v-text-field .v-field--active .v-field__label,
+.v-text-field .v-field--dirty .v-field__label,
+.v-text-field .v-field--focused .v-field__label,
+.v-textarea .v-field--active .v-field__label,
+.v-textarea .v-field--dirty .v-field__label,
+.v-textarea .v-field--focused .v-field__label {
+  top: 12px !important;
+  transform: translateY(0) scale(0.75) !important;
+  transform-origin: top left !important;
+  opacity: 1 !important;
+  color: rgb(66, 109, 169) !important;
+}
+
+/* Outlined variant specific */
+.v-field--variant-outlined .v-field__label,
+.v-field--variant-outlined .v-label {
+  background-color: white !important;
+  padding: 0 4px !important;
+  margin-left: -4px !important;
+}
+
+/* Textarea specific fixes */
+.v-textarea .v-field .v-field__input {
+  padding-top: 28px !important;
+  min-height: 80px !important;
+}
+
+.v-textarea.v-field--active .v-field__label,
+.v-textarea.v-field--dirty .v-field__label,
+.v-textarea.v-field--focused .v-field__label {
+  top: -6px !important;
+  background-color: white !important;
+}
+
+/* ========================================
+   SELECT FIELDS - SEPARATE STYLING
+   Fixed to prevent text overlay
+   ======================================== */
+
+.v-select .v-field {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-select .v-field__input {
+  min-height: 56px !important;
+  padding: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Select Labels - Different from text fields */
+.v-select .v-field__label {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-700) !important;
+  /* Let Vuetify handle select label positioning */
+}
+
+/* Ensure select value text is visible */
+.v-select .v-select__selection {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.v-select .v-select__selection-text {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Hide default selection text when using custom chip selection */
+.v-select .v-select__selection:has(.v-chip) + .v-select__selection-text,
+.v-select .role-selection + .v-select__selection-text,
+.v-select .v-chip ~ .v-select__selection-text {
+  display: none !important;
+}
+
+/* Ensure custom selection chips are properly displayed */
+.v-select .role-selection {
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+/* Fix for Vuetify 3 select with custom templates */
+.v-select .v-field__input > .v-select__selection {
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Hide the default text when a custom selection template is used */
+.v-select .v-field__input > .v-select__selection:has(.v-chip) {
+  .v-select__selection-text {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   INPUT STYLING
+   ======================================== */
+
+/* Input text styling */
+.v-field__input input,
+.v-field__input textarea,
+.v-text-field .v-field__input input,
+.v-textarea .v-field__input textarea {
+  color: rgba(0, 0, 0, 0.87) !important;
+  opacity: 1 !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+
+/* Placeholder styling */
+.v-field__input input::placeholder,
+.v-field__input textarea::placeholder {
+  color: rgba(0, 0, 0, 0.38) !important;
+  opacity: 1 !important;
+}
+
+/* ========================================
+   Z-INDEX MANAGEMENT
+   ======================================== */
+
+.v-field__overlay {
+  z-index: 1 !important;
+}
+
+.v-field__outline {
+  z-index: 2 !important;
+}
+
+.v-field__input {
+  z-index: 3 !important;
+}
+
+/* Only for text fields, not selects */
+.v-text-field .v-field__label,
+.v-textarea .v-field__label {
+  z-index: 10 !important;
+}
+
+/* ========================================
+   DISABLED STATES
+   ======================================== */
+
+.v-field--disabled {
+  opacity: 0.5 !important;
+}
+
+.v-field--disabled .v-field__input {
+  color: var(--ldh-gray-500) !important;
+}
+
+/* ========================================
+   PROFILE SPECIFIC OVERRIDES
+   ======================================== */
+
+.profile-settings .v-field .v-label,
+.profile-settings .v-text-field .v-label,
+.profile-settings .v-textarea .v-label {
+  font-family: 'Cambria', Georgia, serif !important;
+}
+
+/* ========================================
+   V-SELECT CUSTOM TEMPLATE FIXES
+   ======================================== */
+
+/* Fix for overlapping text in selects with custom chip templates */
+.v-select .v-select__selection {
+  flex: 1 1 auto !important;
+}
+
+/* Hide duplicate text when using custom selection templates */
+.v-select .v-select__selection-text:not(:only-child) {
+  display: none !important;
+}
+
+/* Ensure chips in selects display properly */
+.v-select .v-chip {
+  margin: 0 !important;
+}
+
+/* Fix role selection specific styling */
+.role-selection {
+  width: 100% !important;
+}
+
+.role-selection .v-chip {
+  width: auto !important;
+  max-width: 100% !important;
+}
+
+/* Alternative fix for browsers that don't support :has() */
+.v-select[aria-expanded="false"] .v-field__input .v-chip {
+  display: inline-flex !important;
+}
+
+.v-select[aria-expanded="false"] .v-field__input .v-chip + * {
+  display: none !important;
+}

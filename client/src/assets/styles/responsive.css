@@ -1,0 +1,175 @@
+/* client/src/assets/styles/responsive.css - Responsive Styles */
+
+/* ========================================
+   BREAKPOINTS
+   xs: 0-599px
+   sm: 600-959px
+   md: 960-1279px
+   lg: 1280-1919px
+   xl: 1920px+
+   ======================================== */
+
+/* ========================================
+   MOBILE STYLES (xs)
+   ======================================== */
+
+@media (max-width: 599px) {
+  /* Layout adjustments */
+  .v-container {
+    padding: var(--spacing-sm) !important;
+  }
+  
+  /* Typography adjustments */
+  .v-card-title {
+    font-size: 1.25rem !important;
+    padding: var(--spacing-md) !important;
+  }
+  
+  .v-card-text {
+    padding: var(--spacing-md) !important;
+  }
+  
+  /* Button adjustments */
+  .v-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  
+  /* Form adjustments */
+  .v-field {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Dialog adjustments */
+  .v-dialog > .v-overlay__content {
+    margin: var(--spacing-xs) !important;
+    width: calc(100% - var(--spacing-xs) * 2) !important;
+  }
+  
+  /* Data table adjustments */
+  .v-data-table {
+    font-size: 0.875rem !important;
+  }
+  
+  /* Hide elements on mobile */
+  .d-none-mobile {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   TABLET STYLES (sm)
+   ======================================== */
+
+@media (min-width: 600px) and (max-width: 959px) {
+  /* Layout adjustments */
+  .v-container {
+    padding: var(--spacing-md) !important;
+  }
+  
+  /* Hide elements on tablet */
+  .d-none-tablet {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   DESKTOP STYLES (md+)
+   ======================================== */
+
+@media (min-width: 960px) {
+  /* Show elements only on desktop */
+  .d-none-desktop {
+    display: none !important;
+  }
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+
+/* Display utilities by breakpoint */
+@media (max-width: 599px) {
+  .d-flex-mobile { display: flex !important; }
+  .d-block-mobile { display: block !important; }
+  .d-inline-mobile { display: inline !important; }
+}
+
+@media (min-width: 600px) and (max-width: 959px) {
+  .d-flex-tablet { display: flex !important; }
+  .d-block-tablet { display: block !important; }
+  .d-inline-tablet { display: inline !important; }
+}
+
+@media (min-width: 960px) {
+  .d-flex-desktop { display: flex !important; }
+  .d-block-desktop { display: block !important; }
+  .d-inline-desktop { display: inline !important; }
+}
+
+/* ========================================
+   RESPONSIVE SPACING
+   ======================================== */
+
+@media (max-width: 599px) {
+  .pa-mobile-xs { padding: var(--spacing-xs) !important; }
+  .pa-mobile-sm { padding: var(--spacing-sm) !important; }
+  .pa-mobile-md { padding: var(--spacing-md) !important; }
+  
+  .ma-mobile-xs { margin: var(--spacing-xs) !important; }
+  .ma-mobile-sm { margin: var(--spacing-sm) !important; }
+  .ma-mobile-md { margin: var(--spacing-md) !important; }
+}
+
+/* ========================================
+   RESPONSIVE TEXT
+   ======================================== */
+
+@media (max-width: 599px) {
+  .text-h1-mobile { font-size: 2rem !important; }
+  .text-h2-mobile { font-size: 1.75rem !important; }
+  .text-h3-mobile { font-size: 1.5rem !important; }
+  .text-h4-mobile { font-size: 1.25rem !important; }
+  .text-h5-mobile { font-size: 1.125rem !important; }
+  .text-h6-mobile { font-size: 1rem !important; }
+}
+
+/* ========================================
+   RESPONSIVE FLEX
+   ======================================== */
+
+@media (max-width: 599px) {
+  .flex-column-mobile { flex-direction: column !important; }
+  .flex-wrap-mobile { flex-wrap: wrap !important; }
+}
+
+@media (min-width: 600px) {
+  .flex-row-tablet { flex-direction: row !important; }
+  .flex-nowrap-tablet { flex-wrap: nowrap !important; }
+}
+
+/* ========================================
+   RESPONSIVE GRID
+   ======================================== */
+
+@media (max-width: 599px) {
+  .v-col-12-mobile {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ========================================
+   ORIENTATION SPECIFIC
+   ======================================== */
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .v-app-bar {
+    height: 48px !important;
+  }
+  
+  .v-container {
+    padding-top: var(--spacing-sm) !important;
+    padding-bottom: var(--spacing-sm) !important;
+  }
+}

@@ -1,0 +1,85 @@
+/* client/src/assets/styles/layout.css - Core Layout Styles */
+
+/* ========================================
+   MAIN LAYOUT STRUCTURE
+   ======================================== */
+
+/* Main Content Areas */
+.v-main {
+  background-color: var(--ldh-gray-50) !important;
+  min-height: calc(100vh - var(--header-height));
+}
+
+.v-container {
+  max-width: var(--container-max-width) !important;
+  width: 100% !important;
+  padding: var(--spacing-md) !important;
+  margin: 0 auto !important;
+}
+
+/* Navigation Drawer */
+.v-navigation-drawer {
+  background-color: var(--ldh-gray-50) !important;
+  border-right: 1px solid var(--ldh-gray-200) !important;
+}
+
+/* App Bar */
+.v-app-bar {
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* ========================================
+   COMPONENT-SPECIFIC LAYOUTS
+   ======================================== */
+
+/* Role Cards */
+.role-card {
+  transition: all 0.3s ease !important;
+  cursor: pointer;
+}
+
+.role-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.role-card.role-owner {
+  border-top: 4px solid var(--ldh-navy) !important;
+}
+
+.role-card.role-admin {
+  border-top: 4px solid var(--ldh-blue) !important;
+}
+
+.role-card.role-user {
+  border-top: 4px solid var(--ldh-aqua) !important;
+}
+
+.role-card.role-viewer {
+  border-top: 4px solid var(--ldh-gold) !important;
+}
+
+.role-card.role-pending {
+  border-top: 4px solid var(--ldh-gray-400) !important;
+  opacity: 0.7;
+}
+
+/* Status Indicators */
+.status-active {
+  color: var(--ldh-success) !important;
+}
+
+.status-pending {
+  color: var(--ldh-warning) !important;
+}
+
+.status-inactive {
+  color: var(--ldh-error) !important;
+}
+
+/* Permission Chips */
+.permission-chip {
+  margin: 2px !important;
+  height: 28px !important;
+  font-size: 0.75rem !important;
+}

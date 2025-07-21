@@ -1,5 +1,45 @@
 # CHANGELOG - July 2025
 
+## 📅 July 20, 2025 (Evening Session) - CSS Modularization & Dropdown Fix
+
+### **✅ CSS ARCHITECTURE REFACTORING**
+
+#### **1. Modularized main.css File ⭐ MAINTAINABILITY**
+**Issue**: main.css had grown to 698 lines, exceeding the 350-line file size limit  
+**Impact**: Difficult to maintain, potential merge conflicts, poor code organization  
+**Solution**: Split into 9 focused modules + 1 main entry file
+
+**Files Created:**
+```
+client/src/assets/styles/
+├── layout.css (82 lines) - Core layout structures
+├── vuetify-components.css (177 lines) - Vuetify component overrides
+├── form-controls.css (217 lines) - Form control styles & dropdown fixes
+├── data-tables.css (96 lines) - Data table specific styles
+├── utilities.css (162 lines) - Utility classes
+├── visibility-fixes.css (142 lines) - Visibility and opacity fixes
+├── animations.css (149 lines) - Animation utilities
+├── responsive.css (142 lines) - Responsive breakpoints
+└── print.css (142 lines) - Print media styles
+```
+
+**New main.css**: 31 lines (import manifest only)
+
+#### **2. Dropdown Text Overlay Fix (Ongoing) 🔄 UI BUG**
+**Issue**: v-select dropdowns showing duplicate text with custom chip templates  
+**Impact**: Text overlay making role selection difficult to read  
+**Root Cause**: Vuetify rendering both custom template AND default selection text
+
+**Attempted Solutions:**
+1. **CSS Specificity Fix**: Updated form-controls.css with targeted selectors
+2. **JavaScript Composable**: Created useSelectFix.js for runtime fixes
+3. **Component-Specific CSS**: Added create-user-dialog-fix.css with nuclear options
+
+**Status**: ⚠️ Partial improvement, still investigating optimal solution  
+**Next Steps**: May require Vuetify component wrapper or upstream fix
+
+---
+
 ## July 20, 2025 (Late Night) - Critical Profile Fields Fix
 
 ### 🐛 **CRITICAL FIX: User Profile Fields Not Saving**

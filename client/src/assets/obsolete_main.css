@@ -1,0 +1,698 @@
+/* client/src/assets/main.css - Universal Layout & Component Styles */
+
+@import './base.css';
+
+/* ========================================
+   UNIVERSAL APP LAYOUT
+   ======================================== */
+
+#app {
+  min-height: 100vh;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: var(--font-secondary);
+}
+
+/* Main Content Areas */
+.v-main {
+  background-color: var(--ldh-gray-50) !important;
+  min-height: calc(100vh - var(--header-height));
+}
+
+.v-container {
+  max-width: var(--container-max-width) !important;
+  width: 100% !important;
+  padding: var(--spacing-md) !important;
+  margin: 0 auto !important;
+}
+
+/* ========================================
+   VUETIFY COMPONENT OVERRIDES
+   ======================================== */
+
+/* Cards */
+.v-card {
+  border-radius: var(--border-radius) !important;
+  box-shadow: var(--shadow-md) !important;
+  overflow: visible !important;
+  border: 1px solid var(--ldh-gray-200) !important;
+}
+
+.v-card--variant-tonal {
+  border: none !important;
+}
+
+.v-card-title {
+  font-family: var(--font-primary) !important;
+  font-weight: 600 !important;
+  color: var(--ldh-navy) !important;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md) var(--spacing-lg) !important;
+}
+
+.v-card-text {
+  font-family: var(--font-secondary) !important;
+  line-height: 1.6 !important;
+  padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+.v-card-actions {
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg) var(--spacing-lg) !important;
+}
+
+/* Buttons */
+.v-btn {
+  border-radius: var(--border-radius-sm) !important;
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  box-shadow: var(--shadow-sm) !important;
+  transition: all 0.2s ease !important;
+}
+
+.v-btn:hover {
+  box-shadow: var(--shadow-md) !important;
+  transform: translateY(-1px) !important;
+}
+
+.v-btn--variant-elevated {
+  background-color: var(--ldh-blue) !important;
+  color: white !important;
+}
+
+.v-btn--variant-tonal {
+  background-color: rgba(66, 109, 169, 0.12) !important;
+  color: var(--ldh-blue) !important;
+}
+
+.v-btn--variant-outlined {
+  border-color: var(--ldh-gray-300) !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+.v-btn--variant-text {
+  color: var(--ldh-blue) !important;
+}
+
+/* Tabs */
+.v-tabs {
+  background-color: transparent !important;
+}
+
+.v-tab {
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+.v-tab--selected {
+  color: var(--ldh-blue) !important;
+}
+
+/* Data Tables */
+.v-data-table {
+  background-color: white !important;
+  border-radius: var(--border-radius) !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.v-data-table__th {
+  font-family: var(--font-primary) !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: var(--ldh-gray-700) !important;
+  background-color: var(--ldh-gray-50) !important;
+  border-bottom: 2px solid var(--ldh-gray-200) !important;
+}
+
+.v-data-table__td {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-800) !important;
+  border-bottom: 1px solid var(--ldh-gray-100) !important;
+}
+
+/* Dialogs */
+.v-dialog > .v-overlay__content > .v-card {
+  border-radius: var(--border-radius-lg) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+/* Chips */
+.v-chip {
+  font-family: var(--font-primary) !important;
+  font-weight: 500 !important;
+  border-radius: var(--border-radius-sm) !important;
+}
+
+/* Text Fields & Form Controls */
+.v-field {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-field--variant-outlined .v-field__outline {
+  color: var(--ldh-gray-300) !important;
+}
+
+.v-field--focused .v-field__outline {
+  color: var(--ldh-blue) !important;
+}
+
+.v-label {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+/* Progress Indicators */
+.v-progress-linear {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-progress-circular {
+  color: var(--ldh-blue) !important;
+}
+
+/* Alerts */
+.v-alert {
+  border-radius: var(--border-radius) !important;
+  font-family: var(--font-secondary) !important;
+}
+
+.v-alert--variant-tonal {
+  border: 1px solid currentColor !important;
+  border-left-width: 4px !important;
+}
+
+/* Navigation Drawer */
+.v-navigation-drawer {
+  background-color: var(--ldh-gray-50) !important;
+  border-right: 1px solid var(--ldh-gray-200) !important;
+}
+
+.v-list-item {
+  border-radius: var(--border-radius-sm) !important;
+  margin: 0 var(--spacing-sm) !important;
+}
+
+.v-list-item--active {
+  background-color: rgba(66, 109, 169, 0.12) !important;
+  color: var(--ldh-blue) !important;
+}
+
+/* App Bar */
+.v-app-bar {
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* Tooltips */
+.v-tooltip > .v-overlay__content {
+  background-color: var(--ldh-gray-900) !important;
+  color: white !important;
+  font-family: var(--font-secondary) !important;
+  font-size: 0.875rem !important;
+  padding: var(--spacing-xs) var(--spacing-sm) !important;
+  border-radius: var(--border-radius-sm) !important;
+}
+
+/* ========================================
+   COMPONENT-SPECIFIC STYLES
+   ======================================== */
+
+/* Role Cards */
+.role-card {
+  transition: all 0.3s ease !important;
+  cursor: pointer;
+}
+
+.role-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.role-card.role-owner {
+  border-top: 4px solid var(--ldh-navy) !important;
+}
+
+.role-card.role-admin {
+  border-top: 4px solid var(--ldh-blue) !important;
+}
+
+.role-card.role-user {
+  border-top: 4px solid var(--ldh-aqua) !important;
+}
+
+.role-card.role-viewer {
+  border-top: 4px solid var(--ldh-gold) !important;
+}
+
+.role-card.role-pending {
+  border-top: 4px solid var(--ldh-gray-400) !important;
+  opacity: 0.7;
+}
+
+/* Status Indicators */
+.status-active {
+  color: var(--ldh-success) !important;
+}
+
+.status-pending {
+  color: var(--ldh-warning) !important;
+}
+
+.status-inactive {
+  color: var(--ldh-error) !important;
+}
+
+/* Permission Chips */
+.permission-chip {
+  margin: 2px !important;
+  height: 28px !important;
+  font-size: 0.75rem !important;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Spacing Utilities */
+.pa-xs { padding: var(--spacing-xs) !important; }
+.pa-sm { padding: var(--spacing-sm) !important; }
+.pa-md { padding: var(--spacing-md) !important; }
+.pa-lg { padding: var(--spacing-lg) !important; }
+.pa-xl { padding: var(--spacing-xl) !important; }
+
+.ma-xs { margin: var(--spacing-xs) !important; }
+.ma-sm { margin: var(--spacing-sm) !important; }
+.ma-md { margin: var(--spacing-md) !important; }
+.ma-lg { margin: var(--spacing-lg) !important; }
+.ma-xl { margin: var(--spacing-xl) !important; }
+
+/* Directional Spacing */
+.pt-xs { padding-top: var(--spacing-xs) !important; }
+.pt-sm { padding-top: var(--spacing-sm) !important; }
+.pt-md { padding-top: var(--spacing-md) !important; }
+.pt-lg { padding-top: var(--spacing-lg) !important; }
+.pt-xl { padding-top: var(--spacing-xl) !important; }
+
+.pb-xs { padding-bottom: var(--spacing-xs) !important; }
+.pb-sm { padding-bottom: var(--spacing-sm) !important; }
+.pb-md { padding-bottom: var(--spacing-md) !important; }
+.pb-lg { padding-bottom: var(--spacing-lg) !important; }
+.pb-xl { padding-bottom: var(--spacing-xl) !important; }
+
+.mt-xs { margin-top: var(--spacing-xs) !important; }
+.mt-sm { margin-top: var(--spacing-sm) !important; }
+.mt-md { margin-top: var(--spacing-md) !important; }
+.mt-lg { margin-top: var(--spacing-lg) !important; }
+.mt-xl { margin-top: var(--spacing-xl) !important; }
+
+.mb-xs { margin-bottom: var(--spacing-xs) !important; }
+.mb-sm { margin-bottom: var(--spacing-sm) !important; }
+.mb-md { margin-bottom: var(--spacing-md) !important; }
+.mb-lg { margin-bottom: var(--spacing-lg) !important; }
+.mb-xl { margin-bottom: var(--spacing-xl) !important; }
+
+/* Text Utilities */
+.text-ldh-navy { color: var(--ldh-navy) !important; }
+.text-ldh-blue { color: var(--ldh-blue) !important; }
+.text-ldh-gold { color: var(--ldh-gold) !important; }
+.text-ldh-aqua { color: var(--ldh-aqua) !important; }
+
+.bg-ldh-navy { background-color: var(--ldh-navy) !important; }
+.bg-ldh-blue { background-color: var(--ldh-blue) !important; }
+.bg-ldh-gold { background-color: var(--ldh-gold) !important; }
+.bg-ldh-aqua { background-color: var(--ldh-aqua) !important; }
+
+/* Border Utilities */
+.border-ldh { border: 1px solid var(--ldh-gray-200) !important; }
+.border-primary { border: 1px solid var(--ldh-blue) !important; }
+.border-navy { border: 1px solid var(--ldh-navy) !important; }
+
+.rounded-ldh { border-radius: var(--border-radius) !important; }
+.rounded-ldh-sm { border-radius: var(--border-radius-sm) !important; }
+.rounded-ldh-lg { border-radius: var(--border-radius-lg) !important; }
+
+/* Shadow Utilities */
+.shadow-ldh-sm { box-shadow: var(--shadow-sm) !important; }
+.shadow-ldh-md { box-shadow: var(--shadow-md) !important; }
+.shadow-ldh-lg { box-shadow: var(--shadow-lg) !important; }
+.shadow-ldh-xl { box-shadow: var(--shadow-xl) !important; }
+
+/* ========================================
+   CRITICAL VISIBILITY FIXES
+   ======================================== */
+
+/* Fix for all button visibility issues */
+.v-btn {
+  /* Ensure minimum contrast for all button variants */
+  min-height: 36px !important;
+}
+
+/* Text/Plain button visibility fix */
+.v-btn--variant-text,
+.v-btn--variant-plain {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+.v-btn--variant-text:hover,
+.v-btn--variant-plain:hover {
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+/* Icon button visibility */
+.v-btn--icon {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-btn--icon:hover {
+  color: var(--ldh-blue) !important;
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+/* Ensure all icons in buttons are visible */
+.v-btn .v-icon {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+/* Checkbox visibility fix */
+.v-checkbox .v-selection-control__wrapper {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-checkbox .v-selection-control__input > .v-icon {
+  opacity: 1 !important;
+  color: var(--ldh-gray-600) !important;
+}
+
+/* Checked state */
+.v-checkbox .v-selection-control--dirty .v-selection-control__input > .v-icon {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+/* Hover state for checkboxes */
+.v-selection-control:hover .v-selection-control__input:not(.v-selection-control--dirty) > .v-icon {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+/* Radio button visibility */
+.v-radio .v-selection-control__wrapper {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-radio .v-selection-control__input > .v-icon {
+  opacity: 1 !important;
+  color: var(--ldh-gray-600) !important;
+}
+
+.v-radio .v-selection-control--dirty .v-selection-control__input > .v-icon {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+/* Switch visibility */
+.v-switch .v-selection-control__wrapper {
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control__input {
+  color: var(--ldh-gray-400) !important;
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control--dirty .v-selection-control__input {
+  color: var(--ldh-blue) !important;
+}
+
+/* Form label visibility */
+.v-label {
+  opacity: 1 !important;
+  color: var(--ldh-gray-700) !important;
+}
+
+/* Input field visibility */
+.v-field__input {
+  color: var(--ldh-gray-900) !important;
+  opacity: 1 !important;
+}
+
+/* Disabled state for all controls */
+.v-btn--disabled {
+  opacity: 0.5 !important;
+  color: var(--ldh-gray-500) !important;
+}
+
+.v-selection-control--disabled {
+  opacity: 0.5 !important;
+}
+
+.v-field--disabled {
+  opacity: 0.5 !important;
+}
+
+/* Ensure proper contrast in dark backgrounds */
+.v-theme--dark .v-btn--variant-text,
+.v-theme--dark .v-btn--variant-plain {
+  color: white !important;
+}
+
+.v-theme--dark .v-btn--icon {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.v-theme--dark .v-btn--icon:hover {
+  color: white !important;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .v-app-bar,
+  .v-navigation-drawer,
+  .debug-section {
+    display: none !important;
+  }
+  
+  .v-main {
+    padding: 0 !important;
+  }
+  
+  .v-card {
+    box-shadow: none !important;
+    border: 1px solid var(--ldh-gray-300) !important;
+  }
+}
+
+/* ========================================
+   DATA TABLE ACTION BUTTONS
+   ======================================== */
+
+/* Action buttons in data tables */
+.v-data-table .v-btn {
+  transition: all 0.2s ease !important;
+}
+
+.v-data-table .v-btn--variant-tonal {
+  background-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.v-data-table .v-btn--variant-tonal:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Ensure proper icon spacing in buttons */
+.v-btn__prepend {
+  margin-inline-end: 4px !important;
+}
+
+/* Action column specific styling */
+td[data-v-col="actions"] {
+  white-space: nowrap !important;
+}
+
+/* ========================================
+   RESPONSIVE OVERRIDES
+   ======================================== */
+
+@media (max-width: 600px) {
+  .v-container {
+    padding: var(--spacing-sm) !important;
+  }
+  
+  .v-card-title {
+    font-size: 1.25rem !important;
+    padding: var(--spacing-md) !important;
+  }
+  
+  .v-card-text {
+    padding: var(--spacing-md) !important;
+  }
+  
+  .v-data-table {
+    font-size: 0.875rem !important;
+  }
+}
+
+/* ========================================
+   ANIMATION UTILITIES
+   ======================================== */
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(20px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+/* REPLACE YOUR EXISTING TEXT FIELD CSS IN main.css WITH THIS STRONGER VERSION */
+
+/* ═══════════════════════════════════════════════════════════════
+   AGGRESSIVE VUETIFY TEXT FIELD FIXES - Maximum Specificity
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Force proper input field structure */
+.v-field .v-field__input,
+.v-text-field .v-field .v-field__input,
+.v-textarea .v-field .v-field__input {
+  min-height: 56px !important;
+  padding: 20px 16px 8px 16px !important;
+  line-height: 1.5 !important;
+  font-size: 16px !important;
+}
+
+/* Force label positioning - MAXIMUM SPECIFICITY */
+.v-field .v-field__label,
+.v-text-field .v-field .v-field__label,
+.v-textarea .v-field .v-field__label,
+.v-field .v-label,
+.v-text-field .v-field .v-label,
+.v-textarea .v-field .v-label {
+  position: absolute !important;
+  top: 50% !important;
+  left: 16px !important;
+  transform: translateY(-50%) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 10 !important;
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+  font-size: 16px !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Active/dirty/focused states - MAXIMUM SPECIFICITY */
+.v-field--active .v-field__label,
+.v-field--dirty .v-field__label,
+.v-field--focused .v-field__label,
+.v-field--active .v-label,
+.v-field--dirty .v-label,
+.v-field--focused .v-label,
+.v-text-field .v-field--active .v-label,
+.v-text-field .v-field--dirty .v-label,
+.v-text-field .v-field--focused .v-label {
+  top: 12px !important;
+  transform: translateY(0) scale(0.75) !important;
+  transform-origin: top left !important;
+  opacity: 1 !important;
+  color: rgb(66, 109, 169) !important;
+}
+
+/* Outlined variant specific fixes */
+.v-field--variant-outlined .v-field__label,
+.v-field--variant-outlined .v-label {
+  background-color: white !important;
+  padding: 0 4px !important;
+  margin-left: -4px !important;
+}
+
+/* Textarea specific fixes */
+.v-textarea .v-field .v-field__input {
+  padding-top: 28px !important;
+  min-height: 80px !important;
+}
+
+.v-textarea.v-field--active .v-field__label,
+.v-textarea.v-field--dirty .v-field__label,
+.v-textarea.v-field--focused .v-field__label,
+.v-textarea.v-field--active .v-label,
+.v-textarea.v-field--dirty .v-label,
+.v-textarea.v-field--focused .v-label {
+  top: -6px !important;
+  background-color: white !important;
+}
+
+/* Input text styling */
+.v-field__input input,
+.v-field__input textarea,
+.v-text-field .v-field__input input,
+.v-textarea .v-field__input textarea {
+  color: rgba(0, 0, 0, 0.87) !important;
+  opacity: 1 !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+
+/* Placeholder styling */
+.v-field__input input::placeholder,
+.v-field__input textarea::placeholder {
+  color: rgba(0, 0, 0, 0.38) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure proper z-index stacking */
+.v-field__overlay {
+  z-index: 1 !important;
+}
+
+.v-field__outline {
+  z-index: 2 !important;
+}
+
+.v-field__input {
+  z-index: 3 !important;
+}
+
+.v-field__label,
+.v-label {
+  z-index: 10 !important;
+}
+
+/* Profile specific overrides if needed */
+.profile-settings .v-field .v-label,
+.profile-settings .v-text-field .v-label,
+.profile-settings .v-textarea .v-label {
+  font-family: 'Cambria', Georgia, serif !important;
+}

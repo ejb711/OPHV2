@@ -1,0 +1,185 @@
+/* client/src/assets/styles/visibility-fixes.css - Critical Visibility Fixes */
+
+/* ========================================
+   BUTTON VISIBILITY FIXES
+   ======================================== */
+
+/* Text/Plain button visibility fix */
+.v-btn--variant-text,
+.v-btn--variant-plain {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+.v-btn--variant-text:hover,
+.v-btn--variant-plain:hover {
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+/* Icon button visibility */
+.v-btn--icon {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-btn--icon:hover {
+  color: var(--ldh-blue) !important;
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+/* Ensure all icons in buttons are visible */
+.v-btn .v-icon {
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+/* ========================================
+   FORM CONTROL VISIBILITY
+   ======================================== */
+
+/* Checkbox visibility fix */
+.v-checkbox .v-selection-control__wrapper {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-checkbox .v-selection-control__input > .v-icon {
+  opacity: 1 !important;
+  color: var(--ldh-gray-600) !important;
+}
+
+/* Checked state */
+.v-checkbox .v-selection-control--dirty .v-selection-control__input > .v-icon {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+/* Hover state for checkboxes */
+.v-selection-control:hover .v-selection-control__input:not(.v-selection-control--dirty) > .v-icon {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+/* Radio button visibility */
+.v-radio .v-selection-control__wrapper {
+  color: var(--ldh-gray-700) !important;
+  opacity: 1 !important;
+}
+
+.v-radio .v-selection-control__input > .v-icon {
+  opacity: 1 !important;
+  color: var(--ldh-gray-600) !important;
+}
+
+.v-radio .v-selection-control--dirty .v-selection-control__input > .v-icon {
+  color: var(--ldh-blue) !important;
+  opacity: 1 !important;
+}
+
+/* Switch visibility */
+.v-switch .v-selection-control__wrapper {
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control__input {
+  color: var(--ldh-gray-400) !important;
+  opacity: 1 !important;
+}
+
+.v-switch .v-selection-control--dirty .v-selection-control__input {
+  color: var(--ldh-blue) !important;
+}
+
+/* ========================================
+   LABEL & INPUT VISIBILITY
+   ======================================== */
+
+/* Form label visibility */
+.v-label {
+  opacity: 1 !important;
+  color: var(--ldh-gray-700) !important;
+  font-family: var(--font-secondary) !important;
+}
+
+/* Input field visibility */
+.v-field__input {
+  color: var(--ldh-gray-900) !important;
+  opacity: 1 !important;
+}
+
+/* ========================================
+   DISABLED STATES
+   ======================================== */
+
+/* Disabled state for all controls */
+.v-btn--disabled {
+  opacity: 0.5 !important;
+  color: var(--ldh-gray-500) !important;
+}
+
+.v-selection-control--disabled {
+  opacity: 0.5 !important;
+}
+
+.v-field--disabled {
+  opacity: 0.5 !important;
+}
+
+/* ========================================
+   DARK THEME VISIBILITY
+   ======================================== */
+
+/* Ensure proper contrast in dark backgrounds */
+.v-theme--dark .v-btn--variant-text,
+.v-theme--dark .v-btn--variant-plain {
+  color: white !important;
+}
+
+.v-theme--dark .v-btn--icon {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.v-theme--dark .v-btn--icon:hover {
+  color: white !important;
+}
+
+.v-theme--dark .v-label {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.v-theme--dark .v-field__input {
+  color: rgba(255, 255, 255, 0.87) !important;
+}
+
+/* ========================================
+   MISC VISIBILITY FIXES
+   ======================================== */
+
+/* Ensure icons are visible */
+.v-icon {
+  opacity: 1 !important;
+}
+
+/* Ensure chip text is visible */
+.v-chip {
+  opacity: 1 !important;
+}
+
+.v-chip__content {
+  opacity: 1 !important;
+}
+
+/* Ensure list items are visible */
+.v-list-item__content {
+  opacity: 1 !important;
+}
+
+/* Ensure tabs are visible */
+.v-tab {
+  opacity: 1 !important;
+}
+
+/* Ensure data table content is visible */
+.v-data-table__td {
+  opacity: 1 !important;
+}

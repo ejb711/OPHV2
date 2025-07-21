@@ -1,0 +1,106 @@
+/* client/src/assets/styles/data-tables.css - Data Table Styles */
+
+/* ========================================
+   DATA TABLE BASE STYLES
+   ======================================== */
+
+.v-data-table {
+  background-color: white !important;
+  border-radius: var(--border-radius) !important;
+  overflow: hidden !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.v-data-table__th {
+  font-family: var(--font-primary) !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  color: var(--ldh-gray-700) !important;
+  background-color: var(--ldh-gray-50) !important;
+  border-bottom: 2px solid var(--ldh-gray-200) !important;
+}
+
+.v-data-table__td {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-800) !important;
+  border-bottom: 1px solid var(--ldh-gray-100) !important;
+}
+
+/* ========================================
+   DATA TABLE ACTION BUTTONS
+   ======================================== */
+
+/* Action buttons in data tables */
+.v-data-table .v-btn {
+  transition: all 0.2s ease !important;
+}
+
+.v-data-table .v-btn--variant-tonal {
+  background-color: rgba(var(--v-theme-on-surface), 0.08) !important;
+}
+
+.v-data-table .v-btn--variant-tonal:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Action column specific styling */
+td[data-v-col="actions"] {
+  white-space: nowrap !important;
+}
+
+/* ========================================
+   DATA TABLE SORTING & FILTERING
+   ======================================== */
+
+.v-data-table-header__sort-icon {
+  color: var(--ldh-gray-600) !important;
+}
+
+.v-data-table-header__sort-icon--active {
+  color: var(--ldh-blue) !important;
+}
+
+/* ========================================
+   DATA TABLE PAGINATION
+   ======================================== */
+
+.v-data-table-footer {
+  border-top: 1px solid var(--ldh-gray-200) !important;
+  background-color: var(--ldh-gray-50) !important;
+}
+
+.v-data-table-footer__items-per-page {
+  font-family: var(--font-secondary) !important;
+}
+
+/* ========================================
+   DATA TABLE SELECTION
+   ======================================== */
+
+.v-data-table__tr--selected {
+  background-color: rgba(66, 109, 169, 0.08) !important;
+}
+
+.v-data-table__tr:hover {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* ========================================
+   DATA TABLE MOBILE
+   ======================================== */
+
+@media (max-width: 600px) {
+  .v-data-table {
+    font-size: 0.875rem !important;
+  }
+  
+  .v-data-table__td {
+    padding: 8px !important;
+  }
+  
+  .v-data-table__th {
+    padding: 8px !important;
+  }
+}

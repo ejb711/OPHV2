@@ -1,0 +1,182 @@
+/* client/src/assets/styles/print.css - Print Styles */
+
+/* ========================================
+   PRINT MEDIA STYLES
+   ======================================== */
+
+@media print {
+  /* ========================================
+     HIDE ELEMENTS
+     ======================================== */
+  
+  /* Hide navigation elements */
+  .v-app-bar,
+  .v-navigation-drawer,
+  .v-bottom-navigation,
+  .v-footer {
+    display: none !important;
+  }
+  
+  /* Hide interactive elements */
+  .v-btn,
+  .v-fab,
+  .v-speed-dial,
+  .v-tooltip,
+  .v-snackbar,
+  .v-dialog {
+    display: none !important;
+  }
+  
+  /* Hide form controls */
+  .v-text-field,
+  .v-select,
+  .v-checkbox,
+  .v-radio,
+  .v-switch {
+    border: none !important;
+  }
+  
+  /* Hide other non-printable elements */
+  .no-print,
+  .debug-section,
+  .v-pagination,
+  .v-data-table-footer {
+    display: none !important;
+  }
+  
+  /* ========================================
+     LAYOUT ADJUSTMENTS
+     ======================================== */
+  
+  /* Remove padding from main content */
+  .v-main {
+    padding: 0 !important;
+  }
+  
+  /* Full width containers */
+  .v-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  
+  /* ========================================
+     STYLING ADJUSTMENTS
+     ======================================== */
+  
+  /* Remove shadows and borders */
+  .v-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    page-break-inside: avoid !important;
+  }
+  
+  /* Ensure text is black */
+  body,
+  .v-card-title,
+  .v-card-text,
+  .v-data-table__td {
+    color: black !important;
+  }
+  
+  /* Background colors */
+  body {
+    background: white !important;
+  }
+  
+  .v-card,
+  .v-data-table {
+    background: white !important;
+  }
+  
+  /* ========================================
+     DATA TABLE PRINT STYLES
+     ======================================== */
+  
+  /* Table borders */
+  .v-data-table {
+    border: 1px solid #ddd !important;
+  }
+  
+  .v-data-table__th,
+  .v-data-table__td {
+    border: 1px solid #ddd !important;
+    padding: 8px !important;
+  }
+  
+  /* Table headers */
+  .v-data-table__th {
+    background-color: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+  
+  /* ========================================
+     PAGE BREAKS
+     ======================================== */
+  
+  /* Avoid breaks inside elements */
+  .v-card,
+  .v-data-table,
+  tr {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Force breaks before sections */
+  .page-break-before {
+    page-break-before: always !important;
+  }
+  
+  .page-break-after {
+    page-break-after: always !important;
+  }
+  
+  /* ========================================
+     LINKS
+     ======================================== */
+  
+  /* Show link URLs */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+  
+  /* Don't show URLs for internal links */
+  a[href^="#"]:after,
+  a[href^="javascript:"]:after {
+    content: "";
+  }
+  
+  /* ========================================
+     PRINT SPECIFIC UTILITIES
+     ======================================== */
+  
+  /* Show only in print */
+  .d-print-only {
+    display: block !important;
+  }
+  
+  /* Hide in print */
+  .d-print-none {
+    display: none !important;
+  }
+  
+  /* ========================================
+     MARGINS & SIZING
+     ======================================== */
+  
+  @page {
+    margin: 0.5in;
+    size: letter portrait;
+  }
+  
+  /* Ensure content fits page width */
+  * {
+    max-width: 100% !important;
+  }
+  
+  /* Images */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+}
