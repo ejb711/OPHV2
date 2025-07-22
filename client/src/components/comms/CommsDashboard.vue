@@ -47,7 +47,7 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <CommsFilters 
-          v-model:filters="filters"
+          :filters="filters"
           @update:filters="handleFilterUpdate"
         />
       </v-col>
@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef, nextTick } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import { LOUISIANA_REGIONS as louisianaRegions } from '@/config/louisiana-regions'
@@ -115,18 +115,21 @@ const {
   hardDeleteProject 
 } = useCommsProjects()
 
-// State
+// State - Use shallowRef for objects that don't need deep reactivity
 const showCreateDialog = ref(false)
 const projectDetailRef = ref(null)
 const deleteSnackbar = ref(false)
 const deleteHard = ref(false)
-const filters = ref({
+
+// Use shallowRef for filters and stats to prevent deep reactivity issues
+const filters = shallowRef({
   region: null,
   status: null,
   priority: null,
   search: ''
 })
-const projectStats = ref({
+
+const projectStats = shallowRef({
   total: 0,
   byStatus: {},
   byPriority: {},
@@ -140,7 +143,13 @@ const canCreateProjects = computed(() =>
 
 // Methods
 function handleFilterUpdate(newFilters) {
-  filters.value = { ...newFilters }
+  // Create a new object reference to trigger updates
+  filters.value = {
+    region: newFilters.region,
+    status: newFilters.status,
+    priority: newFilters.priority,
+    search: newFilters.search
+  }
 }
 
 function handleProjectSelect(project) {
@@ -150,8 +159,23 @@ function handleProjectSelect(project) {
   }
 }
 
-function handleStatsUpdate(stats) {
-  projectStats.value = { ...stats }
+async function handleStatsUpdate(stats) {
+  // Use nextTick to ensure update happens after current cycle
+  await nextTick()
+  
+  // Only update if stats actually changed to prevent loops
+  const currentStatsString = JSON.stringify(projectStats.value)
+  const newStatsString = JSON.stringify(stats)
+  
+  if (currentStatsString !== newStatsString) {
+    // Create a new object reference
+    projectStats.value = {
+      total: stats.total || 0,
+      byStatus: { ...(stats.byStatus || {}) },
+      byPriority: { ...(stats.byPriority || {}) },
+      byRegion: { ...(stats.byRegion || {}) }
+    }
+  }
 }
 
 async function handleProjectCreated(projectData) {

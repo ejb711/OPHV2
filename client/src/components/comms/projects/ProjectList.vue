@@ -2,41 +2,64 @@
 <template>
   <div class="project-list">
     <!-- Loading State -->
-    <div v-if="loading" class="text-center py-8">
-      <v-progress-circular indeterminate color="primary" />
-      <p class="text-body-2 mt-4 text-medium-emphasis">Loading projects...</p>
-    </div>
+    <v-skeleton-loader
+      v-if="loading"
+      type="card@4"
+      class="mb-4"
+    />
 
     <!-- Error State -->
-    <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">
+    <v-alert
+      v-else-if="error"
+      type="error"
+      variant="tonal"
+      class="mb-4"
+    >
+      <v-alert-title>Error Loading Projects</v-alert-title>
       {{ error }}
     </v-alert>
 
     <!-- Empty State -->
-    <v-card v-else-if="!projects.length" variant="outlined" class="text-center py-12">
-      <v-card-text>
-        <v-icon size="64" color="grey-lighten-1" class="mb-4">
-          mdi-folder-open-outline
-        </v-icon>
-        <h3 class="text-h6 mb-2">No Projects Found</h3>
-        <p class="text-body-2 text-medium-emphasis">
-          {{ hasFilters ? 'Try adjusting your filters' : 'Create your first project to get started' }}
-        </p>
-      </v-card-text>
+    <v-card
+      v-else-if="projects.length === 0 && !hasFilters"
+      variant="flat"
+      class="text-center pa-8"
+    >
+      <v-icon
+        size="64"
+        color="grey-lighten-1"
+        class="mb-4"
+      >
+        mdi-folder-outline
+      </v-icon>
+      <h3 class="text-h6 mb-2">No Projects Yet</h3>
+      <p class="text-body-2 text-medium-emphasis">
+        Create your first project to get started
+      </p>
     </v-card>
 
-    <!-- Projects Grid/List -->
-    <template v-else>
-      <!-- View Toggle -->
-      <div class="d-flex justify-end mb-4">
-        <v-btn-toggle v-model="viewMode" mandatory density="compact">
-          <v-btn value="grid" icon="mdi-view-grid" />
-          <v-btn value="list" icon="mdi-view-list" />
-        </v-btn-toggle>
-      </div>
+    <!-- No Results State -->
+    <v-card
+      v-else-if="projects.length === 0 && hasFilters"
+      variant="flat"
+      class="text-center pa-8"
+    >
+      <v-icon
+        size="64"
+        color="grey-lighten-1"
+        class="mb-4"
+      >
+        mdi-magnify-remove-outline
+      </v-icon>
+      <h3 class="text-h6 mb-2">No Matching Projects</h3>
+      <p class="text-body-2 text-medium-emphasis">
+        Try adjusting your filters to see more results
+      </p>
+    </v-card>
 
-      <!-- Grid View -->
-      <v-row v-if="viewMode === 'grid'">
+    <!-- Projects Grid View -->
+    <template v-else-if="viewMode === 'grid'">
+      <v-row>
         <v-col
           v-for="project in projects"
           :key="project.id"
@@ -45,25 +68,28 @@
           md="4"
           lg="3"
         >
-          <ProjectCard 
-            :project="project" 
+          <ProjectCard
+            :project="project"
             @view="handleProjectClick"
             @edit="handleProjectEdit"
             @delete="handleProjectDelete"
           />
         </v-col>
       </v-row>
+    </template>
 
-      <!-- List View -->
-      <v-list v-else lines="two" class="bg-transparent">
+    <!-- Projects List View -->
+    <template v-else>
+      <v-list lines="two" class="bg-surface">
         <template v-for="(project, index) in projects" :key="project.id">
           <v-list-item
             @click="handleProjectClick(project)"
-            :prepend-icon="getPriorityIcon(project.priority)"
-            :class="{ 'text-error': project.priority === 'high' }"
+            class="px-4"
           >
             <template v-slot:prepend>
-              <v-icon :color="project.priority === 'high' ? 'error' : ''">
+              <v-icon
+                :color="project.priority === 'urgent' ? 'error' : project.priority === 'high' ? 'warning' : ''"
+              >
                 {{ getPriorityIcon(project.priority) }}
               </v-icon>
             </template>
@@ -103,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import ProjectCard from './ProjectCard.vue'
 import ProjectActions from './ProjectActions.vue'
@@ -124,7 +150,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['select', 'statsUpdate'])
+const emit = defineEmits(['select', 'stats-update'])
 
 // Composables
 const commsProjects = useCommsProjects()
@@ -141,6 +167,7 @@ const {
 // State
 const viewMode = ref('grid')
 let unsubscribe = null
+let statsEmitted = false
 
 // Computed
 const hasFilters = computed(() => {
@@ -191,11 +218,14 @@ watch(() => props.filters, (newFilters) => {
   })
 }, { deep: true })
 
-// Watch for stats changes
-watch(projectStats, (newStats) => {
-  console.log('Stats updated:', newStats)
-  emit('statsUpdate', newStats)
-}, { deep: true })
+// Watch for projects changes and emit stats update only when projects actually change
+watch(() => projects.value, (newProjects) => {
+  // Use nextTick to ensure stats are calculated after projects update
+  nextTick(() => {
+    console.log('Projects updated, emitting stats:', projectStats.value)
+    emit('stats-update', projectStats.value)
+  })
+}, { immediate: true })
 
 // Lifecycle
 onMounted(async () => {

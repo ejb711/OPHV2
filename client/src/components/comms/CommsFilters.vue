@@ -1,31 +1,32 @@
+<!-- client/src/components/comms/CommsFilters.vue -->
 <template>
-  <v-card>
-    <v-card-text>
+  <v-card elevation="0" class="rounded-lg">
+    <v-card-text class="pa-4">
       <v-row align="center">
         <!-- Search -->
         <v-col cols="12" md="4">
           <v-text-field
-            v-model="localFilters.search"
+            v-model="localSearch"
+            label="Search projects"
             prepend-inner-icon="mdi-magnify"
-            label="Search projects..."
-            variant="outlined"
-            density="compact"
-            clearable
+            density="comfortable"
             hide-details
-            @update:model-value="updateFilters"
+            clearable
+            variant="outlined"
+            @update:model-value="debouncedUpdate"
           />
         </v-col>
 
         <!-- Region Filter -->
         <v-col cols="12" sm="6" md="2">
           <v-select
-            v-model="localFilters.region"
+            v-model="localRegion"
             :items="regionOptions"
             label="Region"
-            variant="outlined"
-            density="compact"
-            clearable
+            density="comfortable"
             hide-details
+            clearable
+            variant="outlined"
             @update:model-value="updateFilters"
           />
         </v-col>
@@ -33,13 +34,13 @@
         <!-- Status Filter -->
         <v-col cols="12" sm="6" md="2">
           <v-select
-            v-model="localFilters.status"
+            v-model="localStatus"
             :items="statusOptions"
             label="Status"
-            variant="outlined"
-            density="compact"
-            clearable
+            density="comfortable"
             hide-details
+            clearable
+            variant="outlined"
             @update:model-value="updateFilters"
           />
         </v-col>
@@ -47,26 +48,25 @@
         <!-- Priority Filter -->
         <v-col cols="12" sm="6" md="2">
           <v-select
-            v-model="localFilters.priority"
+            v-model="localPriority"
             :items="priorityOptions"
             label="Priority"
-            variant="outlined"
-            density="compact"
-            clearable
+            density="comfortable"
             hide-details
+            clearable
+            variant="outlined"
             @update:model-value="updateFilters"
           />
         </v-col>
 
         <!-- Clear Filters -->
-        <v-col cols="12" sm="6" md="2">
+        <v-col cols="12" sm="6" md="2" class="text-right">
           <v-btn
+            v-if="hasActiveFilters"
             variant="text"
             color="primary"
             @click="clearFilters"
-            :disabled="!hasActiveFilters"
           >
-            <v-icon start>mdi-filter-remove</v-icon>
             Clear Filters
           </v-btn>
         </v-col>
@@ -95,8 +95,14 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['update:filters'])
 
-// State
-const localFilters = ref({ ...props.filters })
+// Local state - Initialize from props
+const localRegion = ref(props.filters.region)
+const localStatus = ref(props.filters.status)
+const localPriority = ref(props.filters.priority)
+const localSearch = ref(props.filters.search)
+
+// Debounce timer
+let debounceTimer = null
 
 // Filter options
 const regionOptions = computed(() => {
@@ -128,30 +134,60 @@ const priorityOptions = [
 // Computed
 const hasActiveFilters = computed(() => {
   return !!(
-    localFilters.value.region ||
-    localFilters.value.status ||
-    localFilters.value.priority ||
-    localFilters.value.search
+    localRegion.value ||
+    localStatus.value ||
+    localPriority.value ||
+    localSearch.value
   )
 })
 
 // Methods
 function updateFilters() {
-  emit('update:filters', { ...localFilters.value })
+  emit('update:filters', {
+    region: localRegion.value,
+    status: localStatus.value,
+    priority: localPriority.value,
+    search: localSearch.value
+  })
+}
+
+function debouncedUpdate() {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    updateFilters()
+  }, 300)
 }
 
 function clearFilters() {
-  localFilters.value = {
-    region: null,
-    status: null,
-    priority: null,
-    search: ''
-  }
+  localRegion.value = null
+  localStatus.value = null
+  localPriority.value = null
+  localSearch.value = ''
   updateFilters()
 }
 
-// Watch for external filter changes
-watch(() => props.filters, (newFilters) => {
-  localFilters.value = { ...newFilters }
-}, { deep: true })
+// Watch for external changes to filters (but only update if actually different)
+watch(() => props.filters.region, (newVal) => {
+  if (newVal !== localRegion.value) {
+    localRegion.value = newVal
+  }
+})
+
+watch(() => props.filters.status, (newVal) => {
+  if (newVal !== localStatus.value) {
+    localStatus.value = newVal
+  }
+})
+
+watch(() => props.filters.priority, (newVal) => {
+  if (newVal !== localPriority.value) {
+    localPriority.value = newVal
+  }
+})
+
+watch(() => props.filters.search, (newVal) => {
+  if (newVal !== localSearch.value) {
+    localSearch.value = newVal
+  }
+})
 </script>

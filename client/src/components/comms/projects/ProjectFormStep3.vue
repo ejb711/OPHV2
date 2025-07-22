@@ -12,7 +12,7 @@
           <!-- Visibility Settings -->
           <v-col cols="12" class="pb-6">
             <v-select
-              v-model="localFormData.visibility"
+              v-model="localVisibility"
               :items="visibilityOptions"
               item-title="title"
               item-value="value"
@@ -30,7 +30,7 @@
               
               <!-- Custom selection to ensure proper text display -->
               <template v-slot:selection="{ item }">
-                <span>{{ getVisibilityTitle(localFormData.visibility) }}</span>
+                <span>{{ getVisibilityTitle(localVisibility) }}</span>
               </template>
             </v-select>
           </v-col>
@@ -38,7 +38,7 @@
           <!-- Tags -->
           <v-col cols="12" class="pb-6">
             <v-combobox
-              v-model="localFormData.tags"
+              v-model="localTags"
               :items="[]"
               label="Project Tags (Optional)"
               variant="outlined"
@@ -64,53 +64,42 @@
                   size="small"
                   closable
                 >
-                  {{ typeof item === 'string' ? item : (item.text || item.value || item) }}
+                  {{ cleanTag(item) }}
                 </v-chip>
-              </template>
-              
-              <template v-slot:no-data>
-                <v-list-item>
-                  <v-list-item-title class="text-caption text-grey">
-                    Type to create new tags
-                  </v-list-item-title>
-                </v-list-item>
               </template>
             </v-combobox>
           </v-col>
 
-          <!-- Enable Discussion Forum -->
-          <v-col cols="12" class="pb-6">
+          <!-- Enable Forum -->
+          <v-col cols="12">
             <v-switch
-              v-model="localFormData.enableForum"
-              label="Discussion Forum"
+              v-model="localEnableForum"
+              label="Enable project forum"
               color="primary"
-              hide-details="auto"
-              class="mt-0"
+              density="comfortable"
+              hide-details
+              disabled
             >
               <template v-slot:label>
                 <div>
-                  <div class="font-weight-medium text-grey-darken-3">Discussion Forum</div>
-                  <div class="text-caption text-grey-darken-1 mt-1">
-                    Enable a discussion forum for this project where team members can collaborate
-                  </div>
+                  <div class="text-body-2 font-weight-medium mb-1">Enable project forum</div>
+                  <div class="text-caption text-grey-darken-1">Allow team members to discuss this project (coming soon)</div>
                 </div>
               </template>
-              <template v-slot:prepend>
-                <v-icon color="primary">mdi-forum</v-icon>
-              </template>
             </v-switch>
-          </v-col>
-
-          <!-- Future Features Placeholder -->
-          <v-col cols="12">
+            
             <v-alert
               type="info"
               variant="tonal"
               density="compact"
-              icon="mdi-information-outline"
+              class="mt-3"
+              text="Forums will allow team members to discuss project details, share updates, and collaborate effectively. This feature will be available in a future update."
             >
-              <div class="text-body-2">
-                <strong>Coming Soon:</strong> Email notifications, Slack integration, and custom project templates.
+              <template v-slot:prepend>
+                <v-icon>mdi-information-outline</v-icon>
+              </template>
+              <div class="text-caption">
+                Forums will allow team members to discuss project details, share updates, and collaborate effectively. 
                 This feature will be available in a future update.
               </div>
             </v-alert>
@@ -146,11 +135,10 @@ const { visibilityOptions, getVisibilityTitle } = useVisibilityOptions()
 // Refs
 const formRef = ref(null)
 
-// Local form data (two-way binding with parent)
-const localFormData = computed({
-  get: () => props.formData,
-  set: (value) => emit('update:formData', value)
-})
+// Local copies of form fields
+const localVisibility = ref(props.formData.visibility || 'coordinator')
+const localTags = ref(props.formData.tags || [])
+const localEnableForum = ref(props.formData.enableForum !== false)
 
 // Form validation
 const valid = computed({
@@ -158,18 +146,57 @@ const valid = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-// Helper function to clean tags
+// Helper function to clean a single tag
+function cleanTag(tag) {
+  if (typeof tag === 'string') return tag
+  if (tag && typeof tag === 'object') {
+    return tag.text || tag.value || tag.title || String(tag)
+  }
+  return String(tag)
+}
+
+// Helper function to clean tags array
 function cleanTags(tags) {
   if (!tags || !Array.isArray(tags)) return []
   
-  return tags.map(tag => {
-    if (typeof tag === 'string') return tag
-    if (tag && typeof tag === 'object') {
-      return tag.text || tag.value || tag.title || String(tag)
-    }
-    return String(tag)
-  }).filter(tag => tag && tag.trim())
+  return tags.map(cleanTag).filter(tag => tag && tag.trim())
 }
+
+// Update parent form data
+function updateFormData() {
+  emit('update:formData', {
+    ...props.formData,
+    visibility: localVisibility.value,
+    tags: cleanTags(localTags.value),
+    enableForum: localEnableForum.value
+  })
+}
+
+// Watch all local values and update parent
+watch([localVisibility, localTags, localEnableForum], () => {
+  updateFormData()
+}, { deep: true })
+
+// Watch for external changes to props
+watch(() => props.formData, (newData) => {
+  localVisibility.value = newData.visibility || 'coordinator'
+  localTags.value = newData.tags || []
+  localEnableForum.value = newData.enableForum !== false
+}, { deep: true })
+
+// Clean tags whenever they change
+watch(localTags, (newTags) => {
+  const cleaned = cleanTags(newTags)
+  if (JSON.stringify(cleaned) !== JSON.stringify(newTags)) {
+    localTags.value = cleaned
+  }
+}, { deep: true })
+
+// Initialize on mount
+onMounted(() => {
+  // Ensure tags are clean on mount
+  localTags.value = cleanTags(localTags.value)
+})
 
 // Expose validation method to parent
 async function validate() {
@@ -177,34 +204,9 @@ async function validate() {
   return await formRef.value.validate()
 }
 
-// Add reset functionality
-function reset() {
-  if (formRef.value) {
-    formRef.value.reset()
-  }
-}
-
-defineExpose({ validate, reset })
-
-// Watch tags to ensure they're always clean strings
-watch(() => localFormData.value.tags, (newTags) => {
-  const cleaned = cleanTags(newTags)
-  if (JSON.stringify(cleaned) !== JSON.stringify(newTags)) {
-    localFormData.value.tags = cleaned
-  }
-}, { deep: true })
-
-// Watch for validation changes
-watch(valid, (newVal) => {
-  emit('update:modelValue', newVal)
-})
-
-// Initialize on mount
-onMounted(() => {
-  // Ensure tags are clean on mount
-  if (localFormData.value.tags) {
-    localFormData.value.tags = cleanTags(localFormData.value.tags)
-  }
+defineExpose({
+  validate,
+  reset: () => formRef.value?.reset()
 })
 </script>
 

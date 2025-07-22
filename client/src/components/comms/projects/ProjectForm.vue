@@ -124,7 +124,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { useCommsProjects } from '@/composables/comms/useCommsProjects'
+import { useSnackbar } from '@/composables/useSnackbar'
+import { useAudit } from '@/composables/useAudit'
 import ProjectFormStepper from './ProjectFormStepper.vue'
 import ProjectFormStep1 from './ProjectFormStep1.vue'
 import ProjectFormStep2 from './ProjectFormStep2.vue'
@@ -135,6 +139,12 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false }
 })
 const emit = defineEmits(['update:modelValue', 'created'])
+
+// Composables
+const router = useRouter()
+const { createProject } = useCommsProjects()
+const { showSuccess, showError } = useSnackbar()
+const { logEvent } = useAudit()
 
 // Dialog state
 const dialogOpen = computed({
@@ -152,8 +162,8 @@ const step1Valid = ref(false)
 const step2Valid = ref(true)
 const step3Valid = ref(true)
 
-// Form data
-const formData = ref({
+// Form data - Use a function to create initial state
+const createInitialFormData = () => ({
   title: '', 
   description: '', 
   region: '', 
@@ -166,6 +176,8 @@ const formData = ref({
   enableForum: true, 
   templateId: null
 })
+
+const formData = ref(createInitialFormData())
 
 // Configuration
 const steps = [
@@ -185,9 +197,18 @@ const currentStepValid = computed(() => {
 
 const allStepsValid = computed(() => step1Valid.value && step2Valid.value && step3Valid.value)
 
+// Flag to prevent recursive updates
+let isResetting = false
+
 // Methods
 function updateFormData(newData) {
-  Object.assign(formData.value, newData)
+  if (isResetting) return // Prevent updates during reset
+  
+  // Create a new object to avoid mutations
+  formData.value = {
+    ...formData.value,
+    ...newData
+  }
 }
 
 function onCoordinatorAutoSelected(event) {
@@ -231,73 +252,139 @@ async function handleSave() {
 
   saving.value = true
   try {
-    emit('created', {
+    // Create the project
+    const projectData = {
       ...formData.value,
-      deadline: formData.value.deadline ? new Date(formData.value.deadline) : null
+      deadline: formData.value.deadline ? new Date(formData.value.deadline).toISOString() : null
+    }
+    
+    const newProject = await createProject(projectData)
+    
+    // Log audit event
+    await logEvent('project_created', {
+      projectId: newProject.id,
+      projectTitle: newProject.title,
+      region: newProject.region,
+      coordinatorId: newProject.coordinatorId
     })
+    
+    showSuccess('Project created successfully')
+    emit('created', newProject)
+    
+    // Reset and close
     resetForm()
     dialogOpen.value = false
+    
+    // Navigate to the new project (if route exists)
+    if (router.hasRoute('project-detail')) {
+      router.push({ name: 'project-detail', params: { id: newProject.id } })
+    }
   } catch (error) {
     console.error('Error creating project:', error)
+    showError(error.message || 'Failed to create project')
   } finally {
     saving.value = false
   }
 }
 
 function resetForm() {
-  currentStep.value = 1
-  step1Valid.value = false
-  step2Valid.value = step3Valid.value = true
-  formData.value = {
-    title: '', 
-    description: '', 
-    region: '', 
-    coordinator: '', 
-    priority: 'normal',
-    deadline: null, 
-    stages: [], 
-    visibility: 'coordinator', 
-    tags: [], 
-    enableForum: true, 
-    templateId: null
-  }
+  isResetting = true
   
-  // Safely call reset on each step if the method exists
-  if (step1Ref.value && typeof step1Ref.value.reset === 'function') {
-    step1Ref.value.reset()
-  }
-  if (step2Ref.value && typeof step2Ref.value.reset === 'function') {
-    step2Ref.value.reset()
-  }
-  if (step3Ref.value && typeof step3Ref.value.reset === 'function') {
-    step3Ref.value.reset()
-  }
+  // Reset step
+  currentStep.value = 1
+  
+  // Reset validation states
+  step1Valid.value = false
+  step2Valid.value = true
+  step3Valid.value = true
+  
+  // Reset form data
+  formData.value = createInitialFormData()
+  
+  // Use nextTick to ensure DOM updates are complete
+  nextTick(() => {
+    isResetting = false
+  })
 }
 
-// ESC key handling
-function handleKeydown(event) {
-  if (event.key === 'Escape' && dialogOpen.value && !saving.value) {
+// Handle dialog close on escape
+function handleEscape(event) {
+  if (event.key === 'Escape' && !saving.value) {
     handleCancel()
   }
 }
 
 // Lifecycle
-onMounted(() => document.addEventListener('keydown', handleKeydown))
-onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
-
-// Reset form when dialog opens
-watch(dialogOpen, (newVal) => {
-  if (newVal) resetForm()
+onMounted(() => {
+  window.addEventListener('keydown', handleEscape)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscape)
+})
+
+// Watch for dialog open with immediate: false to prevent initial trigger
+watch(dialogOpen, async (isOpen) => {
+  if (isOpen && !isResetting) {
+    // Use nextTick to ensure dialog is rendered before resetting
+    await nextTick()
+    resetForm()
+  }
+}, { immediate: false })
 </script>
 
 <style scoped>
-.create-project-dialog {
-  border-radius: 12px !important;
+/* Card styling */
+.create-project-dialog :deep(.v-card) {
+  border-radius: 12px;
   overflow: hidden;
 }
 
+/* Header styling */
+.v-card-title {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Form container */
 .form-container {
-  min-height: 500px;
+  max-height: 60vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Actions footer */
+.v-card-actions {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  position: sticky;
+  bottom: 0;
+  background: #fafafa;
+  z-index: 1;
+}
+
+/* Dialog animations */
+.create-project-dialog {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Button styling */
+.v-btn {
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 599px) {
+  .v-card-title {
+    padding: 16px !important;
+  }
+  
+  .v-card-title h2 {
+    font-size: 1.125rem !important;
+  }
+  
+  .form-container {
+    max-height: 70vh;
+  }
 }
 </style>
