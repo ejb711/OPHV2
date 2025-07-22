@@ -150,7 +150,16 @@ const progressPercentage = computed(() => {
 const currentStage = computed(() => {
   if (!props.project.stages || props.project.stages.length === 0) return 'Not Started'
   const currentIndex = props.project.currentStageIndex || 0
-  return props.project.stages[currentIndex] || 'Not Started'
+  const stage = props.project.stages[currentIndex]
+  
+  // Handle both string stages and object stages
+  if (typeof stage === 'string') {
+    return stage
+  } else if (stage && typeof stage === 'object' && stage.name) {
+    return stage.name
+  }
+  
+  return 'Not Started'
 })
 
 // Methods

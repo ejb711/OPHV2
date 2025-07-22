@@ -30,7 +30,7 @@ export function useCommsProjects() {
   
   const authStore = useAuthStore()
   const auth = getAuth()
-  const { logActivity } = useAudit()
+  const { logEvent } = useAudit()
   const { showSuccess, showError } = useSnackbar()
   const { 
     canViewAllRegions, 
@@ -274,7 +274,7 @@ export function useCommsProjects() {
       const docRef = await addDoc(collection(db, 'comms_projects'), newProject)
       
       // Log the action
-      await logActivity('create_comms_project', {
+      await logEvent('create_comms_project', {
         projectId: docRef.id,
         projectTitle: projectData.title,
         region: projectData.region
@@ -319,13 +319,20 @@ export function useCommsProjects() {
       delete updateData.createdAt
       delete updateData.createdBy
       delete updateData.createdByEmail
+      
+      // Clean undefined values - Firestore doesn't accept undefined
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key]
+        }
+      })
 
       // Update in Firestore
       console.log('Updating project in Firestore:', projectId, updateData)
       await updateDoc(doc(db, 'comms_projects', projectId), updateData)
 
       // Log the action
-      await logActivity('update_comms_project', {
+      await logEvent('update_comms_project', {
         projectId,
         projectTitle: project.title,
         updates: Object.keys(updates)
@@ -379,7 +386,7 @@ export function useCommsProjects() {
         await deleteDoc(doc(db, 'comms_projects', projectId))
 
         // Log the action
-        await logActivity('hard_delete_comms_project', {
+        await logEvent('hard_delete_comms_project', {
           projectId,
           projectTitle: project.title
         })
@@ -398,7 +405,7 @@ export function useCommsProjects() {
         await updateDoc(doc(db, 'comms_projects', projectId), updateData)
 
         // Log the action
-        await logActivity('soft_delete_comms_project', {
+        await logEvent('soft_delete_comms_project', {
           projectId,
           projectTitle: project.title
         })
