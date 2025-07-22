@@ -5,212 +5,135 @@
     max-width="800"
     persistent
     scrollable
+    class="create-project-dialog"
   >
-    <v-card>
+    <v-card class="create-project-dialog">
       <!-- Header -->
-      <v-card-title class="d-flex align-center pa-4">
-        <v-icon start>mdi-folder-plus</v-icon>
-        <span>Create New Project</span>
+      <v-card-title class="d-flex align-center pa-6 bg-grey-lighten-5">
+        <div class="d-flex align-center">
+          <div class="rounded-lg pa-2 mr-4" style="background-color: rgba(25, 118, 210, 0.1);">
+            <v-icon size="28" color="primary">mdi-folder-plus</v-icon>
+          </div>
+          <div>
+            <h2 class="text-h5 font-weight-bold text-grey-darken-3 mb-1">Create New Project</h2>
+            <p class="text-body-2 text-grey-darken-1 mb-0">{{ currentStepDescription }}</p>
+          </div>
+        </div>
         <v-spacer />
         <v-btn
-          icon
+          icon="mdi-close"
           variant="text"
+          size="small"
           @click="handleCancel"
           :disabled="saving"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
+        />
       </v-card-title>
 
       <v-divider />
 
+      <!-- Stepper -->
+      <ProjectFormStepper
+        :current-step="currentStep"
+        :steps="steps"
+      />
+
+      <v-divider />
+
       <!-- Form Content -->
-      <v-card-text class="pa-6">
-        <v-form ref="form" v-model="valid">
-          <!-- Basic Information -->
-          <div class="text-h6 mb-4">Basic Information</div>
-          
-          <v-row>
-            <v-col cols="12">
-              <v-text-field
-                v-model="formData.title"
-                label="Project Title"
-                :rules="[rules.required]"
-                variant="outlined"
-                density="comfortable"
-                counter="100"
-                maxlength="100"
-              />
-            </v-col>
+      <div class="form-container">
+        <ProjectFormStep1
+          v-show="currentStep === 1"
+          ref="step1Ref"
+          v-model="step1Valid"
+          :form-data="formData"
+          @update:form-data="updateFormData"
+          @coordinator-auto-selected="onCoordinatorAutoSelected"
+        />
 
-            <v-col cols="12">
-              <v-textarea
-                v-model="formData.description"
-                label="Description"
-                :rules="[rules.required]"
-                variant="outlined"
-                density="comfortable"
-                rows="3"
-                counter="500"
-                maxlength="500"
-              />
-            </v-col>
+        <ProjectFormStep2
+          v-show="currentStep === 2"
+          ref="step2Ref"
+          v-model="step2Valid"
+          :form-data="formData"
+          @update:form-data="updateFormData"
+        />
 
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="formData.region"
-                :items="regionItems"
-                label="Region"
-                :rules="[rules.required]"
-                variant="outlined"
-                density="comfortable"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <CoordinatorSelect
-                v-model="formData.coordinator"
-                :region="formData.region"
-                :rules="[rules.required]"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="formData.priority"
-                :items="priorityOptions"
-                label="Priority"
-                variant="outlined"
-                density="comfortable"
-              />
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <v-menu
-                v-model="deadlineMenu"
-                :close-on-content-click="false"
-                min-width="auto"
-              >
-                <template v-slot:activator="{ props }">
-                  <v-text-field
-                    v-model="formattedDeadline"
-                    label="Deadline (Optional)"
-                    prepend-inner-icon="mdi-calendar"
-                    variant="outlined"
-                    density="comfortable"
-                    readonly
-                    v-bind="props"
-                    clearable
-                    @click:clear="formData.deadline = null"
-                  />
-                </template>
-                <v-date-picker
-                  v-model="formData.deadline"
-                  @update:model-value="deadlineMenu = false"
-                />
-              </v-menu>
-            </v-col>
-          </v-row>
-
-          <!-- Project Stages -->
-          <div class="text-h6 mb-4 mt-6">Project Stages</div>
-          <ProjectStages
-            v-model="formData.stages"
-            :template-id="formData.templateId"
-          />
-
-          <!-- Additional Settings -->
-          <div class="text-h6 mb-4 mt-6">Additional Settings</div>
-          
-          <v-row>
-            <v-col cols="12">
-              <v-select
-                v-model="formData.visibility"
-                :items="visibilityOptions"
-                label="Visibility"
-                variant="outlined"
-                density="comfortable"
-                hint="Who can view this project"
-                persistent-hint
-              />
-            </v-col>
-
-            <v-col cols="12">
-              <v-combobox
-                v-model="formData.tags"
-                label="Tags (Optional)"
-                variant="outlined"
-                density="comfortable"
-                multiple
-                chips
-                closable-chips
-                hint="Press Enter to add a tag"
-                persistent-hint
-              />
-            </v-col>
-
-            <v-col cols="12">
-              <v-checkbox
-                v-model="formData.enableForum"
-                label="Enable project discussion forum"
-                density="comfortable"
-              />
-            </v-col>
-          </v-row>
-
-          <!-- Template Selection (Placeholder) -->
-          <v-alert
-            type="info"
-            variant="tonal"
-            class="mt-4"
-          >
-            <v-icon start>mdi-information</v-icon>
-            Template selection will be available in a future update
-          </v-alert>
-        </v-form>
-      </v-card-text>
+        <ProjectFormStep3
+          v-show="currentStep === 3"
+          ref="step3Ref"
+          v-model="step3Valid"
+          :form-data="formData"
+          @update:form-data="updateFormData"
+        />
+      </div>
 
       <v-divider />
 
       <!-- Actions -->
-      <v-card-actions class="pa-4">
-        <v-spacer />
+      <v-card-actions class="pa-6 bg-grey-lighten-5">
         <v-btn
           variant="text"
           @click="handleCancel"
           :disabled="saving"
+          class="text-grey-darken-1"
         >
           Cancel
         </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          @click="handleSave"
-          :loading="saving"
-          :disabled="!valid || saving"
-        >
-          Create Project
-        </v-btn>
+        
+        <v-spacer />
+        
+        <div class="d-flex ga-3">
+          <v-btn
+            v-if="currentStep > 1"
+            variant="outlined"
+            @click="previousStep"
+            :disabled="saving"
+            prepend-icon="mdi-arrow-left"
+          >
+            Back
+          </v-btn>
+          
+          <v-btn
+            v-if="currentStep < 3"
+            color="primary"
+            variant="elevated"
+            @click="nextStep"
+            :disabled="!currentStepValid || saving"
+            append-icon="mdi-arrow-right"
+            min-width="120"
+          >
+            Next
+          </v-btn>
+          
+          <v-btn
+            v-if="currentStep === 3"
+            color="primary"
+            variant="elevated"
+            @click="handleSave"
+            :loading="saving"
+            :disabled="!allStepsValid || saving"
+            prepend-icon="mdi-folder-plus"
+            min-width="140"
+          >
+            Create Project
+          </v-btn>
+        </div>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { LOUISIANA_REGIONS as louisianaRegions } from '@/config/louisiana-regions'
-import ProjectStages from './ProjectStages.vue'
-import CoordinatorSelect from '../coordinators/CoordinatorSelect.vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import ProjectFormStepper from './ProjectFormStepper.vue'
+import ProjectFormStep1 from './ProjectFormStep1.vue'
+import ProjectFormStep2 from './ProjectFormStep2.vue'
+import ProjectFormStep3 from './ProjectFormStep3.vue'
 
-// Props
+// Props & Emits
 const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
-  }
+  modelValue: { type: Boolean, default: false }
 })
-
-// Emits
 const emit = defineEmits(['update:modelValue', 'created'])
 
 // Dialog state
@@ -220,60 +143,48 @@ const dialogOpen = computed({
 })
 
 // Form state
-const form = ref(null)
-const valid = ref(false)
+const currentStep = ref(1)
 const saving = ref(false)
-const deadlineMenu = ref(false)
+const step1Ref = ref(null)
+const step2Ref = ref(null)
+const step3Ref = ref(null)
+const step1Valid = ref(false)
+const step2Valid = ref(true)
+const step3Valid = ref(true)
 
 // Form data
 const formData = ref({
-  title: '',
-  description: '',
-  region: '',
-  coordinator: '',
-  priority: 'normal',
-  deadline: null,
-  stages: [],
-  visibility: 'coordinator',
-  tags: [],
-  enableForum: true,
-  templateId: null
+  title: '', description: '', region: '', coordinator: '', priority: 'normal',
+  deadline: null, stages: [], visibility: 'coordinator', tags: [], enableForum: true, templateId: null
 })
 
-// Validation rules
-const rules = {
-  required: (v) => !!v || 'This field is required'
-}
-
-// Options
-const regionItems = computed(() => 
-  Object.entries(louisianaRegions).map(([id, region]) => ({
-    title: region.name,
-    value: id
-  }))
-)
-
-const priorityOptions = [
-  { title: 'Low', value: 'low' },
-  { title: 'Normal', value: 'normal' },
-  { title: 'High', value: 'high' },
-  { title: 'Urgent', value: 'urgent' }
-]
-
-const visibilityOptions = [
-  { title: 'Private (Only me)', value: 'private' },
-  { title: 'Coordinator & Creator', value: 'coordinator' },
-  { title: 'All Communications Team', value: 'team' },
-  { title: 'Public (Anyone with link)', value: 'public' }
+// Configuration
+const steps = [
+  { id: 1, title: 'Basic Info', subtitle: 'Project details' },
+  { id: 2, title: 'Stages', subtitle: 'Project workflow' },
+  { id: 3, title: 'Settings', subtitle: 'Additional options' }
 ]
 
 // Computed
-const formattedDeadline = computed(() => {
-  if (!formData.value.deadline) return ''
-  return new Date(formData.value.deadline).toLocaleDateString()
+const currentStepDescription = computed(() => {
+  return `Step ${currentStep.value} of 3 - ${steps[currentStep.value - 1]?.title}`
 })
 
+const currentStepValid = computed(() => {
+  return [step1Valid.value, step2Valid.value, step3Valid.value][currentStep.value - 1]
+})
+
+const allStepsValid = computed(() => step1Valid.value && step2Valid.value && step3Valid.value)
+
 // Methods
+function updateFormData(newData) {
+  Object.assign(formData.value, newData)
+}
+
+function onCoordinatorAutoSelected(event) {
+  console.log('Coordinator auto-selected:', event)
+}
+
 function handleCancel() {
   if (!saving.value) {
     resetForm()
@@ -281,55 +192,86 @@ function handleCancel() {
   }
 }
 
+async function nextStep() {
+  const currentRef = [step1Ref.value, step2Ref.value, step3Ref.value][currentStep.value - 1]
+  if (currentRef) {
+    const validation = await currentRef.validate()
+    if (validation.valid && currentStep.value < 3) {
+      currentStep.value++
+    }
+  }
+}
+
+function previousStep() {
+  if (currentStep.value > 1) currentStep.value--
+}
+
 async function handleSave() {
-  const validation = await form.value.validate()
-  if (!validation.valid) return
+  // Validate all steps
+  const validations = await Promise.all([
+    step1Ref.value?.validate(),
+    step2Ref.value?.validate(),
+    step3Ref.value?.validate()
+  ])
+
+  const invalidStep = validations.findIndex(v => !v?.valid)
+  if (invalidStep !== -1) {
+    currentStep.value = invalidStep + 1
+    return
+  }
 
   saving.value = true
-  
   try {
-    // Emit the form data for parent to handle
     emit('created', {
       ...formData.value,
       deadline: formData.value.deadline ? new Date(formData.value.deadline) : null
     })
-    
     resetForm()
     dialogOpen.value = false
   } catch (error) {
-    console.error('Error in form submission:', error)
+    console.error('Error creating project:', error)
   } finally {
     saving.value = false
   }
 }
 
 function resetForm() {
-  form.value?.reset()
+  currentStep.value = 1
+  step1Valid.value = false
+  step2Valid.value = step3Valid.value = true
   formData.value = {
-    title: '',
-    description: '',
-    region: '',
-    coordinator: '',
-    priority: 'normal',
-    deadline: null,
-    stages: [],
-    visibility: 'coordinator',
-    tags: [],
-    enableForum: true,
-    templateId: null
+    title: '', description: '', region: '', coordinator: '', priority: 'normal',
+    deadline: null, stages: [], visibility: 'coordinator', tags: [], enableForum: true, templateId: null
+  }
+  step1Ref.value?.reset()
+  step2Ref.value?.reset()
+  step3Ref.value?.reset()
+}
+
+// ESC key handling
+function handleKeydown(event) {
+  if (event.key === 'Escape' && dialogOpen.value && !saving.value) {
+    handleCancel()
   }
 }
 
+// Lifecycle
+onMounted(() => document.addEventListener('keydown', handleKeydown))
+onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
+
 // Reset form when dialog opens
 watch(dialogOpen, (newVal) => {
-  if (newVal) {
-    resetForm()
-  }
+  if (newVal) resetForm()
 })
 </script>
 
 <style scoped>
-.v-card-title {
-  font-weight: 500;
+.create-project-dialog {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.form-container {
+  min-height: 500px;
 }
 </style>
