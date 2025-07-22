@@ -1,76 +1,64 @@
 <!-- client/src/components/comms/CommsDashboard.vue -->
 <template>
-  <v-container fluid class="pa-4">
-    <!-- Dashboard Header -->
-    <v-row>
-      <v-col cols="12">
-        <div class="d-flex align-center justify-space-between mb-6">
-          <div>
-            <h1 class="text-h4 font-weight-bold text-primary">
-              Communications Dashboard
-            </h1>
-            <p class="text-body-1 text-medium-emphasis mt-1">
-              Manage communications projects across Louisiana's 9 health regions
-            </p>
-          </div>
-          
-          <!-- Quick Actions -->
-          <div v-if="canCreateProjects" class="d-flex gap-2">
-            <v-btn
-              color="primary"
-              prepend-icon="mdi-plus"
-              variant="flat"
-              @click="showCreateDialog = true"
-            >
-              New Project
-            </v-btn>
-            <v-btn
-              variant="outlined"
-              prepend-icon="mdi-download"
-              disabled
-            >
-              Export
-            </v-btn>
-          </div>
-        </div>
-      </v-col>
-    </v-row>
+  <v-container fluid>
+    <!-- Header -->
+    <div class="d-flex align-center justify-space-between mb-6">
+      <div>
+        <h1 class="text-h4 font-weight-bold text-grey-darken-3 mb-2">
+          Communications Dashboard
+        </h1>
+        <p class="text-body-1 text-grey-darken-1">
+          Manage communications projects across Louisiana's 9 health regions
+        </p>
+      </div>
+      <div class="d-flex ga-3">
+        <v-btn
+          color="primary"
+          variant="elevated"
+          prepend-icon="mdi-folder-plus"
+          :disabled="!canCreateProjects"
+          @click="showCreateDialog = true"
+        >
+          New Project
+        </v-btn>
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-export"
+          disabled
+        >
+          Export
+        </v-btn>
+      </div>
+    </div>
 
-    <!-- Statistics Overview -->
-    <v-row>
-      <v-col cols="12">
-        <CommsStats :stats="projectStats" />
-      </v-col>
-    </v-row>
+    <!-- Stats Cards -->
+    <CommsStats 
+      :stats="projectStats" 
+      class="mb-6"
+    />
 
-    <!-- Filters and Search -->
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <CommsFilters 
-          :filters="filters"
-          @update:filters="handleFilterUpdate"
-        />
-      </v-col>
-    </v-row>
+    <!-- Filters -->
+    <CommsFilters 
+      :filters="filters"
+      @update:filters="handleFilterUpdate"
+      class="mb-6"
+    />
 
-    <!-- Main Content Area - Project List -->
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <ProjectList 
-          :filters="filters"
-          @select="handleProjectSelect"
-          @stats-update="handleStatsUpdate"
-        />
-      </v-col>
-    </v-row>
+    <!-- Projects List -->
+    <ProjectList
+      :filters="filters"
+      @select="handleProjectSelect"
+      @stats-update="handleStatsUpdate"
+      @delete="handleProjectDelete"
+    />
 
     <!-- Create Project Dialog -->
-    <ProjectForm 
+    <ProjectForm
       v-model="showCreateDialog"
       @created="handleProjectCreated"
     />
 
-    <!-- Project Detail Dialog -->
+    <!-- Project Detail Drawer -->
     <ProjectDetail
       ref="projectDetailRef"
       @updated="handleProjectUpdated"
@@ -97,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref, computed, shallowRef, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import { LOUISIANA_REGIONS as louisianaRegions } from '@/config/louisiana-regions'
@@ -115,21 +103,22 @@ const {
   hardDeleteProject 
 } = useCommsProjects()
 
-// State - Use shallowRef for objects that don't need deep reactivity
+// State
 const showCreateDialog = ref(false)
 const projectDetailRef = ref(null)
 const deleteSnackbar = ref(false)
 const deleteHard = ref(false)
 
-// Use shallowRef for filters and stats to prevent deep reactivity issues
-const filters = shallowRef({
+// Initialize filters with plain object
+const filters = ref({
   region: null,
   status: null,
   priority: null,
   search: ''
 })
 
-const projectStats = shallowRef({
+// Initialize stats with plain object
+const projectStats = ref({
   total: 0,
   byStatus: {},
   byPriority: {},
@@ -143,13 +132,8 @@ const canCreateProjects = computed(() =>
 
 // Methods
 function handleFilterUpdate(newFilters) {
-  // Create a new object reference to trigger updates
-  filters.value = {
-    region: newFilters.region,
-    status: newFilters.status,
-    priority: newFilters.priority,
-    search: newFilters.search
-  }
+  // Simply assign the new filters
+  filters.value = newFilters
 }
 
 function handleProjectSelect(project) {
@@ -159,64 +143,74 @@ function handleProjectSelect(project) {
   }
 }
 
-async function handleStatsUpdate(stats) {
-  // Use nextTick to ensure update happens after current cycle
-  await nextTick()
-  
-  // Only update if stats actually changed to prevent loops
-  const currentStatsString = JSON.stringify(projectStats.value)
-  const newStatsString = JSON.stringify(stats)
-  
-  if (currentStatsString !== newStatsString) {
-    // Create a new object reference
-    projectStats.value = {
-      total: stats.total || 0,
-      byStatus: { ...(stats.byStatus || {}) },
-      byPriority: { ...(stats.byPriority || {}) },
-      byRegion: { ...(stats.byRegion || {}) }
-    }
-  }
+function handleStatsUpdate(stats) {
+  // Directly update stats without comparison
+  projectStats.value = stats
 }
 
-async function handleProjectCreated(projectData) {
-  try {
-    await createProject(projectData)
-    // Dialog will close automatically on success
-  } catch (error) {
-    console.error('Failed to create project:', error)
-    // Error is already shown by the composable
-  }
+function handleProjectCreated(project) {
+  console.log('Project created:', project)
+  // The list will auto-refresh due to Firestore listener
 }
 
 function handleProjectUpdated(project) {
   console.log('Project updated:', project)
-  // The list will auto-update due to Firestore listeners
+  // The list will auto-refresh due to Firestore listener
 }
 
-async function handleProjectDeleted(project, hard) {
+function handleProjectDeleted(options) {
+  console.log('Project deleted:', options)
+  deleteHard.value = options.hard
+  deleteSnackbar.value = true
+  // The list will auto-refresh due to Firestore listener
+}
+
+async function handleProjectDelete(project, hard = false) {
   try {
-    // Use project.id to ensure we're passing the correct ID
-    const projectId = project?.id
-    if (!projectId) {
-      console.error('No project ID provided for deletion')
-      return
-    }
-    
-    console.log(`Deleting project ${projectId} (${hard ? 'hard' : 'soft'} delete)`)
-    
     if (hard) {
-      await hardDeleteProject(projectId)
+      await hardDeleteProject(project.id)
     } else {
-      await softDeleteProject(projectId)
+      await softDeleteProject(project.id)
     }
-    deleteHard.value = hard
-    deleteSnackbar.value = true
+    handleProjectDeleted({ project, hard })
   } catch (error) {
-    console.error('Failed to delete project:', error)
+    console.error('Error deleting project:', error)
   }
 }
 </script>
 
 <style scoped>
-/* No custom styles needed */
+/* Container adjustments */
+.v-container {
+  max-width: 1400px;
+}
+
+/* Header styling */
+h1 {
+  font-family: 'ITC Franklin Gothic Demi', 'Arial Black', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Button styling */
+.v-btn {
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 599px) {
+  .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  
+  .d-flex.ga-3 {
+    gap: 8px !important;
+  }
+  
+  h1 {
+    font-size: 1.5rem !important;
+  }
+}
 </style>

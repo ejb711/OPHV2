@@ -197,18 +197,10 @@ const currentStepValid = computed(() => {
 
 const allStepsValid = computed(() => step1Valid.value && step2Valid.value && step3Valid.value)
 
-// Flag to prevent recursive updates
-let isResetting = false
-
 // Methods
 function updateFormData(newData) {
-  if (isResetting) return // Prevent updates during reset
-  
-  // Create a new object to avoid mutations
-  formData.value = {
-    ...formData.value,
-    ...newData
-  }
+  // Merge the new data without causing reactive loops
+  Object.assign(formData.value, newData)
 }
 
 function onCoordinatorAutoSelected(event) {
@@ -288,8 +280,6 @@ async function handleSave() {
 }
 
 function resetForm() {
-  isResetting = true
-  
   // Reset step
   currentStep.value = 1
   
@@ -298,13 +288,8 @@ function resetForm() {
   step2Valid.value = true
   step3Valid.value = true
   
-  // Reset form data
+  // Reset form data by creating new object
   formData.value = createInitialFormData()
-  
-  // Use nextTick to ensure DOM updates are complete
-  nextTick(() => {
-    isResetting = false
-  })
 }
 
 // Handle dialog close on escape
@@ -323,14 +308,15 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleEscape)
 })
 
-// Watch for dialog open with immediate: false to prevent initial trigger
-watch(dialogOpen, async (isOpen) => {
-  if (isOpen && !isResetting) {
-    // Use nextTick to ensure dialog is rendered before resetting
-    await nextTick()
-    resetForm()
+// Watch for dialog open and reset form when opened
+watch(dialogOpen, (isOpen) => {
+  if (isOpen) {
+    // Reset form when dialog opens
+    nextTick(() => {
+      resetForm()
+    })
   }
-}, { immediate: false })
+})
 </script>
 
 <style scoped>

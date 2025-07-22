@@ -1,201 +1,178 @@
 <!-- client/src/components/comms/projects/ProjectFormStep3.vue -->
 <template>
-  <div class="step-content pa-6">
-    <div class="text-center mb-6">
-      <h3 class="text-h6 font-weight-bold text-grey-darken-3 mb-2">Additional Settings</h3>
-      <p class="text-body-2 text-grey-darken-1 mb-0">Configure visibility and collaboration options</p>
-    </div>
-    
-    <v-form ref="formRef" v-model="valid" @submit.prevent>
-      <v-container fluid class="pa-0">
-        <v-row>
-          <!-- Visibility Settings -->
-          <v-col cols="12" class="pb-6">
-            <v-select
-              v-model="localVisibility"
-              :items="visibilityOptions"
-              item-title="title"
-              item-value="value"
-              label="Project Visibility"
-              variant="outlined"
-              density="comfortable"
-              hint="Who can view and access this project"
-              persistent-hint
-              hide-details="auto"
-              class="text-field-spaced"
-            >
-              <template v-slot:prepend-inner>
-                <v-icon color="primary">mdi-eye</v-icon>
-              </template>
-              
-              <!-- Custom selection to ensure proper text display -->
-              <template v-slot:selection="{ item }">
-                <span>{{ getVisibilityTitle(localVisibility) }}</span>
-              </template>
-            </v-select>
-          </v-col>
+  <v-card-text class="step-content pa-8">
+    <v-form ref="formRef" v-model="isValid">
+      <!-- Visibility Settings -->
+      <div class="mb-6">
+        <h3 class="text-h6 font-weight-medium mb-4">Visibility Settings</h3>
+        <v-select
+          v-model="localVisibility"
+          :items="visibilityOptions"
+          item-title="title"
+          item-value="value"
+          label="Who can view this project"
+          variant="outlined"
+          density="comfortable"
+          @update:model-value="emitUpdate"
+        />
+        <p class="text-caption text-grey-darken-1 mt-2">
+          Control who can view and access this project
+        </p>
+      </div>
 
-          <!-- Tags -->
-          <v-col cols="12" class="pb-6">
-            <v-combobox
-              v-model="localTags"
-              :items="[]"
-              label="Project Tags (Optional)"
-              variant="outlined"
-              density="comfortable"
-              multiple
-              chips
-              closable-chips
-              hint="Add tags to help organize and categorize projects"
-              persistent-hint
-              hide-details="auto"
-              class="text-field-spaced comms-tags-field"
-              :return-object="false"
-            >
-              <template v-slot:prepend-inner>
-                <v-icon color="primary">mdi-tag-multiple</v-icon>
-              </template>
-              
-              <template v-slot:chip="{ props, item }">
-                <v-chip
-                  v-bind="props"
-                  color="primary"
-                  variant="tonal"
-                  size="small"
-                  closable
-                >
-                  {{ cleanTag(item) }}
-                </v-chip>
-              </template>
-            </v-combobox>
-          </v-col>
+      <v-divider class="my-6" />
 
-          <!-- Enable Forum -->
-          <v-col cols="12">
-            <v-switch
-              v-model="localEnableForum"
-              label="Enable project forum"
-              color="primary"
-              density="comfortable"
-              hide-details
-              disabled
-            >
-              <template v-slot:label>
-                <div>
-                  <div class="text-body-2 font-weight-medium mb-1">Enable project forum</div>
-                  <div class="text-caption text-grey-darken-1">Allow team members to discuss this project (coming soon)</div>
-                </div>
-              </template>
-            </v-switch>
-            
-            <v-alert
-              type="info"
-              variant="tonal"
-              density="compact"
-              class="mt-3"
-              text="Forums will allow team members to discuss project details, share updates, and collaborate effectively. This feature will be available in a future update."
-            >
-              <template v-slot:prepend>
-                <v-icon>mdi-information-outline</v-icon>
-              </template>
-              <div class="text-caption">
-                Forums will allow team members to discuss project details, share updates, and collaborate effectively. 
-                This feature will be available in a future update.
+      <!-- Project Tags -->
+      <div class="mb-6">
+        <h3 class="text-h6 font-weight-medium mb-4">Project Tags</h3>
+        <v-combobox
+          v-model="localTags"
+          :items="suggestedTags"
+          label="Add tags to categorize this project"
+          variant="outlined"
+          density="comfortable"
+          multiple
+          chips
+          closable-chips
+          clearable
+          hide-details
+          class="comms-tags-field text-field-spaced"
+          @update:model-value="handleTagsUpdate"
+        />
+        <p class="text-caption text-grey-darken-1 mt-2">
+          Tags help organize and search for projects. Press Enter to add custom tags.
+        </p>
+      </div>
+
+      <v-divider class="my-6" />
+
+      <!-- Additional Options -->
+      <div>
+        <h3 class="text-h6 font-weight-medium mb-4">Additional Options</h3>
+        
+        <!-- Enable Forum -->
+        <v-switch
+          v-model="localEnableForum"
+          color="primary"
+          hide-details
+          density="comfortable"
+          @update:model-value="emitUpdate"
+        >
+          <template v-slot:label>
+            <div>
+              <div class="font-weight-medium">Enable Discussion Forum</div>
+              <div class="text-caption text-grey-darken-1">
+                Allow team members to discuss and collaborate on this project
               </div>
-            </v-alert>
-          </v-col>
-        </v-row>
-      </v-container>
+            </div>
+          </template>
+        </v-switch>
+
+        <!-- Future: Email Notifications -->
+        <v-alert
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mt-4"
+        >
+          <div class="text-body-2">
+            <strong>Coming Soon:</strong> Email notifications, file attachments, and custom workflows will be available in future updates.
+          </div>
+        </v-alert>
+      </div>
     </v-form>
-  </div>
+  </v-card-text>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useVisibilityOptions } from '@/composables/comms/useVisibilityOptions'
 
-// Props
+// Props & Emits
 const props = defineProps({
-  formData: {
-    type: Object,
-    required: true
-  },
-  modelValue: {
-    type: Boolean,
-    default: true // Settings have defaults, so default to valid
-  }
+  modelValue: { type: Boolean, default: true }, // Step is valid by default
+  formData: { type: Object, required: true }
 })
-
-// Emits
 const emit = defineEmits(['update:modelValue', 'update:formData'])
 
-// Composables
-const { visibilityOptions, getVisibilityTitle } = useVisibilityOptions()
-
-// Refs
+// Form ref and validation
 const formRef = ref(null)
-
-// Local copies of form fields
-const localVisibility = ref(props.formData.visibility || 'coordinator')
-const localTags = ref(props.formData.tags || [])
-const localEnableForum = ref(props.formData.enableForum !== false)
-
-// Form validation
-const valid = computed({
+const isValid = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
 
-// Helper function to clean a single tag
+// Local state
+const localVisibility = ref('coordinator')
+const localTags = ref([])
+const localEnableForum = ref(true)
+
+// Visibility options
+const visibilityOptions = [
+  { title: 'Only Coordinator', value: 'coordinator' },
+  { title: 'Region Team', value: 'region' },
+  { title: 'All Staff', value: 'all' }
+]
+
+// Suggested tags for the combobox
+const suggestedTags = [
+  'COVID-19',
+  'Mental Health', 
+  'Maternal Health',
+  'Pediatrics',
+  'Emergency Response',
+  'Community Outreach',
+  'Education',
+  'Prevention',
+  'Vaccination',
+  'Public Awareness'
+]
+
+// Helper function to clean tag value
 function cleanTag(tag) {
-  if (typeof tag === 'string') return tag
+  if (!tag) return ''
+  if (typeof tag === 'string') return tag.trim()
   if (tag && typeof tag === 'object') {
-    return tag.text || tag.value || tag.title || String(tag)
+    return (tag.text || tag.value || tag.title || String(tag)).trim()
   }
-  return String(tag)
+  return String(tag).trim()
 }
 
 // Helper function to clean tags array
 function cleanTags(tags) {
   if (!tags || !Array.isArray(tags)) return []
-  
-  return tags.map(cleanTag).filter(tag => tag && tag.trim())
+  return tags.map(cleanTag).filter(tag => tag && tag.length > 0)
 }
 
-// Update parent form data
-function updateFormData() {
+// Initialize from props
+function initializeFromProps() {
+  localVisibility.value = props.formData.visibility || 'coordinator'
+  localTags.value = cleanTags(props.formData.tags || [])
+  localEnableForum.value = props.formData.enableForum !== false
+}
+
+// Emit update to parent
+function emitUpdate() {
   emit('update:formData', {
-    ...props.formData,
     visibility: localVisibility.value,
     tags: cleanTags(localTags.value),
     enableForum: localEnableForum.value
   })
 }
 
-// Watch all local values and update parent
-watch([localVisibility, localTags, localEnableForum], () => {
-  updateFormData()
-}, { deep: true })
+// Handle tags update specially to clean them
+function handleTagsUpdate(newTags) {
+  localTags.value = cleanTags(newTags)
+  emitUpdate()
+}
 
-// Watch for external changes to props
-watch(() => props.formData, (newData) => {
-  localVisibility.value = newData.visibility || 'coordinator'
-  localTags.value = newData.tags || []
-  localEnableForum.value = newData.enableForum !== false
-}, { deep: true })
-
-// Clean tags whenever they change
-watch(localTags, (newTags) => {
-  const cleaned = cleanTags(newTags)
-  if (JSON.stringify(cleaned) !== JSON.stringify(newTags)) {
-    localTags.value = cleaned
-  }
+// Watch for prop changes
+watch(() => props.formData, () => {
+  initializeFromProps()
 }, { deep: true })
 
 // Initialize on mount
 onMounted(() => {
-  // Ensure tags are clean on mount
-  localTags.value = cleanTags(localTags.value)
+  initializeFromProps()
 })
 
 // Expose validation method to parent
