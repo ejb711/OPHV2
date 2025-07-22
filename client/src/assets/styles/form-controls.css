@@ -1,41 +1,51 @@
-/* client/src/assets/styles/form-controls.css - Form Control Styles */
+/* ========================================
+   FORM CONTROLS - Vuetify Component Styling
+   Handles all form-related component styles
+   
+   IMPORTANT: v-select labels are hidden globally to prevent
+   text overlay issues. Use external labels for dropdowns.
+   ======================================== */
 
 /* ========================================
-   GENERAL FIELD STYLES
+   BASE FORM FIELD STYLING
    ======================================== */
 
 .v-field {
   border-radius: var(--border-radius-sm) !important;
+  transition: all 0.2s ease !important;
 }
 
-.v-field--variant-outlined .v-field__outline {
-  color: var(--ldh-gray-300) !important;
+.v-field--variant-outlined {
+  border: 1px solid var(--ldh-gray-300) !important;
 }
 
-.v-field--focused .v-field__outline {
-  color: var(--ldh-blue) !important;
+.v-field--variant-outlined:hover {
+  border-color: var(--ldh-gray-400) !important;
+}
+
+.v-field--focused {
+  border-color: var(--ldh-primary) !important;
 }
 
 /* ========================================
-   TEXT FIELDS & TEXTAREAS ONLY
+   LABELS AND FLOATING LABELS
    ======================================== */
 
-.v-text-field .v-field,
-.v-textarea .v-field {
-  border-radius: var(--border-radius-sm) !important;
-}
-
-.v-text-field .v-field__input,
-.v-textarea .v-field__input {
-  min-height: 56px !important;
-  padding: 20px 16px 8px 16px !important;
-  line-height: 1.5 !important;
-  font-size: 16px !important;
-}
-
-/* Text Field Labels */
+/* Base label styling - TEXT FIELDS ONLY */
 .v-text-field .v-field__label,
-.v-textarea .v-field__label {
+.v-text-field .v-label,
+.v-textarea .v-field__label,
+.v-textarea .v-label {
+  font-family: var(--font-secondary) !important;
+  color: var(--ldh-gray-700) !important;
+  background-color: transparent !important;
+}
+
+/* Floating label for text fields */
+.v-text-field .v-field__label,
+.v-text-field .v-label,
+.v-textarea .v-field__label,
+.v-textarea .v-field .v-label {
   position: absolute !important;
   top: 50% !important;
   left: 16px !important;
@@ -46,10 +56,9 @@
   pointer-events: none !important;
   font-size: 16px !important;
   color: rgba(0, 0, 0, 0.6) !important;
-  font-family: var(--font-secondary) !important;
 }
 
-/* Active/focused text field labels */
+/* Active/dirty/focused states - TEXT FIELDS ONLY */
 .v-text-field .v-field--active .v-field__label,
 .v-text-field .v-field--dirty .v-field__label,
 .v-text-field .v-field--focused .v-field__label,
@@ -63,9 +72,11 @@
   color: rgb(66, 109, 169) !important;
 }
 
-/* Outlined variant specific */
-.v-field--variant-outlined .v-field__label,
-.v-field--variant-outlined .v-label {
+/* Outlined variant specific - TEXT FIELDS ONLY */
+.v-text-field.v-field--variant-outlined .v-field__label,
+.v-text-field.v-field--variant-outlined .v-label,
+.v-textarea.v-field--variant-outlined .v-field__label,
+.v-textarea.v-field--variant-outlined .v-label {
   background-color: white !important;
   padding: 0 4px !important;
   margin-left: -4px !important;
@@ -84,9 +95,22 @@
   background-color: white !important;
 }
 
+
+
+.v-select .v-field {
+  border-radius: var(--border-radius-sm) !important;
+}
+
+.v-select .v-field__input {
+  min-height: 56px !important;
+  padding: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
 /* ========================================
-   SELECT FIELDS - SEPARATE STYLING
-   Fixed to prevent text overlay
+   SELECT FIELDS - DROPDOWN FIX
+   Critical fix for text overlay issue
    ======================================== */
 
 .v-select .v-field {
@@ -100,51 +124,47 @@
   align-items: center !important;
 }
 
-/* Select Labels - Different from text fields */
-.v-select .v-field__label {
-  font-family: var(--font-secondary) !important;
-  color: var(--ldh-gray-700) !important;
-  /* Let Vuetify handle select label positioning */
-}
-
-/* Ensure select value text is visible */
-.v-select .v-select__selection {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.v-select .v-select__selection-text {
-  display: block !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-}
-
-/* Hide default selection text when using custom chip selection */
-.v-select .v-select__selection:has(.v-chip) + .v-select__selection-text,
-.v-select .role-selection + .v-select__selection-text,
-.v-select .v-chip ~ .v-select__selection-text {
+/* CRITICAL FIX: Hide default selection text when custom template is used */
+/* This prevents the text overlay issue */
+.v-select .v-field__input .v-select__selection-text {
   display: none !important;
 }
 
-/* Ensure custom selection chips are properly displayed */
-.v-select .role-selection {
+/* Ensure custom selection templates are properly displayed */
+.v-select .v-select__selection {
+  margin: 0 !important;
+  padding: 0 !important;
   display: flex !important;
   align-items: center !important;
-  height: 100% !important;
+  width: 100% !important;
 }
 
-/* Fix for Vuetify 3 select with custom templates */
-.v-select .v-field__input > .v-select__selection {
+/* Custom role selection styling */
+.role-selection {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.role-selection .v-chip {
+  margin: 0 !important;
+}
+
+/* Ensure chips in selects display properly */
+.v-select .v-chip {
+  margin: 0 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Additional specificity for stubborn cases */
+.v-select .v-field__input > div {
   display: flex !important;
   align-items: center !important;
 }
 
-/* Hide the default text when a custom selection template is used */
-.v-select .v-field__input > .v-select__selection:has(.v-chip) {
-  .v-select__selection-text {
-    display: none !important;
-  }
+/* Hide any text nodes that might appear */
+.v-select .v-field__input > div > span:not(.v-chip):not(.v-select__selection) {
+  display: none !important;
 }
 
 /* ========================================
@@ -211,42 +231,4 @@
 .profile-settings .v-text-field .v-label,
 .profile-settings .v-textarea .v-label {
   font-family: 'Cambria', Georgia, serif !important;
-}
-
-/* ========================================
-   V-SELECT CUSTOM TEMPLATE FIXES
-   ======================================== */
-
-/* Fix for overlapping text in selects with custom chip templates */
-.v-select .v-select__selection {
-  flex: 1 1 auto !important;
-}
-
-/* Hide duplicate text when using custom selection templates */
-.v-select .v-select__selection-text:not(:only-child) {
-  display: none !important;
-}
-
-/* Ensure chips in selects display properly */
-.v-select .v-chip {
-  margin: 0 !important;
-}
-
-/* Fix role selection specific styling */
-.role-selection {
-  width: 100% !important;
-}
-
-.role-selection .v-chip {
-  width: auto !important;
-  max-width: 100% !important;
-}
-
-/* Alternative fix for browsers that don't support :has() */
-.v-select[aria-expanded="false"] .v-field__input .v-chip {
-  display: inline-flex !important;
-}
-
-.v-select[aria-expanded="false"] .v-field__input .v-chip + * {
-  display: none !important;
 }

@@ -17,29 +17,29 @@
           />
         </v-col>
 
-        <!-- Role Filter -->
+        <!-- Role Filter - NO LABEL PROP -->
         <v-col cols="12" sm="6" md="3">
           <v-select
             :model-value="roleFilter"
             @update:model-value="$emit('update:roleFilter', $event)"
             :items="roleFilterItems"
-            label="Filter by Role"
             variant="outlined"
             density="comfortable"
             hide-details
+            placeholder="Filter by Role"
           />
         </v-col>
 
-        <!-- Status Filter -->
+        <!-- Status Filter - NO LABEL PROP -->
         <v-col cols="12" sm="6" md="3">
           <v-select
             :model-value="statusFilter"
             @update:model-value="$emit('update:statusFilter', $event)"
             :items="statusFilterItems"
-            label="Filter by Status"
             variant="outlined"
             density="comfortable"
             hide-details
+            placeholder="Filter by Status"
           />
         </v-col>
 

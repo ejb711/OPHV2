@@ -9,145 +9,177 @@
     <v-form ref="formRef" v-model="valid" @submit.prevent>
       <v-container fluid class="pa-0">
         <v-row>
-          <!-- Project Title - Full Width -->
-          <v-col cols="12" class="pb-6">
-            <v-text-field
-              v-model="localFormData.title"
-              label="Project Title"
-              :rules="[rules.required]"
-              variant="outlined"
-              density="default"
-              counter="100"
-              maxlength="100"
-              placeholder="Enter a descriptive project title"
-              hide-details="auto"
-              class="text-field-spaced"
-              required
-            >
-              <template v-slot:label>
-                <span>Project Title <span class="text-error">*</span></span>
-              </template>
-            </v-text-field>
-          </v-col>
-
-          <!-- Description - Full Width -->
-          <v-col cols="12" class="pb-6">
-            <v-textarea
-              v-model="localFormData.description"
-              label="Description"
-              :rules="[rules.required]"
-              variant="outlined"
-              density="default"
-              rows="3"
-              counter="500"
-              maxlength="500"
-              placeholder="Describe the project goals and objectives"
-              hide-details="auto"
-              class="text-field-spaced"
-              required
-            >
-              <template v-slot:label>
-                <span>Description <span class="text-error">*</span></span>
-              </template>
-            </v-textarea>
-          </v-col>
-
-          <!-- Region and Coordinator Row -->
-          <v-col cols="12" sm="6" class="pb-6">
-            <v-select
-              v-model="localFormData.region"
-              :items="regionItems"
-              label="Region"
-              :rules="[rules.required]"
-              variant="outlined"
-              density="default"
-              placeholder="Select target region"
-              hide-details="auto"
-              class="text-field-spaced"
-              @update:model-value="handleRegionChange"
-              required
-            >
-              <template v-slot:label>
-                <span>Region <span class="text-error">*</span></span>
-              </template>
-            </v-select>
-          </v-col>
-
-          <v-col cols="12" sm="6" class="pb-6">
-            <CoordinatorSelect
-              v-model="localFormData.coordinator"
-              :region="localFormData.region"
-              :rules="[rules.required]"
-              label="Coordinator *"
-              required
-              @coordinator-auto-selected="onCoordinatorAutoSelected"
-              @non-default-selected="onNonDefaultSelected"
-              @default-selected="onDefaultSelected"
-            />
-          </v-col>
-
-          <!-- Priority and Deadline Row -->
-          <v-col cols="12" sm="6" class="pb-6">
-            <v-select
-              v-model="localFormData.priority"
-              :items="priorityOptions"
-              label="Priority"
-              variant="outlined"
-              density="default"
-              hide-details="auto"
-              class="text-field-spaced"
-            />
-          </v-col>
-
-          <v-col cols="12" sm="6" class="pb-4">
-            <v-menu
-              v-model="deadlineMenu"
-              :close-on-content-click="false"
-              min-width="auto"
-              offset-y
-            >
-              <template v-slot:activator="{ props }">
-                <v-text-field
-                  v-model="formattedDeadline"
-                  label="Deadline (Optional)"
-                  prepend-inner-icon="mdi-calendar"
-                  variant="outlined"
-                  density="default"
-                  readonly
-                  v-bind="props"
-                  clearable
-                  @click:clear="localFormData.deadline = null"
-                  placeholder="Set project deadline"
-                  hide-details="auto"
-                  class="text-field-spaced"
-                />
-              </template>
-              <v-date-picker
-                v-model="localFormData.deadline"
-                @update:model-value="deadlineMenu = false"
+          <!-- Project Title -->
+          <v-col cols="12">
+            <div class="field-group">
+              <label class="field-label">
+                Project Title <span class="text-error">*</span>
+              </label>
+              <v-text-field
+                v-model="localFormData.title"
+                variant="outlined"
+                density="comfortable"
+                placeholder="Enter a descriptive project title"
+                :rules="[rules.required]"
+                counter="100"
+                maxlength="100"
+                hide-details="auto"
               />
-            </v-menu>
+            </div>
+          </v-col>
+
+          <!-- Description -->
+          <v-col cols="12">
+            <div class="field-group">
+              <label class="field-label">
+                Description <span class="text-error">*</span>
+              </label>
+              <v-textarea
+                v-model="localFormData.description"
+                variant="outlined"
+                density="comfortable"
+                placeholder="Describe the project goals and objectives"
+                :rules="[rules.required]"
+                rows="3"
+                counter="500"
+                maxlength="500"
+                hide-details="auto"
+              />
+            </div>
+          </v-col>
+
+          <!-- Region -->
+          <v-col cols="12" md="6">
+            <div class="field-group">
+              <label class="field-label">
+                Region <span class="text-error">*</span>
+              </label>
+              <v-select
+                v-model="localFormData.region"
+                :items="regionItems"
+                variant="outlined"
+                density="comfortable"
+                placeholder="Select region"
+                :rules="[rules.required]"
+                hide-details="auto"
+                @update:model-value="handleRegionChange"
+              >
+                <template v-slot:prepend-inner>
+                  <v-icon color="primary" size="small">mdi-map-marker</v-icon>
+                </template>
+              </v-select>
+              <div class="field-hint">Select the Louisiana region for this project</div>
+            </div>
+          </v-col>
+
+          <!-- Coordinator -->
+          <v-col cols="12" md="6">
+            <div class="field-group">
+              <label class="field-label">
+                Coordinator <span class="text-error">*</span>
+              </label>
+              <CoordinatorSelect
+                v-model="localFormData.coordinator"
+                :region="localFormData.region"
+                :rules="[rules.required]"
+                label=""
+                auto-select
+                density="comfortable"
+                @default-selected="handleDefaultCoordinatorSelected"
+                @non-default-selected="handleNonDefaultSelected"
+                @coordinator-auto-selected="handleDefaultCoordinatorSelected"
+              />
+              <div class="field-hint">Select the project coordinator</div>
+            </div>
+          </v-col>
+
+          <!-- Priority -->
+          <v-col cols="12" md="6">
+            <div class="field-group">
+              <label class="field-label">Priority</label>
+              <v-select
+                v-model="localFormData.priority"
+                :items="priorityOptions"
+                variant="outlined"
+                density="comfortable"
+                placeholder="Select priority"
+                hide-details="auto"
+              >
+                <template v-slot:prepend-inner>
+                  <v-icon 
+                    :color="getPriorityColor(localFormData.priority)" 
+                    size="small"
+                  >
+                    {{ getPriorityIcon(localFormData.priority) }}
+                  </v-icon>
+                </template>
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props">
+                    <template v-slot:prepend>
+                      <v-icon :color="getPriorityColor(item.value)">
+                        {{ getPriorityIcon(item.value) }}
+                      </v-icon>
+                    </template>
+                  </v-list-item>
+                </template>
+              </v-select>
+              <div class="field-hint">Set the priority level for this project</div>
+            </div>
+          </v-col>
+
+          <!-- Deadline -->
+          <v-col cols="12" md="6">
+            <div class="field-group">
+              <label class="field-label">Deadline (Optional)</label>
+              <v-menu
+                v-model="deadlineMenu"
+                :close-on-content-click="false"
+                transition="scale-transition"
+                min-width="auto"
+              >
+                <template v-slot:activator="{ props }">
+                  <v-text-field
+                    v-model="formattedDeadline"
+                    variant="outlined"
+                    density="comfortable"
+                    placeholder="Select deadline"
+                    readonly
+                    v-bind="props"
+                    hide-details
+                    clearable
+                    @click:clear="localFormData.deadline = null"
+                  >
+                    <template v-slot:prepend-inner>
+                      <v-icon color="primary" size="small">mdi-calendar</v-icon>
+                    </template>
+                  </v-text-field>
+                </template>
+                <v-date-picker
+                  v-model="localFormData.deadline"
+                  :min="minDate"
+                  color="primary"
+                  @update:model-value="deadlineMenu = false"
+                />
+              </v-menu>
+              <div class="field-hint">Click to select a target completion date</div>
+            </div>
           </v-col>
         </v-row>
 
-        <!-- Non-default coordinator alert -->
+        <!-- Alert for non-default coordinator -->
         <v-alert
-          v-if="showNonDefaultAlert"
+          v-if="showNonDefaultAlert && nonDefaultCoordinatorName"
           type="info"
           variant="tonal"
-          density="compact"
-          closable
           class="mt-4"
+          closable
           @click:close="showNonDefaultAlert = false"
         >
-          <template v-slot:title>
-            <div class="d-flex align-center">
-              <v-icon start size="small">mdi-information</v-icon>
-              Non-default Coordinator Selected
-            </div>
+          <template v-slot:prepend>
+            <v-icon>mdi-information</v-icon>
           </template>
           <div class="text-body-2">
-            You've selected <strong>{{ nonDefaultCoordinatorName }}</strong> instead of the default coordinator for {{ selectedRegionName }}.
+            <strong>{{ nonDefaultCoordinatorName }}</strong> will be assigned as the coordinator for this project in the <strong>{{ selectedRegionName }}</strong> region.
             This coordinator will be notified of the project assignment.
           </div>
         </v-alert>
@@ -214,7 +246,7 @@ const regionItems = computed(() =>
 const selectedRegionName = computed(() => {
   if (!localFormData.value.region) return ''
   const region = louisianaRegions[localFormData.value.region]
-  return region ? region.name : localFormData.value.region
+  return region ? region.name : ''
 })
 
 const priorityOptions = [
@@ -225,51 +257,83 @@ const priorityOptions = [
 ]
 
 // Computed
+const minDate = computed(() => {
+  const date = new Date()
+  date.setDate(date.getDate() + 1)
+  return date.toISOString().split('T')[0]
+})
+
 const formattedDeadline = computed(() => {
   if (!localFormData.value.deadline) return ''
-  return new Date(localFormData.value.deadline).toLocaleDateString()
+  try {
+    const date = new Date(localFormData.value.deadline)
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  } catch {
+    return ''
+  }
 })
 
 // Methods
-function handleRegionChange(value) {
-  // Clear coordinator if changing region
-  if (value !== props.formData.region) {
-    localFormData.value.coordinator = ''
-    showNonDefaultAlert.value = false
+function getPriorityColor(priority) {
+  const colors = {
+    low: 'success',
+    normal: 'info',
+    high: 'warning',
+    urgent: 'error'
   }
+  return colors[priority] || 'info'
 }
 
-function onCoordinatorAutoSelected(event) {
-  console.log('Coordinator auto-selected:', event)
+function getPriorityIcon(priority) {
+  const icons = {
+    low: 'mdi-chevron-down',
+    normal: 'mdi-minus',
+    high: 'mdi-chevron-up',
+    urgent: 'mdi-alert-circle'
+  }
+  return icons[priority] || 'mdi-minus'
+}
+
+function handleRegionChange() {
+  // Clear coordinator when region changes
+  localFormData.value.coordinator = ''
+  showNonDefaultAlert.value = false
+  nonDefaultCoordinatorName.value = ''
+}
+
+function handleDefaultCoordinatorSelected(event) {
+  console.log('Coordinator selected event:', event)
+  
+  // Handle both event formats from CoordinatorSelect
+  const coordinator = event.coordinator || event
+  const isDefault = event.region ? true : false
+  
+  if (isDefault && coordinator) {
+    showNonDefaultAlert.value = false
+    nonDefaultCoordinatorName.value = ''
+  }
+  
   emit('coordinator-auto-selected', event)
-  showNonDefaultAlert.value = false
 }
 
-function onNonDefaultSelected(event) {
+function handleNonDefaultSelected(event) {
   console.log('Non-default coordinator selected:', event)
-  
-  // Show alert to user
-  nonDefaultCoordinatorName.value = event.coordinator.name || event.coordinator.email
-  showNonDefaultAlert.value = true
-  
-  // Also show a snackbar for immediate feedback
-  showSnackbar({
-    message: `Selected ${event.coordinator.name || event.coordinator.email} as coordinator`,
-    color: 'info',
-    timeout: 3000
-  })
-}
-
-function onDefaultSelected(event) {
-  console.log('Default coordinator selected:', event)
-  // Clear the non-default alert
-  showNonDefaultAlert.value = false
+  if (event.coordinator) {
+    nonDefaultCoordinatorName.value = event.coordinator.name || event.coordinator.displayName || event.coordinator.email
+    showNonDefaultAlert.value = true
+  }
+  emit('coordinator-auto-selected', event)
 }
 
 // Expose validation method to parent
 async function validate() {
   if (!formRef.value) return { valid: false }
-  return await formRef.value.validate()
+  const validation = await formRef.value.validate()
+  return validation
 }
 
 // Watch for changes and emit updates
@@ -279,10 +343,7 @@ watch(localFormData, (newValue) => {
 
 defineExpose({
   validate,
-  reset: () => {
-    formRef.value?.reset()
-    showNonDefaultAlert.value = false
-  }
+  reset: () => formRef.value?.reset()
 })
 </script>
 
@@ -291,108 +352,33 @@ defineExpose({
   min-height: 500px;
 }
 
-/* Enhanced form field spacing */
-.text-field-spaced {
-  margin-bottom: 8px !important;
+/* Field Group Styling */
+.field-group {
+  margin-bottom: 1rem;
 }
 
-/* ========================================
-   FIELD STRUCTURE AND LABEL POSITIONING
-   Based on admin panel working styles
-   ======================================== */
-
-/* Ensure consistent field structure */
-:deep(.v-field) {
-  border-radius: 8px !important;
-  background-color: transparent !important;
-  transition: all 0.2s ease !important;
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #424242;
+  margin-bottom: 0.5rem;
+  font-family: 'Cambria', Georgia, serif;
 }
 
-/* Text field and textarea input spacing */
-:deep(.v-text-field .v-field__input),
-:deep(.v-textarea .v-field__input) {
-  min-height: 56px !important;
-  padding: 20px 16px 8px 16px !important;
-  font-size: 16px !important;
-  line-height: 1.5 !important;
+.field-hint {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-family: 'Cambria', Georgia, serif;
 }
 
-/* SELECT FIELD SPECIFIC - Different from text fields */
-:deep(.v-select .v-field__input) {
-  min-height: 56px !important;
-  padding: 16px !important;
-  display: flex !important;
-  align-items: center !important;
+/* Required field indicator */
+.text-error {
+  color: rgb(176, 0, 32);
 }
 
-/* Fix label positioning for ALL field types */
-:deep(.v-field__label) {
-  font-size: 16px !important;
-  color: rgba(0, 0, 0, 0.6) !important;
-  font-family: 'Cambria', Georgia, serif !important;
-}
-
-/* Text field labels - floating behavior */
-:deep(.v-text-field .v-field__label),
-:deep(.v-textarea .v-field__label) {
-  position: absolute !important;
-  top: 50% !important;
-  left: 16px !important;
-  transform: translateY(-50%) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  pointer-events: none !important;
-  max-width: calc(100% - 32px) !important;
-}
-
-/* Active/focused/dirty state for text fields */
-:deep(.v-text-field .v-field--active .v-field__label),
-:deep(.v-text-field .v-field--focused .v-field__label),
-:deep(.v-text-field .v-field--dirty .v-field__label),
-:deep(.v-textarea .v-field--active .v-field__label),
-:deep(.v-textarea .v-field--focused .v-field__label),
-:deep(.v-textarea .v-field--dirty .v-field__label) {
-  top: 12px !important;
-  transform: translateY(0) scale(0.75) !important;
-  transform-origin: top left !important;
-  background-color: white !important;
-  padding: 0 4px !important;
-  margin-left: -4px !important;
-}
-
-/* Ensure proper z-index for labels */
-:deep(.v-field__label) {
-  z-index: 10 !important;
-}
-
-/* Outline variant label background */
-:deep(.v-field--variant-outlined .v-field__label) {
-  background-color: white !important;
-}
-
-/* Fix textarea specific styling */
-:deep(.v-textarea .v-field__input) {
-  padding-top: 28px !important;
-  min-height: auto !important;
-}
-
-/* Placeholder styling */
-:deep(.v-field__input input::placeholder),
-:deep(.v-field__input textarea::placeholder) {
-  color: rgba(0, 0, 0, 0.38) !important;
-  opacity: 1 !important;
-}
-
-/* Focus states */
-:deep(.v-field--focused) {
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2) !important;
-}
-
-/* Error states */
-:deep(.v-field--error:not(.v-field--disabled) .v-field__outline) {
-  color: #d32f2f !important;
-}
-
-/* Consistent column spacing */
+/* Column spacing */
 .v-col {
   padding-left: 12px;
   padding-right: 12px;
@@ -403,24 +389,23 @@ defineExpose({
   border-radius: 8px;
 }
 
-.v-alert .text-body-2 {
-  line-height: 1.5;
+/* Ensure consistent field heights and appearance */
+:deep(.v-field) {
+  min-height: 40px;
 }
 
-/* Counter styling */
-:deep(.v-counter) {
-  font-size: 0.75rem !important;
-  color: rgba(0, 0, 0, 0.6) !important;
+:deep(.v-field__input) {
+  min-height: 40px;
+  font-size: 16px;
 }
 
-/* Messages (errors/hints) styling */
-:deep(.v-messages) {
-  min-height: 22px !important;
-  padding-top: 4px !important;
-  font-size: 0.75rem !important;
+:deep(.v-select .v-field__input),
+:deep(.v-text-field .v-field__input) {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-/* Responsive improvements */
+/* Responsive adjustments */
 @media (max-width: 599px) {
   .v-col {
     padding-left: 8px;

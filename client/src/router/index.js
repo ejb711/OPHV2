@@ -14,6 +14,16 @@ import { useAuthStore } from '../stores/auth'
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    //TEST
+    {
+    path: '/test-dropdown',
+    name: 'test-dropdown',
+    component: () => import('@/views/TestDropdown.vue'),
+    meta: { 
+    requiresAuth: false  // Make it accessible without login for testing
+    }
+    },
+
     { 
       path: '/', 
       name: 'Login', 
