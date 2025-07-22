@@ -1,4 +1,4 @@
-// firestore.rules - Enhanced with proper user deletion support and security settings
+// firestore.rules - Enhanced with Communications Dashboard collections
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -29,7 +29,26 @@ service cloud.firestore {
          targetRole != 'admin');
     }
     
-    // Users collection
+    // Helper function to check if user is a coordinator for a region
+    function isRegionCoordinator(region) {
+      return exists(/databases/$(database)/documents/comms_coordinators/$(request.auth.uid)) &&
+        region in get(/databases/$(database)/documents/comms_coordinators/$(request.auth.uid)).data.regions;
+    }
+    
+    // Helper function to check project visibility
+    function canViewProject(project) {
+      let userId = request.auth.uid;
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      
+      return hasPermission('manage_comms') || // Full access
+        hasPermission('view_all_regions') || // Can view all regions
+        project.createdBy == userId || // Creator
+        userId in project.sharedWith || // Explicitly shared
+        (project.visibility == 'public' && hasPermission('view_comms')) || // Public projects
+        (isRegionCoordinator(project.region) && hasPermission('view_comms')); // Regional coordinator
+    }
+    
+    // Users collection (existing rules preserved)
     match /users/{userId} {
       // Anyone authenticated can read users if they have view permission
       allow read: if request.auth != null && 
@@ -41,60 +60,142 @@ service cloud.firestore {
       // Update users - Allow self-updates and admin updates
       allow update: if request.auth != null && (
         // Users can update their own activity and limited fields (including security settings)
-        // Security settings are stored as a nested object in the user document
         (request.auth.uid == userId && 
          request.resource.data.diff(resource.data).affectedKeys()
            .hasOnly(['displayName', 'photoURL', 'lastActive', 'preferences', 'securitySettings', 'updatedAt'])) ||
         // Users with edit_users permission can update others
         (hasPermission('edit_users') && 
-         // Check if they can manage the target user's current role
          canManageUserWithRole(resource.data.role) &&
-         // If role is being changed, check if they can assign the new role
          (resource.data.role == request.resource.data.role || 
           canManageUserWithRole(request.resource.data.role)))
       );
       
-      // Delete users with proper permission - ENHANCED
+      // Delete users with proper permission
       allow delete: if request.auth != null && 
         hasPermission('delete_users') && 
         request.auth.uid != userId &&
         canManageUserWithRole(resource.data.role);
     }
     
-
-    // Roles collection - authenticated users can read
+    // Roles collection (existing rules preserved)
     match /roles/{roleId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && hasPermission('manage_roles');
     }
     
-    // Permissions collection - authenticated users can read
+    // Permissions collection (existing rules preserved)
     match /permissions/{permissionId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && hasPermission('manage_permissions');
     }
     
-    // Audit logs - ENHANCED to allow users to read their own logs
+    // Audit logs (existing rules preserved)
     match /audit_logs/{logId} {
-      // Users can read their own audit logs OR admins can read all
       allow read: if request.auth != null && (
-        // User reading their own logs
         (resource.data.userId == request.auth.uid) ||
-        // Admin/owner reading any logs
         hasPermission('view_audit_logs')
       );
       
-      // Allow authenticated users to create audit logs for themselves
       allow create: if request.auth != null && 
-        // Ensure they can only write their own audit logs
         request.resource.data.userId == request.auth.uid &&
-        // Ensure required fields are present
         request.resource.data.keys().hasAll(['action', 'userId', 'timestamp']) &&
         request.resource.data.action is string &&
         request.resource.data.timestamp is timestamp;
       
-      // No updates or deletes allowed - audit logs are immutable
       allow update, delete: if false;
+    }
+    
+    // Communications Regions collection (read-only reference data)
+    match /comms_regions/{regionId} {
+      allow read: if request.auth != null && hasPermission('view_comms');
+      allow write: if request.auth != null && hasPermission('manage_comms');
+    }
+    
+    // Communications Coordinators collection
+    match /comms_coordinators/{coordinatorId} {
+      allow read: if request.auth != null && hasPermission('view_comms');
+      allow write: if request.auth != null && hasPermission('manage_comms_coordinators');
+    }
+    
+    // Communications Projects collection
+    match /comms_projects/{projectId} {
+      allow read: if request.auth != null && 
+        hasPermission('view_comms') && 
+        canViewProject(resource.data);
+      
+      allow create: if request.auth != null && 
+        hasPermission('create_comms_projects') &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.keys().hasAll(['title', 'region', 'status', 'visibility', 'createdBy', 'createdAt']);
+      
+      allow update: if request.auth != null && (
+        hasPermission('manage_comms') ||
+        (hasPermission('edit_comms_projects') && canViewProject(resource.data)) ||
+        (resource.data.createdBy == request.auth.uid && hasPermission('edit_comms_projects'))
+      );
+      
+      allow delete: if request.auth != null && (
+        hasPermission('manage_comms') ||
+        (hasPermission('delete_comms_projects') && resource.data.createdBy == request.auth.uid)
+      );
+    }
+    
+    // Communications Files collection
+    match /comms_files/{fileId} {
+      allow read: if request.auth != null && 
+        hasPermission('view_comms') &&
+        exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
+        canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
+      
+      allow create: if request.auth != null && 
+        hasPermission('edit_comms_projects') &&
+        exists(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)) &&
+        canViewProject(get(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)).data) &&
+        request.resource.data.uploadedBy == request.auth.uid;
+      
+      allow update: if request.auth != null && 
+        hasPermission('edit_comms_projects') &&
+        exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
+        canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
+      
+      allow delete: if request.auth != null && (
+        hasPermission('manage_comms') ||
+        (hasPermission('delete_comms_projects') && resource.data.uploadedBy == request.auth.uid)
+      );
+    }
+    
+    // Communications Messages collection (forum posts)
+    match /comms_messages/{messageId} {
+      allow read: if request.auth != null && 
+        hasPermission('view_comms') &&
+        exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
+        canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
+      
+      allow create: if request.auth != null && 
+        hasPermission('view_comms') &&
+        exists(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)) &&
+        canViewProject(get(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)).data) &&
+        request.resource.data.authorId == request.auth.uid;
+      
+      allow update: if request.auth != null && 
+        resource.data.authorId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']);
+      
+      allow delete: if request.auth != null && (
+        hasPermission('manage_comms') ||
+        resource.data.authorId == request.auth.uid
+      );
+    }
+    
+    // Communications Templates collection
+    match /comms_templates/{templateId} {
+      allow read: if request.auth != null && hasPermission('view_comms');
+      
+      allow create, update: if request.auth != null && 
+        hasPermission('manage_comms_templates');
+      
+      allow delete: if request.auth != null && 
+        hasPermission('manage_comms_templates');
     }
     
     // Projects collection (future)
@@ -128,17 +229,12 @@ service cloud.firestore {
       allow delete: if request.auth != null && hasPermission('delete_events');
     }
     
-    // Activity tracking collection (if using separate collection)
+    // Activity tracking collection
     match /user_activity/{userId} {
-      // Users can read their own activity
       allow read: if request.auth != null && request.auth.uid == userId;
-      
-      // Users can update their own activity tracking
       allow create, update: if request.auth != null && 
         request.auth.uid == userId &&
         request.resource.data.keys().hasOnly(['lastActive', 'lastPage', 'sessionStart']);
-      
-      // No deletion of activity records
       allow delete: if false;
     }
   }

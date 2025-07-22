@@ -30,6 +30,9 @@ const initFunctions = require('./src/system/initialization')
 const auditFunctions = require('./src/audit/retention')
 const auditStats = require('./src/audit/stats')
 
+//Comms functions
+const commsInit = require('./src/comms/initialization');
+
 /* ---------- Export ALL Functions ---------- */
 
 // User Management Functions (from new modular structure)
@@ -58,6 +61,10 @@ exports.systemStatus = systemFunctions.systemStatus
 exports.initializeSystemData = initFunctions.initializeSystemData
 exports.setupDefaultRoles = initFunctions.setupDefaultRoles
 exports.setupDefaultPermissions = initFunctions.setupDefaultPermissions
+
+// Comms Functions
+exports.initializeCommsData = commsInit.initializeCommsData;
+exports.getCommsRegions = commsInit.getCommsRegions;
 
 /* ---------- Function Summary ---------- */
 
