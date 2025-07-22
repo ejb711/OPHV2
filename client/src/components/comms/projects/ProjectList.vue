@@ -228,8 +228,25 @@ watch(projects, (newProjects) => {
 // Lifecycle
 onMounted(async () => {
   console.log('ProjectList mounted')
-  unsubscribe = await initialize()
-  watchFilters()
+  
+  // Add a delay to ensure auth is ready
+  setTimeout(async () => {
+    loading.value = true
+    try {
+      // Use initialize directly (not projectsComposable.initialize)
+      unsubscribe = await initialize()
+      console.log('Projects initialized')
+    } catch (error) {
+      console.error('Failed to initialize projects:', error)
+    } finally {
+      loading.value = false
+    }
+  }, 1500) // 1.5 second delay
+  
+  // Also watch filters after delay
+  setTimeout(() => {
+    watchFilters()
+  }, 1600)
 })
 
 onUnmounted(() => {

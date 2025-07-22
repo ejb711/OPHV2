@@ -1,3 +1,4 @@
+<!-- client/src/components/comms/CommsDashboard.vue -->
 <template>
   <v-container fluid class="pa-4">
     <!-- Dashboard Header -->
@@ -19,7 +20,7 @@
               color="primary"
               prepend-icon="mdi-plus"
               variant="flat"
-              disabled
+              @click="showCreateDialog = true"
             >
               New Project
             </v-btn>
@@ -98,28 +99,37 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Project Creation Dialog -->
+    <ProjectForm
+      v-model="showCreateDialog"
+      @created="handleProjectCreated"
+    />
   </v-container>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
-import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
+import { useCommsProjects } from '@/composables/comms/useCommsProjects'
+import { LOUISIANA_REGIONS as louisianaRegions } from '@/config/louisiana-regions'
 import CommsStats from './CommsStats.vue'
 import CommsFilters from './CommsFilters.vue'
 import ProjectList from './projects/ProjectList.vue'
+import ProjectForm from './projects/ProjectForm.vue'
 
 // Composables
-const { canCreateCommsProjects } = usePermissions()
+const { hasPermission } = usePermissions()
+const projectsComposable = useCommsProjects()
 
 // State
+const showCreateDialog = ref(false)
 const filters = ref({
   region: null,
   status: null,
   priority: null,
   search: ''
 })
-
 const projectStats = ref({
   total: 0,
   byStatus: {},
@@ -128,8 +138,9 @@ const projectStats = ref({
 })
 
 // Computed
-const canCreateProjects = computed(() => canCreateCommsProjects.value)
-const louisianaRegions = computed(() => LOUISIANA_REGIONS)
+const canCreateProjects = computed(() => 
+  hasPermission('create_comms_projects')
+)
 
 // Methods
 function handleFilterUpdate(newFilters) {
@@ -137,18 +148,25 @@ function handleFilterUpdate(newFilters) {
 }
 
 function handleProjectSelect(project) {
-  // TODO: Navigate to project detail view (Phase 6)
-  console.log('Selected project:', project)
+  console.log('Project selected:', project)
+  // Will be implemented in Phase 6
 }
 
 function handleStatsUpdate(stats) {
-  projectStats.value = stats
+  projectStats.value = { ...stats }
+}
+
+async function handleProjectCreated(projectData) {
+  try {
+    await projectsComposable.createProject(projectData)
+    // Dialog will close automatically on success
+  } catch (error) {
+    console.error('Failed to create project:', error)
+    // Error is already shown by the composable
+  }
 }
 </script>
 
 <style scoped>
-/* Custom styles following Louisiana Department of Health brand */
-.text-primary {
-  color: rgb(0, 45, 98) !important; /* LDH Navy Blue */
-}
+/* No custom styles needed */
 </style>
