@@ -1,0 +1,80 @@
+/* client/src/assets/styles/comms-fixes.css */
+/* Global fixes for Communications Dashboard components */
+
+/* Fix for v-select components using object items */
+.v-select .v-select__selection {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure v-select shows correct selected text when using item-title/item-value */
+.v-select .v-field__input {
+  align-items: center;
+}
+
+/* Fix for combobox tags overlap */
+.v-combobox--multiple .v-field__input {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  align-items: center !important;
+  min-height: 52px !important;
+}
+
+.v-combobox--multiple .v-combobox__selection {
+  position: relative !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* Ensure chips in combobox don't overlap with input text */
+.v-combobox--chips .v-chip {
+  margin: 2px !important;
+}
+
+.v-combobox--chips input {
+  margin: 4px !important;
+  min-width: 80px !important;
+}
+
+/* Fix for select dropdown text visibility */
+.v-select .v-select__selection-text {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Prevent double text rendering in selects */
+.v-select .v-field__input > input {
+  display: none !important;
+}
+
+/* Communications dashboard specific select styling */
+.create-project-dialog .v-select .v-field__input {
+  padding-right: 32px !important; /* Space for dropdown arrow */
+}
+
+/* Ensure hint text doesn't overlap with fields */
+.text-field-spaced .v-messages {
+  margin-top: 4px !important;
+}
+
+/* Global fix for v-select using objects - Force proper text display */
+.v-select .v-select__selection {
+  display: flex !important;
+  align-items: center !important;
+  max-width: 100% !important;
+}
+
+/* Ensure selection text is visible and properly styled */
+.v-select .v-select__selection-text,
+.v-select .v-select__selection span {
+  display: inline-block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  max-width: 100% !important;
+}

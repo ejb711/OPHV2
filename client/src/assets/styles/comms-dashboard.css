@@ -1,0 +1,130 @@
+/* client/src/assets/styles/comms-dashboard.css */
+/* Communications Dashboard Specific Styles */
+
+/* ===========================================
+   V-COMBOBOX FIXES FOR TAGS
+   =========================================== */
+
+/* Prevent object data from displaying in combobox */
+.comms-tags-field .v-combobox__selection-text {
+  display: none !important;
+}
+
+/* Ensure only chips are visible in the combobox */
+.comms-tags-field .v-field__input {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  align-items: center !important;
+  padding: 8px !important;
+}
+
+/* Hide any raw text that's not in a chip */
+.comms-tags-field .v-combobox__selection {
+  display: none !important;
+}
+
+/* Only show the chips */
+.comms-tags-field .v-chip {
+  display: inline-flex !important;
+}
+
+/* Style the input area properly */
+.comms-tags-field input {
+  flex: 1 1 auto !important;
+  min-width: 50px !important;
+  max-width: 100% !important;
+}
+
+/* ===========================================
+   V-SELECT VISIBILITY DROPDOWN FIXES
+   =========================================== */
+
+/* Ensure selection text is visible */
+.create-project-dialog .v-select .v-select__selection {
+  display: flex !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Make sure the selection slot content is visible */
+.create-project-dialog .v-select .v-select__selection span {
+  display: inline-block !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Remove any duplicate text nodes */
+.create-project-dialog .v-select .v-select__selection-text {
+  display: none !important;
+}
+
+/* ===========================================
+   GENERAL FORM FIELD ENHANCEMENTS
+   =========================================== */
+
+/* Consistent field heights for project form */
+.create-project-dialog .v-field--variant-outlined .v-field__outline {
+  color: rgba(0, 0, 0, 0.38) !important;
+}
+
+.create-project-dialog .v-field--focused .v-field__outline {
+  color: rgb(25, 118, 210) !important;
+}
+
+/* Fix label colors for better visibility */
+.create-project-dialog .v-label {
+  color: rgba(0, 0, 0, 0.6) !important;
+  font-size: 0.875rem !important;
+}
+
+.create-project-dialog .v-field--focused .v-label {
+  color: rgb(25, 118, 210) !important;
+}
+
+/* ===========================================
+   PROJECT CARD STYLES
+   =========================================== */
+
+.project-card {
+  transition: all 0.3s ease !important;
+}
+
+.project-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ===========================================
+   STEPPER STYLES
+   =========================================== */
+
+.project-form-stepper .v-stepper-item--selected .v-stepper-item__avatar {
+  background-color: rgb(25, 118, 210) !important;
+}
+
+.project-form-stepper .v-stepper-item--complete .v-stepper-item__avatar {
+  background-color: rgb(76, 175, 80) !important;
+}
+
+/* ===========================================
+   RESPONSIVE ADJUSTMENTS
+   =========================================== */
+
+@media (max-width: 599px) {
+  .create-project-dialog {
+    margin: 16px !important;
+  }
+  
+  .create-project-dialog .v-card-title {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  
+  .create-project-dialog .form-container {
+    min-height: 400px !important;
+  }
+}
