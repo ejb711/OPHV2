@@ -38,37 +38,28 @@
     <!-- Statistics Overview -->
     <v-row>
       <v-col cols="12">
-        <CommsStats />
+        <CommsStats :stats="projectStats" />
       </v-col>
     </v-row>
 
     <!-- Filters and Search -->
     <v-row class="mt-4">
       <v-col cols="12">
-        <CommsFilters />
+        <CommsFilters 
+          v-model:filters="filters"
+          @update:filters="handleFilterUpdate"
+        />
       </v-col>
     </v-row>
 
-    <!-- Main Content Area -->
+    <!-- Main Content Area - Project List -->
     <v-row class="mt-6">
       <v-col cols="12">
-        <v-card>
-          <v-card-text class="text-center py-12">
-            <v-icon
-              size="64"
-              color="grey-lighten-1"
-              class="mb-4"
-            >
-              mdi-folder-open-outline
-            </v-icon>
-            <h3 class="text-h6 text-medium-emphasis">
-              Projects will appear here
-            </h3>
-            <p class="text-body-2 text-disabled mt-2">
-              Once projects are created, they'll be displayed in this area
-            </p>
-          </v-card-text>
-        </v-card>
+        <ProjectList 
+          :filters="filters"
+          @select-project="handleProjectSelect"
+          @update:stats="handleStatsUpdate"
+        />
       </v-col>
     </v-row>
 
@@ -81,18 +72,28 @@
             Louisiana Health Regions
           </v-card-title>
           <v-card-text>
-            <v-chip-group>
-              <v-chip
-                v-for="region in regions"
-                :key="region.id"
-                :color="region.color"
-                variant="flat"
-                size="small"
-                class="text-white"
+            <v-row>
+              <v-col 
+                v-for="(region, key) in louisianaRegions" 
+                :key="key"
+                cols="12" 
+                sm="6" 
+                md="4"
               >
-                {{ region.shortName }}
-              </v-chip>
-            </v-chip-group>
+                <div class="d-flex align-center gap-2">
+                  <v-chip 
+                    :color="region.color" 
+                    size="small"
+                    variant="flat"
+                  >
+                    {{ region.name }}
+                  </v-chip>
+                  <span class="text-caption text-medium-emphasis">
+                    {{ region.parishes.length }} parishes
+                  </span>
+                </div>
+              </v-col>
+            </v-row>
           </v-card-text>
         </v-card>
       </v-col>
@@ -101,25 +102,53 @@
 </template>
 
 <script setup>
-import CommsStats from './CommsStats.vue'
-import CommsFilters from './CommsFilters.vue'
+import { ref, computed } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
-import { computed } from 'vue'
+import CommsStats from './CommsStats.vue'
+import CommsFilters from './CommsFilters.vue'
+import ProjectList from './projects/ProjectList.vue'
 
-const { hasPermission } = usePermissions()
+// Composables
+const { canCreateCommsProjects } = usePermissions()
 
-// Check permissions
-const canCreateProjects = computed(() => hasPermission('create_comms_projects'))
+// State
+const filters = ref({
+  region: null,
+  status: null,
+  priority: null,
+  search: ''
+})
 
-// Convert regions object to array for display
-const regions = computed(() => 
-  Object.values(LOUISIANA_REGIONS).sort((a, b) => a.id.localeCompare(b.id))
-)
+const projectStats = ref({
+  total: 0,
+  byStatus: {},
+  byPriority: {},
+  byRegion: {}
+})
+
+// Computed
+const canCreateProjects = computed(() => canCreateCommsProjects.value)
+const louisianaRegions = computed(() => LOUISIANA_REGIONS)
+
+// Methods
+function handleFilterUpdate(newFilters) {
+  filters.value = { ...newFilters }
+}
+
+function handleProjectSelect(project) {
+  // TODO: Navigate to project detail view (Phase 6)
+  console.log('Selected project:', project)
+}
+
+function handleStatsUpdate(stats) {
+  projectStats.value = stats
+}
 </script>
 
 <style scoped>
-.gap-2 > * + * {
-  margin-left: 8px;
+/* Custom styles following Louisiana Department of Health brand */
+.text-primary {
+  color: rgb(0, 45, 98) !important; /* LDH Navy Blue */
 }
 </style>

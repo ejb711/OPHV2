@@ -3,26 +3,20 @@
     <!-- Total Projects -->
     <v-col cols="12" sm="6" md="3">
       <v-card>
-        <v-card-text class="d-flex align-center">
-          <div class="flex-grow-1">
-            <div class="text-caption text-medium-emphasis">
-              Total Projects
+        <v-card-text class="pb-2">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <p class="text-caption text-medium-emphasis mb-1">
+                Total Projects
+              </p>
+              <p class="text-h4 font-weight-bold">
+                {{ stats.total || 0 }}
+              </p>
             </div>
-            <div class="text-h5 font-weight-bold mt-1">
-              {{ stats.totalProjects }}
-            </div>
-            <div class="text-caption text-success mt-1">
-              <v-icon size="x-small">mdi-trending-up</v-icon>
-              +{{ stats.projectsThisMonth }} this month
-            </div>
+            <v-avatar color="primary" variant="tonal">
+              <v-icon>mdi-folder-multiple</v-icon>
+            </v-avatar>
           </div>
-          <v-avatar
-            color="primary"
-            size="48"
-            variant="tonal"
-          >
-            <v-icon>mdi-folder-outline</v-icon>
-          </v-avatar>
         </v-card-text>
       </v-card>
     </v-col>
@@ -30,77 +24,62 @@
     <!-- Active Projects -->
     <v-col cols="12" sm="6" md="3">
       <v-card>
-        <v-card-text class="d-flex align-center">
-          <div class="flex-grow-1">
-            <div class="text-caption text-medium-emphasis">
-              Active Projects
+        <v-card-text class="pb-2">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <p class="text-caption text-medium-emphasis mb-1">
+                Active Projects
+              </p>
+              <p class="text-h4 font-weight-bold">
+                {{ activeProjects }}
+              </p>
             </div>
-            <div class="text-h5 font-weight-bold mt-1">
-              {{ stats.activeProjects }}
-            </div>
-            <div class="text-caption text-warning mt-1">
-              {{ stats.pendingApproval }} pending approval
-            </div>
+            <v-avatar color="amber" variant="tonal">
+              <v-icon>mdi-progress-clock</v-icon>
+            </v-avatar>
           </div>
-          <v-avatar
-            color="success"
-            size="48"
-            variant="tonal"
-          >
-            <v-icon>mdi-progress-clock</v-icon>
-          </v-avatar>
         </v-card-text>
       </v-card>
     </v-col>
 
-    <!-- Regions Covered -->
+    <!-- Pending Approval -->
     <v-col cols="12" sm="6" md="3">
       <v-card>
-        <v-card-text class="d-flex align-center">
-          <div class="flex-grow-1">
-            <div class="text-caption text-medium-emphasis">
-              Regions Active
+        <v-card-text class="pb-2">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <p class="text-caption text-medium-emphasis mb-1">
+                Pending Approval
+              </p>
+              <p class="text-h4 font-weight-bold">
+                {{ pendingProjects }}
+              </p>
             </div>
-            <div class="text-h5 font-weight-bold mt-1">
-              {{ stats.regionsActive }}/9
-            </div>
-            <div class="text-caption text-info mt-1">
-              {{ stats.regionsPercentage }}% coverage
-            </div>
+            <v-avatar color="orange" variant="tonal">
+              <v-icon>mdi-clock-alert</v-icon>
+            </v-avatar>
           </div>
-          <v-avatar
-            color="info"
-            size="48"
-            variant="tonal"
-          >
-            <v-icon>mdi-map-marker-radius</v-icon>
-          </v-avatar>
         </v-card-text>
       </v-card>
     </v-col>
 
-    <!-- Coordinators -->
+    <!-- Completed This Month -->
     <v-col cols="12" sm="6" md="3">
       <v-card>
-        <v-card-text class="d-flex align-center">
-          <div class="flex-grow-1">
-            <div class="text-caption text-medium-emphasis">
-              Coordinators
+        <v-card-text class="pb-2">
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <p class="text-caption text-medium-emphasis mb-1">
+                Completed
+              </p>
+              <p class="text-h4 font-weight-bold">
+                {{ completedProjects }}
+              </p>
             </div>
-            <div class="text-h5 font-weight-bold mt-1">
-              {{ stats.totalCoordinators }}
-            </div>
-            <div class="text-caption text-secondary mt-1">
-              {{ stats.avgProjectsPerCoordinator }} avg projects
-            </div>
+            <v-avatar color="green" variant="tonal">
+              <v-icon>mdi-check-circle</v-icon>
+            </v-avatar>
           </div>
-          <v-avatar
-            color="secondary"
-            size="48"
-            variant="tonal"
-          >
-            <v-icon>mdi-account-group-outline</v-icon>
-          </v-avatar>
         </v-card-text>
       </v-card>
     </v-col>
@@ -108,17 +87,34 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed } from 'vue'
 
-// Placeholder statistics - will be replaced with real data in Phase 10
-const stats = ref({
-  totalProjects: 0,
-  projectsThisMonth: 0,
-  activeProjects: 0,
-  pendingApproval: 0,
-  regionsActive: 0,
-  regionsPercentage: 0,
-  totalCoordinators: 0,
-  avgProjectsPerCoordinator: 0
+// Props
+const props = defineProps({
+  stats: {
+    type: Object,
+    default: () => ({
+      total: 0,
+      byStatus: {},
+      byPriority: {},
+      byRegion: {}
+    })
+  }
+})
+
+// Computed
+const activeProjects = computed(() => {
+  const activeStatuses = ['in_progress', 'planning', 'review']
+  return activeStatuses.reduce((sum, status) => {
+    return sum + (props.stats.byStatus[status] || 0)
+  }, 0)
+})
+
+const pendingProjects = computed(() => {
+  return props.stats.byStatus['pending_approval'] || 0
+})
+
+const completedProjects = computed(() => {
+  return props.stats.byStatus['completed'] || 0
 })
 </script>
