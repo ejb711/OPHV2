@@ -1,50 +1,72 @@
-<!-- client/src/components/comms/coordinators/CoordinatorSelect.vue -->
 <template>
   <v-select
     v-model="selectedCoordinator"
     :items="coordinatorItems"
     :label="label"
     :rules="rules"
+    :disabled="disabled"
     :loading="loading"
-    :disabled="disabled || loading"
+    :clearable="clearable"
+    :required="required"
+    density="default"
     variant="outlined"
-    density="comfortable"
-    item-title="displayName"
     item-value="id"
-    :placeholder="placeholderText"
-    clearable
-    hide-details="auto"
+    item-title="displayName"
+    no-data-text="No coordinators available"
   >
-    <template v-slot:prepend-inner>
-      <v-icon color="primary">mdi-account-tie</v-icon>
-    </template>
-    
-    <template v-slot:item="{ props, item }">
-      <v-list-item v-bind="props" class="coordinator-item">
+    <template v-slot:item="{ item, props: itemProps }">
+      <v-list-item 
+        v-bind="itemProps"
+        class="coordinator-item"
+      >
         <template v-slot:prepend>
-          <v-avatar size="32" color="primary" variant="tonal">
-            <v-icon size="18">mdi-account</v-icon>
+          <v-avatar size="32" color="primary">
+            <span class="text-subtitle-2">
+              {{ (item.raw.displayName || item.raw.email || '?').charAt(0).toUpperCase() }}
+            </span>
           </v-avatar>
         </template>
         
-        <v-list-item-title class="font-weight-medium">
-          {{ item.raw.displayName }}
-          <v-chip
-            v-if="item.raw.isPrimary"
-            size="x-small"
-            color="primary"
-            variant="tonal"
-            class="ml-2"
-          >
-            Primary
-          </v-chip>
-        </v-list-item-title>
+        <template v-slot:subtitle>
+          <div class="d-flex align-center gap-2 mt-1">
+            <span class="text-body-2">{{ item.raw.email }}</span>
+            
+            <!-- Default coordinator indicator -->
+            <v-chip 
+              v-if="item.raw.isPrimary"
+              size="x-small"
+              color="primary"
+              variant="tonal"
+            >
+              Default
+            </v-chip>
+            
+            <!-- Warning for non-region coordinators -->
+            <v-tooltip 
+              v-if="!item.raw.isForCurrentRegion && props.region"
+              location="top"
+            >
+              <template v-slot:activator="{ props: tooltipProps }">
+                <v-icon
+                  v-bind="tooltipProps"
+                  size="small"
+                  color="warning"
+                >
+                  mdi-alert-circle-outline
+                </v-icon>
+              </template>
+              <span>Not assigned to selected region</span>
+            </v-tooltip>
+          </div>
+          
+          <!-- Region coverage -->
+          <div v-if="item.raw.regions.length > 0" class="text-caption mt-1">
+            <span class="text-grey-darken-1">Regions: </span>
+            <span class="text-grey-darken-2">{{ item.raw.regionNames }}</span>
+          </div>
+        </template>
         
-        <v-list-item-subtitle class="text-body-2">
-          {{ item.raw.email }}
-        </v-list-item-subtitle>
-        
-        <!-- Show additional regions if coordinator covers multiple -->
+        <!-- Additional regions indicator -->
         <template v-slot:append v-if="item.raw.additionalRegions">
           <v-tooltip location="top">
             <template v-slot:activator="{ props: tooltipProps }">
@@ -81,6 +103,17 @@
         </v-list-item-title>
       </v-list-item>
     </template>
+    
+    <!-- Non-default selection warning -->
+    <template v-slot:append-item v-if="showNonDefaultWarning">
+      <v-divider v-if="!autoSelected" class="mt-2"></v-divider>
+      <v-list-item class="text-caption text-center py-2" style="min-height: 36px;">
+        <v-list-item-title class="text-warning text-body-2">
+          <v-icon size="14" class="mr-1" color="warning">mdi-alert</v-icon>
+          Non-default coordinator selected for this region
+        </v-list-item-title>
+      </v-list-item>
+    </template>
   </v-select>
 </template>
 
@@ -112,14 +145,22 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  clearable: {
+    type: Boolean,
+    default: false
+  },
   autoSelect: {
     type: Boolean,
     default: true
+  },
+  required: {
+    type: Boolean,
+    default: false
   }
 })
 
 // Emits
-const emit = defineEmits(['update:modelValue', 'coordinator-auto-selected'])
+const emit = defineEmits(['update:modelValue', 'coordinator-auto-selected', 'non-default-selected', 'default-selected'])
 
 // State
 const loading = ref(false)
@@ -130,91 +171,140 @@ const autoSelected = ref(false)
 const selectedCoordinator = computed({
   get: () => props.modelValue,
   set: (value) => {
-    // Only clear auto-selected flag if user manually changed selection
-    if (value !== props.modelValue) {
-      autoSelected.value = false
+    const previousValue = props.modelValue
+    
+    // Check if user is selecting a coordinator
+    if (value && props.region) {
+      const selectedCoord = coordinators.value.find(c => c.id === value)
+      const defaultCoord = getDefaultCoordinatorForRegion(props.region)
+      
+      if (selectedCoord && defaultCoord) {
+        if (selectedCoord.id !== defaultCoord.id) {
+          // User selected a non-default coordinator
+          autoSelected.value = false
+          emit('non-default-selected', {
+            coordinatorId: value,
+            coordinator: selectedCoord,
+            defaultCoordinator: defaultCoord,
+            region: props.region
+          })
+        } else if (previousValue !== value) {
+          // User selected the default coordinator (clear any non-default notification)
+          autoSelected.value = false
+          emit('default-selected', {
+            coordinatorId: value,
+            coordinator: selectedCoord,
+            region: props.region
+          })
+        }
+      }
     }
+    
     emit('update:modelValue', value)
   }
 })
 
 const coordinatorItems = computed(() => {
-  if (!props.region) {
-    // If no region selected, show all coordinators
-    return coordinators.value.map(coord => ({
+  const items = coordinators.value.map(coord => {
+    const isForCurrentRegion = props.region && coord.regions && coord.regions.includes(props.region)
+    const isPrimary = props.region && coord.primaryRegion === props.region
+    
+    // Get region names
+    const regionNames = (coord.regions || [])
+      .map(regionId => {
+        const region = LOUISIANA_REGIONS[regionId]
+        return region ? region.name : regionId
+      })
+      .join(', ')
+    
+    // Get additional regions (regions other than the selected one)
+    const otherRegions = props.region
+      ? coord.regions
+          .filter(regionId => regionId !== props.region)
+          .map(regionId => {
+            const region = LOUISIANA_REGIONS[regionId]
+            return region ? region.name : regionId
+          })
+          .join(', ')
+      : ''
+    
+    return {
       id: coord.id,
       displayName: coord.name || coord.email,
       email: coord.email,
       regions: coord.regions || [],
-      isPrimary: false
-    }))
-  }
+      regionNames: regionNames,
+      isPrimary: isPrimary,
+      isForCurrentRegion: isForCurrentRegion,
+      additionalRegions: otherRegions,
+      sortOrder: getSortOrder(coord, props.region)
+    }
+  })
   
-  // Filter coordinators by selected region and sort by priority
-  const regionCoordinators = coordinators.value
-    .filter(coord => coord.regions && coord.regions.includes(props.region))
-    .sort((a, b) => {
-      // Sort by: primary region first, then by name
-      const aIsPrimary = a.primaryRegion === props.region
-      const bIsPrimary = b.primaryRegion === props.region
-      
-      if (aIsPrimary && !bIsPrimary) return -1
-      if (!aIsPrimary && bIsPrimary) return 1
-      
-      return (a.name || a.email).localeCompare(b.name || b.email)
-    })
-    .map(coord => {
-      const otherRegions = coord.regions
-        .filter(regionId => regionId !== props.region)
-        .map(regionId => {
-          const region = LOUISIANA_REGIONS[regionId]
-          return region ? region.shortName : regionId
-        })
-        .join(', ')
-        
-      return {
-        id: coord.id,
-        displayName: coord.name || coord.email,
-        email: coord.email,
-        regions: coord.regions || [],
-        isPrimary: coord.primaryRegion === props.region,
-        additionalRegions: otherRegions || null
-      }
-    })
-    
-  return regionCoordinators
-})
-
-const placeholderText = computed(() => {
-  if (loading.value) return 'Loading coordinators...'
-  if (!props.region) return 'Select a region first'
-  if (coordinatorItems.value.length === 0) return 'No coordinators available'
-  return 'Select coordinator'
+  // Sort coordinators
+  return items.sort((a, b) => {
+    // First sort by sort order (primary for region, then assigned to region, then others)
+    if (a.sortOrder !== b.sortOrder) {
+      return a.sortOrder - b.sortOrder
+    }
+    // Then sort by name
+    return (a.displayName || a.email).localeCompare(b.displayName || b.email)
+  })
 })
 
 const noDataText = computed(() => {
   if (loading.value) return 'Loading coordinators...'
-  if (!props.region) return 'Please select a region first to see available coordinators'
-  if (coordinatorItems.value.length === 0) return 'No coordinators found for this region'
+  if (!props.region) return 'Please select a region first'
   return 'No coordinators available'
 })
 
+const showNonDefaultWarning = computed(() => {
+  if (!props.region || !selectedCoordinator.value) return false
+  
+  const selectedCoord = coordinators.value.find(c => c.id === selectedCoordinator.value)
+  const defaultCoord = getDefaultCoordinatorForRegion(props.region)
+  
+  return selectedCoord && defaultCoord && selectedCoord.id !== defaultCoord.id && !autoSelected.value
+})
+
 // Methods
+function getSortOrder(coordinator, selectedRegion) {
+  if (!selectedRegion) return 3
+  
+  // Primary coordinator for selected region
+  if (coordinator.primaryRegion === selectedRegion) return 1
+  
+  // Assigned to selected region (but not primary)
+  if (coordinator.regions && coordinator.regions.includes(selectedRegion)) return 2
+  
+  // Not assigned to selected region
+  return 3
+}
+
+function getDefaultCoordinatorForRegion(regionId) {
+  if (!regionId) return null
+  
+  // Find primary coordinator for the region
+  const primaryCoord = coordinators.value.find(c => c.primaryRegion === regionId)
+  if (primaryCoord) return primaryCoord
+  
+  // If no primary, find first coordinator assigned to the region
+  return coordinators.value.find(c => c.regions && c.regions.includes(regionId))
+}
+
 async function fetchCoordinators() {
   loading.value = true
   try {
-    const q = query(
+    const coordinatorsQuery = query(
       collection(db, 'comms_coordinators'),
-      orderBy('name', 'asc')
+      orderBy('name')
     )
-    const snapshot = await getDocs(q)
     
+    const snapshot = await getDocs(coordinatorsQuery)
     coordinators.value = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }))
-    
-    console.log('Loaded coordinators:', coordinators.value.length)
   } catch (error) {
     console.error('Error fetching coordinators:', error)
     coordinators.value = []
@@ -228,19 +318,12 @@ async function autoSelectCoordinator() {
     return
   }
 
-  // Don't auto-select if user already has a valid selection for this region
-  const currentSelection = coordinators.value.find(c => c.id === selectedCoordinator.value)
-  if (currentSelection && currentSelection.regions.includes(props.region)) {
-    console.log('Current coordinator is valid for this region, keeping selection')
-    return
-  }
-
   await nextTick() // Wait for coordinatorItems to update
 
-  // Auto-select the first coordinator (primary region coordinators are sorted first)
-  const defaultCoordinator = coordinatorItems.value[0]
-  if (defaultCoordinator) {
-    console.log(`Auto-selecting coordinator: ${defaultCoordinator.displayName} for region ${props.region}`)
+  // Auto-select the default coordinator for the region
+  const defaultCoordinator = getDefaultCoordinatorForRegion(props.region)
+  if (defaultCoordinator && selectedCoordinator.value !== defaultCoordinator.id) {
+    console.log(`Auto-selecting coordinator: ${defaultCoordinator.name || defaultCoordinator.email} for region ${props.region}`)
     
     emit('update:modelValue', defaultCoordinator.id)
     autoSelected.value = true
@@ -264,19 +347,12 @@ watch(() => props.region, async (newRegion, oldRegion) => {
       return
     }
 
-    // Check if current coordinator is still valid for new region
-    const currentCoord = coordinators.value.find(c => c.id === selectedCoordinator.value)
-    if (currentCoord && currentCoord.regions.includes(newRegion)) {
-      // Current coordinator is still valid, keep them
-      console.log('Current coordinator is still valid for new region')
-      return
-    }
-
-    // Clear invalid selection and auto-select a new coordinator for the region
-    if (currentCoord && !currentCoord.regions.includes(newRegion)) {
-      emit('update:modelValue', '')
-    }
+    // Region changed - clear current selection and auto-select new default
+    emit('update:modelValue', '')
+    autoSelected.value = false
     
+    // Wait for the clear to process, then auto-select
+    await nextTick()
     await autoSelectCoordinator()
   }
 }, { immediate: false })
@@ -292,8 +368,11 @@ watch(coordinators, () => {
 onMounted(async () => {
   await fetchCoordinators()
   
-  // Auto-select coordinator if region is already set
-  if (props.region) {
+  // Wait for coordinators to be processed
+  await nextTick()
+  
+  // Auto-select coordinator if region is already set and no coordinator selected
+  if (props.region && !selectedCoordinator.value) {
     await autoSelectCoordinator()
   }
 })
@@ -322,6 +401,12 @@ onMounted(async () => {
 .v-list-item .text-primary {
   font-size: 0.8rem;
   opacity: 0.8;
+}
+
+/* Style the warning indicator */
+.v-list-item .text-warning {
+  font-size: 0.8rem;
+  opacity: 0.9;
 }
 
 /* Improve tooltip styling */
