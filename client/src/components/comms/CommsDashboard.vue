@@ -54,57 +54,45 @@
     </v-row>
 
     <!-- Main Content Area - Project List -->
-    <v-row class="mt-6">
+    <v-row class="mt-4">
       <v-col cols="12">
         <ProjectList 
           :filters="filters"
-          @select-project="handleProjectSelect"
-          @update:stats="handleStatsUpdate"
+          @select="handleProjectSelect"
+          @stats-update="handleStatsUpdate"
         />
       </v-col>
     </v-row>
 
-    <!-- Louisiana Regions Reference -->
-    <v-row class="mt-6">
-      <v-col cols="12">
-        <v-card variant="outlined">
-          <v-card-title class="text-h6">
-            <v-icon start>mdi-map-marker-multiple</v-icon>
-            Louisiana Health Regions
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col 
-                v-for="(region, key) in louisianaRegions" 
-                :key="key"
-                cols="12" 
-                sm="6" 
-                md="4"
-              >
-                <div class="d-flex align-center gap-2">
-                  <v-chip 
-                    :color="region.color" 
-                    size="small"
-                    variant="flat"
-                  >
-                    {{ region.name }}
-                  </v-chip>
-                  <span class="text-caption text-medium-emphasis">
-                    {{ region.parishes.length }} parishes
-                  </span>
-                </div>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Project Creation Dialog -->
-    <ProjectForm
+    <!-- Create Project Dialog -->
+    <ProjectForm 
       v-model="showCreateDialog"
       @created="handleProjectCreated"
     />
+
+    <!-- Project Detail Dialog -->
+    <ProjectDetail
+      ref="projectDetailRef"
+      @updated="handleProjectUpdated"
+      @deleted="handleProjectDeleted"
+    />
+
+    <!-- Delete Confirmation Snackbar -->
+    <v-snackbar
+      v-model="deleteSnackbar"
+      :color="deleteHard ? 'error' : 'warning'"
+      timeout="5000"
+    >
+      Project {{ deleteHard ? 'permanently deleted' : 'moved to trash' }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="deleteSnackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -117,13 +105,21 @@ import CommsStats from './CommsStats.vue'
 import CommsFilters from './CommsFilters.vue'
 import ProjectList from './projects/ProjectList.vue'
 import ProjectForm from './projects/ProjectForm.vue'
+import ProjectDetail from './projects/ProjectDetail.vue'
 
 // Composables
 const { hasPermission } = usePermissions()
-const projectsComposable = useCommsProjects()
+const { 
+  createProject, 
+  softDeleteProject, 
+  hardDeleteProject 
+} = useCommsProjects()
 
 // State
 const showCreateDialog = ref(false)
+const projectDetailRef = ref(null)
+const deleteSnackbar = ref(false)
+const deleteHard = ref(false)
 const filters = ref({
   region: null,
   status: null,
@@ -149,7 +145,9 @@ function handleFilterUpdate(newFilters) {
 
 function handleProjectSelect(project) {
   console.log('Project selected:', project)
-  // Will be implemented in Phase 6
+  if (projectDetailRef.value) {
+    projectDetailRef.value.open(project.id)
+  }
 }
 
 function handleStatsUpdate(stats) {
@@ -158,11 +156,39 @@ function handleStatsUpdate(stats) {
 
 async function handleProjectCreated(projectData) {
   try {
-    await projectsComposable.createProject(projectData)
+    await createProject(projectData)
     // Dialog will close automatically on success
   } catch (error) {
     console.error('Failed to create project:', error)
     // Error is already shown by the composable
+  }
+}
+
+function handleProjectUpdated(project) {
+  console.log('Project updated:', project)
+  // The list will auto-update due to Firestore listeners
+}
+
+async function handleProjectDeleted(project, hard) {
+  try {
+    // Use project.id to ensure we're passing the correct ID
+    const projectId = project?.id
+    if (!projectId) {
+      console.error('No project ID provided for deletion')
+      return
+    }
+    
+    console.log(`Deleting project ${projectId} (${hard ? 'hard' : 'soft'} delete)`)
+    
+    if (hard) {
+      await hardDeleteProject(projectId)
+    } else {
+      await softDeleteProject(projectId)
+    }
+    deleteHard.value = hard
+    deleteSnackbar.value = true
+  } catch (error) {
+    console.error('Failed to delete project:', error)
   }
 }
 </script>

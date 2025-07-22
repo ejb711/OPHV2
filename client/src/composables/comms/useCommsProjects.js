@@ -1,6 +1,6 @@
 // client/src/composables/comms/useCommsProjects.js
 // Composable for managing Communications Dashboard projects
-// Handles fetching, filtering, creating, and project visibility logic
+// Handles fetching, filtering, creating, updating, and deleting projects
 
 import { ref, computed, watch } from 'vue'
 import { 
@@ -13,6 +13,8 @@ import {
   getDoc,
   getDocs,
   addDoc,
+  updateDoc,
+  deleteDoc,
   serverTimestamp
 } from 'firebase/firestore'
 import { db } from '@/firebase'
@@ -21,13 +23,14 @@ import { usePermissions } from '@/composables/usePermissions'
 import { useAudit } from '@/composables/useAudit'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { getAuth } from 'firebase/auth'
+import { createProjectPermissionChecker } from './commsProjectPermissions'
 
 export function useCommsProjects() {
   console.log('useCommsProjects composable initialized')
   
   const authStore = useAuthStore()
   const auth = getAuth()
-  const { logAction } = useAudit()
+  const { logActivity } = useAudit()
   const { showSuccess, showError } = useSnackbar()
   const { 
     canViewAllRegions, 
@@ -39,6 +42,8 @@ export function useCommsProjects() {
   const projects = ref([])
   const loading = ref(false)
   const creating = ref(false)
+  const updating = ref(false)
+  const deleting = ref(false)
   const error = ref(null)
   const coordinatorRegions = ref([])
   const filters = ref({
@@ -149,52 +154,22 @@ export function useCommsProjects() {
   
   // Methods
   
-  // Check if current user can view a specific project - FIXED
-  function canViewProject(project) {
-    // For system-created projects or when user has full permissions, allow viewing
-    if (canManageComms.value || authStore.isOwner || authStore.isAdmin) {
-      console.log('User has full access (owner/admin/manage_comms)')
-      return true
-    }
-    
-    // If user has view_comms permission and project is public, allow viewing
-    if (project.visibility === 'public' && hasPermission('view_comms')) {
-      console.log('Project is public and user has view_comms')
-      return true
-    }
-    
-    // Check if we have a user ID to do user-specific checks
-    const userId = currentUserId.value
-    if (!userId) {
-      console.log('No user ID available, but checking role-based permissions')
-      // Even without user ID, check if they have general viewing permissions
-      return hasPermission('view_comms') || canViewAllRegions.value
-    }
-    
-    // Creator can always view
-    if (project.createdBy === userId) return true
-    
-    // Explicitly shared with user
-    if (project.sharedWith?.includes(userId)) return true
-    
-    // Regional coordinator can view projects in their regions
-    if (coordinatorRegions.value.includes(project.region)) return true
-    
-    // Can view all regions permission
-    if (canViewAllRegions.value) return true
-    
-    // Team visibility - anyone with view_comms can see
-    if (project.visibility === 'team' && hasPermission('view_comms')) return true
-    
-    // If we get here, user cannot view the project
-    console.log(`User cannot view project "${project.title}"`)
-    return false
-  }
+  // Create permission checker with dependencies
+  const permissionChecker = createProjectPermissionChecker({
+    canViewAllRegions,
+    canManageComms,
+    hasPermission,
+    authStore,
+    currentUserId,
+    currentUserEmail,
+    coordinatorRegions
+  })
   
-  // Load regions where current user is a coordinator
+  const { canViewProject, canEditProject, canDeleteProject } = permissionChecker
+  
+  // Load coordinator regions for current user
   async function loadCoordinatorRegions() {
-    const userId = currentUserId.value
-    if (!userId) {
+    if (!currentUserId.value) {
       console.log('No user ID, skipping coordinator regions load')
       return
     }
@@ -202,13 +177,14 @@ export function useCommsProjects() {
     try {
       const q = query(
         collection(db, 'comms_coordinators'),
-        where('userId', '==', userId)
+        where('userId', '==', currentUserId.value),
+        where('active', '==', true)
       )
+      
       const snapshot = await getDocs(q)
       
       if (!snapshot.empty) {
-        const coordDoc = snapshot.docs[0]
-        coordinatorRegions.value = coordDoc.data().regions || []
+        coordinatorRegions.value = snapshot.docs.map(doc => doc.data().region)
         console.log('User is coordinator for regions:', coordinatorRegions.value)
       } else {
         coordinatorRegions.value = []
@@ -298,7 +274,7 @@ export function useCommsProjects() {
       const docRef = await addDoc(collection(db, 'comms_projects'), newProject)
       
       // Log the action
-      await logAction('create_comms_project', {
+      await logActivity('create_comms_project', {
         projectId: docRef.id,
         projectTitle: projectData.title,
         region: projectData.region
@@ -314,6 +290,164 @@ export function useCommsProjects() {
       throw error
     } finally {
       creating.value = false
+    }
+  }
+
+  // Update an existing project
+  async function updateProject(projectId, updates) {
+    updating.value = true
+    error.value = null
+    
+    try {
+      // Fetch the project directly from Firestore to check permissions
+      const project = await getProject(projectId)
+
+      if (!canEditProject(project)) {
+        throw new Error('You do not have permission to edit this project')
+      }
+
+      // Prepare update data
+      const updateData = {
+        ...updates,
+        updatedAt: serverTimestamp(),
+        updatedBy: currentUserId.value,
+        updatedByEmail: currentUserEmail.value
+      }
+
+      // Remove fields that shouldn't be updated directly
+      delete updateData.id
+      delete updateData.createdAt
+      delete updateData.createdBy
+      delete updateData.createdByEmail
+
+      // Update in Firestore
+      console.log('Updating project in Firestore:', projectId, updateData)
+      await updateDoc(doc(db, 'comms_projects', projectId), updateData)
+
+      // Log the action
+      await logActivity('update_comms_project', {
+        projectId,
+        projectTitle: project.title,
+        updates: Object.keys(updates)
+      })
+
+      showSuccess('Project updated successfully')
+      
+      return true
+    } catch (error) {
+      console.error('Error updating project:', error)
+      error.value = error.message
+      showError(error.message || 'Failed to update project')
+      throw error
+    } finally {
+      updating.value = false
+    }
+  }
+
+  // Soft delete a project
+  async function softDeleteProject(projectId) {
+    console.log('Soft delete requested for project:', projectId)
+    return deleteProject(projectId, false)
+  }
+
+  // Hard delete a project (admin only)
+  async function hardDeleteProject(projectId) {
+    console.log('Hard delete requested for project:', projectId)
+    return deleteProject(projectId, true)
+  }
+
+  // Delete a project (soft or hard)
+  async function deleteProject(projectId, hard = false) {
+    deleting.value = true
+    error.value = null
+    
+    try {
+      // Fetch the project directly from Firestore to ensure we have it
+      const project = await getProject(projectId)
+      
+      if (!canDeleteProject(project)) {
+        throw new Error('You do not have permission to delete this project')
+      }
+
+      if (hard) {
+        // Hard delete - only for admins
+        if (!canManageComms.value) {
+          throw new Error('Only administrators can permanently delete projects')
+        }
+
+        // Delete from Firestore
+        await deleteDoc(doc(db, 'comms_projects', projectId))
+
+        // Log the action
+        await logActivity('hard_delete_comms_project', {
+          projectId,
+          projectTitle: project.title
+        })
+
+        showSuccess('Project permanently deleted')
+      } else {
+        // Soft delete - mark as deleted
+        const updateData = {
+          deleted: true,
+          deletedAt: serverTimestamp(),
+          deletedBy: currentUserId.value,
+          deletedByEmail: currentUserEmail.value
+        }
+        
+        console.log('Soft deleting project:', projectId, updateData)
+        await updateDoc(doc(db, 'comms_projects', projectId), updateData)
+
+        // Log the action
+        await logActivity('soft_delete_comms_project', {
+          projectId,
+          projectTitle: project.title
+        })
+
+        showSuccess('Project deleted successfully')
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      error.value = error.message
+      showError(error.message || 'Failed to delete project')
+      throw error
+    } finally {
+      deleting.value = false
+    }
+  }
+
+  // Get a single project by ID
+  async function getProject(projectId) {
+    try {
+      const docRef = doc(db, 'comms_projects', projectId)
+      const docSnap = await getDoc(docRef)
+      
+      if (!docSnap.exists()) {
+        console.error('Project document does not exist:', projectId)
+        throw new Error('Project not found')
+      }
+      
+      const project = {
+        id: docSnap.id,
+        ...docSnap.data(),
+        createdAt: docSnap.data().createdAt?.toDate(),
+        updatedAt: docSnap.data().updatedAt?.toDate(),
+        deadline: docSnap.data().deadline?.toDate(),
+        completedAt: docSnap.data().completedAt?.toDate()
+      }
+      
+      console.log('Fetched project:', project.title, 'ID:', project.id)
+      
+      if (!canViewProject(project)) {
+        console.error('User does not have permission to view project:', projectId)
+        throw new Error('You do not have permission to view this project')
+      }
+      
+      return project
+    } catch (error) {
+      console.error('Error fetching project:', error)
+      throw error
     }
   }
   
@@ -354,11 +488,14 @@ export function useCommsProjects() {
   return {
     // State
     projects: visibleProjects,
+    allProjects: projects, // Raw projects for debugging
     loading,
     creating,
+    updating,
+    deleting,
     error,
     filters,
-    coordinatorRegions, // Add this for debugging
+    coordinatorRegions,
     
     // Computed
     projectsByRegion,
@@ -368,8 +505,14 @@ export function useCommsProjects() {
     // Methods
     initialize,
     createProject,
+    updateProject,
+    softDeleteProject,
+    hardDeleteProject,
+    getProject,
     setFilter,
     clearFilters,
-    canViewProject
+    canViewProject,
+    canEditProject,
+    canDeleteProject
   }
 }

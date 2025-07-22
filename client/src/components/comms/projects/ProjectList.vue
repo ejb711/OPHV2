@@ -1,57 +1,35 @@
+<!-- client/src/components/comms/projects/ProjectList.vue -->
 <template>
   <div class="project-list">
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-8">
-      <v-progress-circular
-        indeterminate
-        color="primary"
-        size="48"
-      />
-      <p class="text-medium-emphasis mt-4">Loading projects...</p>
+      <v-progress-circular indeterminate color="primary" />
+      <p class="text-body-2 mt-4 text-medium-emphasis">Loading projects...</p>
     </div>
 
     <!-- Error State -->
-    <v-alert
-      v-else-if="error"
-      type="error"
-      variant="tonal"
-      class="mb-4"
-    >
-      <strong>Error loading projects:</strong> {{ error }}
+    <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">
+      {{ error }}
     </v-alert>
 
     <!-- Empty State -->
-    <v-card
-      v-else-if="projects.length === 0"
-      class="text-center py-12"
-    >
-      <v-icon
-        size="64"
-        color="grey-lighten-1"
-        class="mb-4"
-      >
-        mdi-folder-open-outline
-      </v-icon>
-      <h3 class="text-h6 text-medium-emphasis">
-        No projects found
-      </h3>
-      <p class="text-body-2 text-disabled mt-2">
-        {{ filters.search || filters.region || filters.status || filters.priority 
-          ? 'Try adjusting your filters' 
-          : 'Create your first project to get started' }}
-      </p>
+    <v-card v-else-if="!projects.length" variant="outlined" class="text-center py-12">
+      <v-card-text>
+        <v-icon size="64" color="grey-lighten-1" class="mb-4">
+          mdi-folder-open-outline
+        </v-icon>
+        <h3 class="text-h6 mb-2">No Projects Found</h3>
+        <p class="text-body-2 text-medium-emphasis">
+          {{ hasFilters ? 'Try adjusting your filters' : 'Create your first project to get started' }}
+        </p>
+      </v-card-text>
     </v-card>
 
-    <!-- Project Grid -->
-    <div v-else>
+    <!-- Projects Grid/List -->
+    <template v-else>
       <!-- View Toggle -->
       <div class="d-flex justify-end mb-4">
-        <v-btn-toggle
-          v-model="viewMode"
-          mandatory
-          density="compact"
-          variant="outlined"
-        >
+        <v-btn-toggle v-model="viewMode" mandatory density="compact">
           <v-btn value="grid" icon="mdi-view-grid" />
           <v-btn value="list" icon="mdi-view-list" />
         </v-btn-toggle>
@@ -64,11 +42,14 @@
           :key="project.id"
           cols="12"
           sm="6"
-          lg="4"
+          md="4"
+          lg="3"
         >
-          <ProjectCard
-            :project="project"
-            @click="$emit('select-project', project)"
+          <ProjectCard 
+            :project="project" 
+            @view="handleProjectClick"
+            @edit="handleProjectEdit"
+            @delete="handleProjectDelete"
           />
         </v-col>
       </v-row>
@@ -77,17 +58,14 @@
       <v-list v-else lines="two" class="bg-transparent">
         <template v-for="(project, index) in projects" :key="project.id">
           <v-list-item
-            @click="$emit('select-project', project)"
-            class="px-0"
+            @click="handleProjectClick(project)"
+            :prepend-icon="getPriorityIcon(project.priority)"
+            :class="{ 'text-error': project.priority === 'high' }"
           >
             <template v-slot:prepend>
-              <v-avatar
-                :color="getStatusColor(project.status)"
-                size="40"
-                class="text-white font-weight-bold"
-              >
-                {{ project.title.charAt(0).toUpperCase() }}
-              </v-avatar>
+              <v-icon :color="project.priority === 'high' ? 'error' : ''">
+                {{ getPriorityIcon(project.priority) }}
+              </v-icon>
             </template>
 
             <v-list-item-title class="font-weight-medium">
@@ -95,27 +73,24 @@
             </v-list-item-title>
             
             <v-list-item-subtitle>
-              <div class="d-flex align-center gap-2 flex-wrap mt-1">
-                <RegionBadge :region="project.region" size="small" />
-                <StatusBadge :status="project.status" size="small" />
-                <span v-if="project.priority" class="text-caption">
-                  <v-icon size="x-small" :color="getPriorityColor(project.priority)">
-                    mdi-flag
-                  </v-icon>
-                  {{ project.priority }}
+              <div class="d-flex align-center gap-2">
+                <StatusBadge :status="project.status" small />
+                <RegionBadge :region="project.region" small />
+                <span class="text-caption text-medium-emphasis">
+                  {{ formatDate(project.createdAt) }}
                 </span>
                 <span v-if="project.deadline" class="text-caption">
-                  <v-icon size="x-small">mdi-calendar</v-icon>
-                  {{ formatDate(project.deadline) }}
+                  • Due: {{ formatDate(project.deadline) }}
                 </span>
               </div>
             </v-list-item-subtitle>
 
             <template v-slot:append>
-              <v-btn
-                variant="text"
-                icon="mdi-chevron-right"
-                size="small"
+              <ProjectActions
+                :project="project"
+                :hide-edit="true"
+                :hide-delete="true"
+                :show-more="false"
               />
             </template>
           </v-list-item>
@@ -123,14 +98,15 @@
           <v-divider v-if="index < projects.length - 1" />
         </template>
       </v-list>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import ProjectCard from './ProjectCard.vue'
+import ProjectActions from './ProjectActions.vue'
 import StatusBadge from '../shared/StatusBadge.vue'
 import RegionBadge from '../shared/RegionBadge.vue'
 
@@ -138,118 +114,97 @@ import RegionBadge from '../shared/RegionBadge.vue'
 const props = defineProps({
   filters: {
     type: Object,
-    default: () => ({})
+    default: () => ({
+      region: null,
+      status: null,
+      priority: null,
+      search: ''
+    })
   }
 })
 
 // Emits
-const emit = defineEmits(['select-project', 'update:stats'])
+const emit = defineEmits(['select', 'statsUpdate'])
 
 // Composables
+const commsProjects = useCommsProjects()
 const { 
   projects, 
   loading, 
   error, 
   projectStats,
-  filters,
   initialize,
-  setFilter
-} = useCommsProjects()
+  setFilter,
+  clearFilters
+} = commsProjects
 
 // State
 const viewMode = ref('grid')
 let unsubscribe = null
 
+// Computed
+const hasFilters = computed(() => {
+  return props.filters.region || 
+         props.filters.status || 
+         props.filters.priority || 
+         props.filters.search
+})
+
 // Methods
-function getStatusColor(status) {
-  const colors = {
-    'not_started': 'grey',
-    'planning': 'blue',
-    'in_progress': 'amber',
-    'review': 'orange',
-    'approved': 'green',
-    'completed': 'teal',
-    'on_hold': 'red',
-    'cancelled': 'grey-darken-2'
-  }
-  return colors[status] || 'grey'
+function handleProjectClick(project) {
+  emit('select', project)
 }
 
-function getPriorityColor(priority) {
-  const colors = {
-    'low': 'blue',
-    'medium': 'orange', 
-    'high': 'red',
-    'urgent': 'red-darken-2'
+function handleProjectEdit(project) {
+  emit('select', project)
+}
+
+function handleProjectDelete(project) {
+  emit('select', project)
+}
+
+function getPriorityIcon(priority) {
+  switch (priority) {
+    case 'high': return 'mdi-alert-circle'
+    case 'normal': return 'mdi-circle-medium'
+    case 'low': return 'mdi-circle-outline'
+    default: return 'mdi-circle-outline'
   }
-  return colors[priority] || 'grey'
 }
 
 function formatDate(date) {
   if (!date) return ''
-  return new Intl.DateTimeFormat('en-US', { 
-    month: 'short', 
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
     day: 'numeric',
     year: 'numeric'
   }).format(date)
 }
 
-// Watch for external filter changes
-const watchFilters = () => {
-  if (props.filters.region !== undefined) {
-    setFilter('region', props.filters.region)
-  }
-  if (props.filters.status !== undefined) {
-    setFilter('status', props.filters.status)
-  }
-  if (props.filters.priority !== undefined) {
-    setFilter('priority', props.filters.priority)
-  }
-  if (props.filters.search !== undefined) {
-    setFilter('search', props.filters.search)
-  }
-}
-
-// Watch for stats changes and emit them
-watch(projectStats, (newStats) => {
-  console.log('Project stats updated:', newStats)
-  emit('update:stats', newStats)
+// Watch for filter changes
+watch(() => props.filters, (newFilters) => {
+  console.log('Filters changed:', newFilters)
+  
+  // Apply each filter
+  Object.entries(newFilters).forEach(([key, value]) => {
+    setFilter(key, value)
+  })
 }, { deep: true })
 
-// Watch for project changes to update stats
-watch(projects, (newProjects) => {
-  console.log('Projects updated, count:', newProjects.length)
-  // Emit stats whenever projects change
-  if (newProjects.length > 0) {
-    emit('update:stats', projectStats.value)
-  }
-}, { immediate: true })
+// Watch for stats changes
+watch(projectStats, (newStats) => {
+  console.log('Stats updated:', newStats)
+  emit('statsUpdate', newStats)
+}, { deep: true })
 
 // Lifecycle
 onMounted(async () => {
-  console.log('ProjectList mounted')
-  
-  // Add a delay to ensure auth is ready
-  setTimeout(async () => {
-    loading.value = true
-    try {
-      // Use initialize directly (not projectsComposable.initialize)
-      unsubscribe = await initialize()
-      console.log('Projects initialized')
-    } catch (error) {
-      console.error('Failed to initialize projects:', error)
-    } finally {
-      loading.value = false
-    }
-  }, 1500) // 1.5 second delay
-  
-  // Also watch filters after delay
-  setTimeout(() => {
-    watchFilters()
-  }, 1600)
+  console.log('ProjectList mounted, initializing...')
+  unsubscribe = await initialize()
 })
 
 onUnmounted(() => {
+  console.log('ProjectList unmounting, cleaning up...')
   if (unsubscribe) {
     unsubscribe()
   }
@@ -259,5 +214,18 @@ onUnmounted(() => {
 <style scoped>
 .project-list {
   min-height: 400px;
+}
+
+.v-list-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.v-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.v-theme--dark .v-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 </style>
