@@ -154,8 +154,17 @@ const step3Valid = ref(true)
 
 // Form data
 const formData = ref({
-  title: '', description: '', region: '', coordinator: '', priority: 'normal',
-  deadline: null, stages: [], visibility: 'coordinator', tags: [], enableForum: true, templateId: null
+  title: '', 
+  description: '', 
+  region: '', 
+  coordinator: '', 
+  priority: 'normal',
+  deadline: null, 
+  stages: [], 
+  visibility: 'coordinator', 
+  tags: [], 
+  enableForum: true, 
+  templateId: null
 })
 
 // Configuration
@@ -240,12 +249,29 @@ function resetForm() {
   step1Valid.value = false
   step2Valid.value = step3Valid.value = true
   formData.value = {
-    title: '', description: '', region: '', coordinator: '', priority: 'normal',
-    deadline: null, stages: [], visibility: 'coordinator', tags: [], enableForum: true, templateId: null
+    title: '', 
+    description: '', 
+    region: '', 
+    coordinator: '', 
+    priority: 'normal',
+    deadline: null, 
+    stages: [], 
+    visibility: 'coordinator', 
+    tags: [], 
+    enableForum: true, 
+    templateId: null
   }
-  step1Ref.value?.reset()
-  step2Ref.value?.reset()
-  step3Ref.value?.reset()
+  
+  // Safely call reset on each step if the method exists
+  if (step1Ref.value && typeof step1Ref.value.reset === 'function') {
+    step1Ref.value.reset()
+  }
+  if (step2Ref.value && typeof step2Ref.value.reset === 'function') {
+    step2Ref.value.reset()
+  }
+  if (step3Ref.value && typeof step3Ref.value.reset === 'function') {
+    step3Ref.value.reset()
+  }
 }
 
 // ESC key handling

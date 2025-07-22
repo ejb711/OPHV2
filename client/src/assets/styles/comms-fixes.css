@@ -41,15 +41,10 @@
 
 /* Fix for select dropdown text visibility */
 .v-select .v-select__selection-text {
-  display: block !important;
+  display: inline-block !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
-}
-
-/* Prevent double text rendering in selects */
-.v-select .v-field__input > input {
-  display: none !important;
 }
 
 /* Communications dashboard specific select styling */
@@ -77,4 +72,56 @@
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
   max-width: 100% !important;
+}
+
+/* Fix for v-select with objects - ensure text is properly extracted and displayed */
+.v-select[data-uses-object="true"] .v-select__selection-text {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure the field input doesn't hide selected values */
+.v-select .v-field__input {
+  opacity: 1 !important;
+}
+
+/* Fix potential z-index issues with dropdown text */
+.v-select .v-select__selection {
+  z-index: 1;
+  position: relative;
+}
+
+/* === SPECIFIC FIXES FOR COMMS DROPDOWNS === */
+
+/* Ensure proper text display in region and priority dropdowns */
+.create-project-dialog .v-select .v-field__input {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Make sure selection template content is visible */
+.create-project-dialog .v-select .v-select__selection {
+  color: rgba(0, 0, 0, 0.87) !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Remove any conflicting display rules that might hide text */
+.create-project-dialog .v-select .v-field__input > * {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure the displayed text in dropdowns is properly styled */
+.v-select--selected .v-field .v-field__input {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Fix for Step 3 visibility dropdown - prevent double text */
+.text-field-spaced .v-select .v-select__selection-text:not(:first-child) {
+  display: none !important;
+}
+
+/* Ensure only the custom selection template is shown */
+.text-field-spaced .v-select .v-select__selection > span {
+  width: 100%;
 }

@@ -28,8 +28,8 @@
                 <v-icon color="primary">mdi-eye</v-icon>
               </template>
               
-              <!-- Custom selection slot to display the title -->
-              <template v-slot:selection="{ item, index }">
+              <!-- Custom selection to ensure proper text display -->
+              <template v-slot:selection="{ item }">
                 <span>{{ getVisibilityTitle(localFormData.visibility) }}</span>
               </template>
             </v-select>
@@ -68,51 +68,49 @@
                 </v-chip>
               </template>
               
-              <!-- Hide placeholder when chips exist -->
-              <template v-slot:placeholder>
-                <span v-if="!localFormData.tags || localFormData.tags.length === 0">
-                  Type and press Enter to add tags
-                </span>
+              <template v-slot:no-data>
+                <v-list-item>
+                  <v-list-item-title class="text-caption text-grey">
+                    Type to create new tags
+                  </v-list-item-title>
+                </v-list-item>
               </template>
             </v-combobox>
           </v-col>
 
-          <!-- Forum Settings -->
-          <v-col cols="12" class="pb-4">
-            <v-card variant="outlined" class="pa-4">
-              <div class="d-flex align-center justify-space-between">
-                <div class="flex-grow-1 mr-4">
-                  <div class="d-flex align-center">
-                    <v-icon color="primary" class="mr-3">mdi-forum</v-icon>
-                    <div>
-                      <h4 class="text-body-1 font-weight-medium">Discussion Forum</h4>
-                      <p class="text-body-2 text-grey-darken-1 mb-0">
-                        Enable a discussion forum for this project where team members can collaborate
-                      </p>
-                    </div>
+          <!-- Enable Discussion Forum -->
+          <v-col cols="12" class="pb-6">
+            <v-switch
+              v-model="localFormData.enableForum"
+              label="Discussion Forum"
+              color="primary"
+              hide-details="auto"
+              class="mt-0"
+            >
+              <template v-slot:label>
+                <div>
+                  <div class="font-weight-medium text-grey-darken-3">Discussion Forum</div>
+                  <div class="text-caption text-grey-darken-1 mt-1">
+                    Enable a discussion forum for this project where team members can collaborate
                   </div>
                 </div>
-                <v-switch
-                  v-model="localFormData.enableForum"
-                  color="primary"
-                  hide-details
-                  density="compact"
-                />
-              </div>
-            </v-card>
+              </template>
+              <template v-slot:prepend>
+                <v-icon color="primary">mdi-forum</v-icon>
+              </template>
+            </v-switch>
           </v-col>
 
-          <!-- Template Note -->
+          <!-- Future Features Placeholder -->
           <v-col cols="12">
             <v-alert
               type="info"
               variant="tonal"
-              class="text-body-2"
+              density="compact"
               icon="mdi-information-outline"
             >
-              <div class="d-flex align-center">
-                <strong class="mr-2">Coming Soon:</strong>
-                Project templates will allow you to save and reuse common project configurations.
+              <div class="text-body-2">
+                <strong>Coming Soon:</strong> Email notifications, Slack integration, and custom project templates.
                 This feature will be available in a future update.
               </div>
             </v-alert>
@@ -125,6 +123,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useVisibilityOptions } from '@/composables/comms/useVisibilityOptions'
 
 // Props
 const props = defineProps({
@@ -141,6 +140,9 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['update:modelValue', 'update:formData'])
 
+// Composables
+const { visibilityOptions, getVisibilityTitle } = useVisibilityOptions()
+
 // Refs
 const formRef = ref(null)
 
@@ -155,30 +157,6 @@ const valid = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
-
-// Options
-const visibilityOptions = [
-  { 
-    title: 'Private (Only me)', 
-    value: 'private',
-    subtitle: 'Only you can view this project'
-  },
-  { 
-    title: 'Coordinator & Creator', 
-    value: 'coordinator',
-    subtitle: 'Project creator and assigned coordinator can view'
-  },
-  { 
-    title: 'Communications Team', 
-    value: 'team',
-    subtitle: 'All communications team members can view'
-  },
-  { 
-    title: 'Public (Anyone with link)', 
-    value: 'public',
-    subtitle: 'Anyone with the project link can view'
-  }
-]
 
 // Helper function to clean tags
 function cleanTags(tags) {
@@ -199,129 +177,71 @@ async function validate() {
   return await formRef.value.validate()
 }
 
-// Helper method to get visibility title from value
-function getVisibilityTitle(value) {
-  const option = visibilityOptions.find(opt => opt.value === value)
-  return option ? option.title : value
+// Add reset functionality
+function reset() {
+  if (formRef.value) {
+    formRef.value.reset()
+  }
 }
 
-// Watch for changes and emit updates
-watch(localFormData, (newValue) => {
-  emit('update:formData', newValue)
+defineExpose({ validate, reset })
+
+// Watch tags to ensure they're always clean strings
+watch(() => localFormData.value.tags, (newTags) => {
+  const cleaned = cleanTags(newTags)
+  if (JSON.stringify(cleaned) !== JSON.stringify(newTags)) {
+    localFormData.value.tags = cleaned
+  }
 }, { deep: true })
 
-// Ensure tags are always strings
-watch(() => localFormData.value.tags, (newTags) => {
-  if (newTags && Array.isArray(newTags)) {
-    const cleanedTags = cleanTags(newTags)
-    
-    if (JSON.stringify(cleanedTags) !== JSON.stringify(newTags)) {
-      localFormData.value.tags = cleanedTags
-    }
-  }
-}, { immediate: true })
-
-// Clean tags on mount
-onMounted(() => {
-  if (localFormData.value.tags && Array.isArray(localFormData.value.tags)) {
-    localFormData.value.tags = cleanTags(localFormData.value.tags)
-  }
+// Watch for validation changes
+watch(valid, (newVal) => {
+  emit('update:modelValue', newVal)
 })
 
-defineExpose({
-  validate,
-  reset: () => formRef.value?.reset()
+// Initialize on mount
+onMounted(() => {
+  // Ensure tags are clean on mount
+  if (localFormData.value.tags) {
+    localFormData.value.tags = cleanTags(localFormData.value.tags)
+  }
 })
 </script>
 
 <style scoped>
+/* Step content styling */
 .step-content {
-  min-height: 500px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-/* Enhanced form field spacing */
+/* Field spacing with hints */
 .text-field-spaced {
-  margin-bottom: 8px !important;
-}
-
-/* Ensure consistent field heights */
-:deep(.v-field) {
-  border-radius: 8px !important;
   margin-bottom: 4px;
 }
 
-:deep(.v-select .v-field__input),
-:deep(.v-combobox .v-field__input) {
-  min-height: 52px !important;
-  padding-top: 18px !important;
-  padding-bottom: 18px !important;
+/* Switch label styling */
+.v-switch :deep(.v-label) {
+  opacity: 1 !important;
 }
 
-/* Fix label positioning */
-:deep(.v-label) {
+/* Tag chip styling */
+.comms-tags-field :deep(.v-chip) {
+  height: 28px !important;
+  font-size: 0.875rem !important;
+}
+
+/* Alert styling */
+.v-alert {
   font-size: 0.875rem;
-  color: rgba(0, 0, 0, 0.6) !important;
 }
 
-/* Fix for tags combobox overlap issue */
-:deep(.comms-tags-field .v-field__input) {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
+/* Forum switch styling */
+.v-switch {
+  align-items: start !important;
 }
 
-:deep(.comms-tags-field .v-combobox__selection) {
-  max-width: none !important;
-  overflow: visible !important;
-}
-
-/* Hide any text that's not in a chip */
-:deep(.comms-tags-field .v-combobox__selection-text) {
-  display: none !important;
-}
-
-/* Ensure input is properly positioned */
-:deep(.comms-tags-field input) {
-  flex: 1 1 auto;
-  min-width: 50px;
-}
-
-/* Forum settings card */
-.v-card.v-card--variant-outlined {
-  border-color: rgba(0, 0, 0, 0.12);
-  transition: border-color 0.3s ease;
-}
-
-.v-card.v-card--variant-outlined:hover {
-  border-color: rgba(25, 118, 210, 0.5);
-}
-
-/* Switch styling */
-:deep(.v-switch) {
-  flex-shrink: 0;
-}
-
-/* Consistent column spacing */
-.v-col {
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
-/* Chip styling */
-.v-chip.v-chip--size-small {
-  font-size: 0.8125rem;
-}
-
-/* Responsive improvements */
-@media (max-width: 599px) {
-  .v-col {
-    padding-left: 8px;
-    padding-right: 8px;
-  }
-  
-  .step-content {
-    padding: 24px 16px !important;
-  }
+.v-switch :deep(.v-selection-control) {
+  min-height: auto !important;
 }
 </style>

@@ -13,8 +13,8 @@
 @import './styles/animations.css';
 @import './styles/responsive.css';
 @import './styles/print.css';
-/* @import './styles/comms-fixes.css'; */
-@import './styles/comms-dashboard.css';
+@import './styles/comms-fixes.css';
+/* @import './styles/comms-dashboard.css'; */
 
 /* ========================================
    MAIN APP STYLES

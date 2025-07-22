@@ -14,6 +14,11 @@
     item-title="displayName"
     no-data-text="No coordinators available"
   >
+    <!-- Custom selection to show coordinator name -->
+    <template v-slot:selection="{ item }">
+      {{ getCoordinatorDisplayName(selectedCoordinator) }}
+    </template>
+    
     <template v-slot:item="{ item, props: itemProps }">
       <v-list-item 
         v-bind="itemProps"
@@ -182,19 +187,15 @@ const selectedCoordinator = computed({
         if (selectedCoord.id !== defaultCoord.id) {
           // User selected a non-default coordinator
           autoSelected.value = false
-          emit('non-default-selected', {
-            coordinatorId: value,
-            coordinator: selectedCoord,
-            defaultCoordinator: defaultCoord,
-            region: props.region
-          })
+          emit('non-default-selected', selectedCoord.displayName || selectedCoord.name || selectedCoord.email)
         } else if (previousValue !== value) {
-          // User selected the default coordinator (clear any non-default notification)
+          // User selected the default coordinator
           autoSelected.value = false
           emit('default-selected', {
             coordinatorId: value,
             coordinator: selectedCoord,
-            region: props.region
+            region: props.region,
+            isDefault: true
           })
         }
       }
@@ -230,25 +231,25 @@ const coordinatorItems = computed(() => {
     
     return {
       id: coord.id,
-      displayName: coord.name || coord.email,
+      displayName: coord.name || coord.displayName || coord.email,
       email: coord.email,
       regions: coord.regions || [],
-      regionNames: regionNames,
-      isPrimary: isPrimary,
-      isForCurrentRegion: isForCurrentRegion,
+      primaryRegion: coord.primaryRegion,
+      regionNames,
       additionalRegions: otherRegions,
-      sortOrder: getSortOrder(coord, props.region)
+      isForCurrentRegion,
+      isPrimary,
+      raw: coord
     }
   })
   
-  // Sort coordinators
+  // Sort: primary first, then by region assignment, then alphabetically
   return items.sort((a, b) => {
-    // First sort by sort order (primary for region, then assigned to region, then others)
-    if (a.sortOrder !== b.sortOrder) {
-      return a.sortOrder - b.sortOrder
-    }
-    // Then sort by name
-    return (a.displayName || a.email).localeCompare(b.displayName || b.email)
+    if (a.isPrimary && !b.isPrimary) return -1
+    if (!a.isPrimary && b.isPrimary) return 1
+    if (a.isForCurrentRegion && !b.isForCurrentRegion) return -1
+    if (!a.isForCurrentRegion && b.isForCurrentRegion) return 1
+    return a.displayName.localeCompare(b.displayName)
   })
 })
 
@@ -259,26 +260,19 @@ const noDataText = computed(() => {
 })
 
 const showNonDefaultWarning = computed(() => {
-  if (!props.region || !selectedCoordinator.value) return false
+  if (!selectedCoordinator.value || !props.region || autoSelected.value) return false
   
-  const selectedCoord = coordinators.value.find(c => c.id === selectedCoordinator.value)
+  const selected = coordinators.value.find(c => c.id === selectedCoordinator.value)
   const defaultCoord = getDefaultCoordinatorForRegion(props.region)
   
-  return selectedCoord && defaultCoord && selectedCoord.id !== defaultCoord.id && !autoSelected.value
+  return selected && defaultCoord && selected.id !== defaultCoord.id
 })
 
 // Methods
-function getSortOrder(coordinator, selectedRegion) {
-  if (!selectedRegion) return 3
-  
-  // Primary coordinator for selected region
-  if (coordinator.primaryRegion === selectedRegion) return 1
-  
-  // Assigned to selected region (but not primary)
-  if (coordinator.regions && coordinator.regions.includes(selectedRegion)) return 2
-  
-  // Not assigned to selected region
-  return 3
+function getCoordinatorDisplayName(coordinatorId) {
+  if (!coordinatorId) return ''
+  const coordinator = coordinators.value.find(c => c.id === coordinatorId)
+  return coordinator ? (coordinator.name || coordinator.displayName || coordinator.email) : coordinatorId
 }
 
 function getDefaultCoordinatorForRegion(regionId) {
