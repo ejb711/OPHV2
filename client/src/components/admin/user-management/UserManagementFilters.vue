@@ -17,16 +17,20 @@
         </v-col>
         
         <v-col cols="12" md="3">
-          <v-select
-            :model-value="roleFilter"
-            @update:model-value="$emit('update:roleFilter', $event)"
-            :items="roleOptions"
-            label="Filter by Role"
-            variant="outlined"
-            density="compact"
-            clearable
-            hide-details
-          />
+          <div class="field-group">
+            <label class="field-label">Filter by Role</label>
+            <v-select
+              :model-value="roleFilter"
+              @update:model-value="$emit('update:roleFilter', $event)"
+              :items="roleOptions"
+              placeholder="All roles"
+              variant="outlined"
+              density="compact"
+              clearable
+              hide-details
+              class="matching-height"
+            />
+          </div>
         </v-col>
         
         <v-col cols="12" md="3" class="text-right">
@@ -82,3 +86,71 @@ defineEmits([
   'refresh'
 ])
 </script>
+
+<style scoped>
+/* External label styling */
+.field-group {
+  width: 100%;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #003057;
+  margin-bottom: 8px;
+  font-family: 'Cambria', Georgia, serif;
+}
+
+/* Hide v-select built-in labels */
+:deep(.v-select .v-field__label),
+:deep(.v-select .v-label) {
+  display: none !important;
+}
+
+/* Hide selection text overlay */
+:deep(.v-select .v-field__input .v-select__selection-text) {
+  display: none !important;
+}
+
+/* Ensure matching heights for both fields */
+:deep(.v-text-field .v-field),
+:deep(.v-select .v-field) {
+  min-height: 40px !important;
+}
+
+:deep(.v-text-field .v-field__input),
+:deep(.v-select .v-field__input) {
+  min-height: 40px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+/* Ensure the select matches the text field exactly */
+.matching-height :deep(.v-field) {
+  height: 40px !important;
+}
+
+.matching-height :deep(.v-field__input) {
+  display: flex;
+  align-items: center;
+}
+
+/* Align the dropdown arrow */
+:deep(.v-select .v-field__append-inner) {
+  padding-top: 0 !important;
+  align-items: center !important;
+}
+
+/* Make sure the label doesn't affect field height */
+.field-label {
+  line-height: 1.2;
+}
+
+/* Responsive adjustment */
+@media (max-width: 960px) {
+  .v-col {
+    margin-bottom: 16px;
+  }
+}
+</style>
