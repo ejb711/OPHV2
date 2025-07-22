@@ -15,7 +15,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { useAuthStore } from '@/stores/auth'
@@ -24,6 +25,35 @@ import { useAudit } from '@/composables/useAudit'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { getAuth } from 'firebase/auth'
 import { createProjectPermissionChecker } from './commsProjectPermissions'
+
+// Helper function to safely convert various date formats to JavaScript Date
+function safeConvertToDate(value) {
+  if (!value) return null
+  
+  // If it's already a Date object, return it
+  if (value instanceof Date) {
+    return value
+  }
+  
+  // If it's a Firestore Timestamp, convert it
+  if (value && typeof value.toDate === 'function') {
+    return value.toDate()
+  }
+  
+  // If it's a Firestore Timestamp-like object with seconds property
+  if (value && typeof value === 'object' && 'seconds' in value) {
+    return new Date(value.seconds * 1000)
+  }
+  
+  // If it's a string or number, try to parse it
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value)
+    return isNaN(date.getTime()) ? null : date
+  }
+  
+  // Otherwise return null
+  return null
+}
 
 export function useCommsProjects() {
   console.log('useCommsProjects composable initialized')
@@ -214,14 +244,18 @@ export function useCommsProjects() {
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
-          projects.value = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate(),
-            updatedAt: doc.data().updatedAt?.toDate(),
-            deadline: doc.data().deadline?.toDate(),
-            completedAt: doc.data().completedAt?.toDate()
-          }))
+          projects.value = snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              ...data,
+              // Safely convert timestamp fields
+              createdAt: safeConvertToDate(data.createdAt),
+              updatedAt: safeConvertToDate(data.updatedAt),
+              deadline: safeConvertToDate(data.deadline),
+              completedAt: safeConvertToDate(data.completedAt)
+            }
+          })
           console.log('Projects loaded:', projects.value.length)
           loading.value = false
         },
@@ -300,47 +334,46 @@ export function useCommsProjects() {
     
     try {
       // Fetch the project directly from Firestore to check permissions
-      const project = await getProject(projectId)
-
+      const projectDoc = await getDoc(doc(db, 'comms_projects', projectId))
+      
+      if (!projectDoc.exists()) {
+        throw new Error('Project not found')
+      }
+      
+      const project = { id: projectDoc.id, ...projectDoc.data() }
+      
       if (!canEditProject(project)) {
         throw new Error('You do not have permission to edit this project')
       }
-
+      
       // Prepare update data
       const updateData = {
         ...updates,
-        updatedAt: serverTimestamp(),
-        updatedBy: currentUserId.value,
-        updatedByEmail: currentUserEmail.value
+        updatedAt: serverTimestamp()
       }
-
-      // Remove fields that shouldn't be updated directly
-      delete updateData.id
-      delete updateData.createdAt
-      delete updateData.createdBy
-      delete updateData.createdByEmail
       
-      // Clean undefined values - Firestore doesn't accept undefined
-      Object.keys(updateData).forEach(key => {
-        if (updateData[key] === undefined) {
-          delete updateData[key]
+      // Ensure deadline is properly formatted for Firestore if provided
+      if (updates.deadline !== undefined) {
+        if (updates.deadline === null) {
+          updateData.deadline = null
+        } else {
+          // Convert to Firestore Timestamp if it's a Date
+          const deadlineDate = safeConvertToDate(updates.deadline)
+          updateData.deadline = deadlineDate ? Timestamp.fromDate(deadlineDate) : null
         }
-      })
-
+      }
+      
       // Update in Firestore
-      console.log('Updating project in Firestore:', projectId, updateData)
       await updateDoc(doc(db, 'comms_projects', projectId), updateData)
-
+      
       // Log the action
       await logEvent('update_comms_project', {
         projectId,
-        projectTitle: project.title,
-        updates: Object.keys(updates)
+        updatedFields: Object.keys(updates)
       })
-
+      
       showSuccess('Project updated successfully')
       
-      return true
     } catch (error) {
       console.error('Error updating project:', error)
       error.value = error.message
@@ -350,72 +383,43 @@ export function useCommsProjects() {
       updating.value = false
     }
   }
-
-  // Soft delete a project
+  
+  // Soft delete project (move to trash)
   async function softDeleteProject(projectId) {
-    console.log('Soft delete requested for project:', projectId)
-    return deleteProject(projectId, false)
-  }
-
-  // Hard delete a project (admin only)
-  async function hardDeleteProject(projectId) {
-    console.log('Hard delete requested for project:', projectId)
-    return deleteProject(projectId, true)
-  }
-
-  // Delete a project (soft or hard)
-  async function deleteProject(projectId, hard = false) {
     deleting.value = true
     error.value = null
     
     try {
-      // Fetch the project directly from Firestore to ensure we have it
-      const project = await getProject(projectId)
+      // Fetch the project to check permissions
+      const projectDoc = await getDoc(doc(db, 'comms_projects', projectId))
+      
+      if (!projectDoc.exists()) {
+        throw new Error('Project not found')
+      }
+      
+      const project = { id: projectDoc.id, ...projectDoc.data() }
       
       if (!canDeleteProject(project)) {
         throw new Error('You do not have permission to delete this project')
       }
-
-      if (hard) {
-        // Hard delete - only for admins
-        if (!canManageComms.value) {
-          throw new Error('Only administrators can permanently delete projects')
-        }
-
-        // Delete from Firestore
-        await deleteDoc(doc(db, 'comms_projects', projectId))
-
-        // Log the action
-        await logEvent('hard_delete_comms_project', {
-          projectId,
-          projectTitle: project.title
-        })
-
-        showSuccess('Project permanently deleted')
-      } else {
-        // Soft delete - mark as deleted
-        const updateData = {
-          deleted: true,
-          deletedAt: serverTimestamp(),
-          deletedBy: currentUserId.value,
-          deletedByEmail: currentUserEmail.value
-        }
-        
-        console.log('Soft deleting project:', projectId, updateData)
-        await updateDoc(doc(db, 'comms_projects', projectId), updateData)
-
-        // Log the action
-        await logEvent('soft_delete_comms_project', {
-          projectId,
-          projectTitle: project.title
-        })
-
-        showSuccess('Project deleted successfully')
-      }
       
-      return true
+      // Soft delete by setting deleted flag
+      await updateDoc(doc(db, 'comms_projects', projectId), {
+        deleted: true,
+        deletedAt: serverTimestamp(),
+        deletedBy: currentUserId.value
+      })
+      
+      // Log the action
+      await logEvent('soft_delete_comms_project', {
+        projectId,
+        projectTitle: project.title
+      })
+      
+      showSuccess('Project moved to trash')
+      
     } catch (error) {
-      console.error('Error deleting project:', error)
+      console.error('Error soft deleting project:', error)
       error.value = error.message
       showError(error.message || 'Failed to delete project')
       throw error
@@ -423,25 +427,66 @@ export function useCommsProjects() {
       deleting.value = false
     }
   }
-
-  // Get a single project by ID
-  async function getProject(projectId) {
+  
+  // Hard delete project (permanent)
+  async function hardDeleteProject(projectId) {
+    deleting.value = true
+    error.value = null
+    
     try {
-      const docRef = doc(db, 'comms_projects', projectId)
-      const docSnap = await getDoc(docRef)
+      // Fetch the project to check permissions
+      const projectDoc = await getDoc(doc(db, 'comms_projects', projectId))
       
-      if (!docSnap.exists()) {
-        console.error('Project document does not exist:', projectId)
+      if (!projectDoc.exists()) {
         throw new Error('Project not found')
       }
       
+      const project = { id: projectDoc.id, ...projectDoc.data() }
+      
+      // Only super admins can hard delete
+      if (!canManageComms.value) {
+        throw new Error('Only administrators can permanently delete projects')
+      }
+      
+      // Permanently delete
+      await deleteDoc(doc(db, 'comms_projects', projectId))
+      
+      // Log the action
+      await logEvent('hard_delete_comms_project', {
+        projectId,
+        projectTitle: project.title
+      })
+      
+      showSuccess('Project permanently deleted')
+      
+    } catch (error) {
+      console.error('Error hard deleting project:', error)
+      error.value = error.message
+      showError(error.message || 'Failed to permanently delete project')
+      throw error
+    } finally {
+      deleting.value = false
+    }
+  }
+  
+  // Get a single project by ID
+  async function getProject(projectId) {
+    try {
+      const docSnap = await getDoc(doc(db, 'comms_projects', projectId))
+      
+      if (!docSnap.exists()) {
+        throw new Error('Project not found')
+      }
+      
+      const data = docSnap.data()
       const project = {
         id: docSnap.id,
-        ...docSnap.data(),
-        createdAt: docSnap.data().createdAt?.toDate(),
-        updatedAt: docSnap.data().updatedAt?.toDate(),
-        deadline: docSnap.data().deadline?.toDate(),
-        completedAt: docSnap.data().completedAt?.toDate()
+        ...data,
+        // Safely convert timestamp fields
+        createdAt: safeConvertToDate(data.createdAt),
+        updatedAt: safeConvertToDate(data.updatedAt),
+        deadline: safeConvertToDate(data.deadline),
+        completedAt: safeConvertToDate(data.completedAt)
       }
       
       console.log('Fetched project:', project.title, 'ID:', project.id)
