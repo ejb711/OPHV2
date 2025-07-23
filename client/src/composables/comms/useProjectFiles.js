@@ -19,7 +19,7 @@ import {
   getDownloadURL,
   deleteObject
 } from 'firebase/storage'
-import { db, storage } from '@/firebase/config'
+import { db, storage } from '@/firebase'
 import { useAuthStore } from '@/stores/auth'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { useAudit } from '@/composables/useAudit'
@@ -223,13 +223,13 @@ export function useProjectFiles(projectId) {
   }
   
   // Update file/link metadata
-  async function updateFile(fileId, updates) {
+  async function updateFileMetadata(fileId, updates) {
+    if (!fileId) return
+    
     try {
       const updateData = {
         ...updates,
-        updatedAt: serverTimestamp(),
-        updatedBy: currentUserId.value,
-        updatedByEmail: currentUserEmail.value
+        updatedAt: serverTimestamp()
       }
       
       await updateDoc(doc(db, 'comms_files', fileId), updateData)
@@ -240,32 +240,43 @@ export function useProjectFiles(projectId) {
         updates: Object.keys(updates)
       })
       
-      showSuccess('Updated successfully')
+      showSuccess('File updated successfully')
       
     } catch (error) {
       console.error('Error updating file:', error)
-      showError('Failed to update')
+      showError('Failed to update file')
       throw error
     }
   }
   
   // Delete file (soft delete)
   async function deleteFile(fileId) {
+    if (!fileId) return
+    
     deleting.value = true
     
     try {
+      // Find the file
+      const file = files.value.find(f => f.id === fileId)
+      if (!file) throw new Error('File not found')
+      
+      // Soft delete in database
       await updateDoc(doc(db, 'comms_files', fileId), {
         deleted: true,
         deletedAt: serverTimestamp(),
         deletedBy: currentUserId.value
       })
       
+      // Note: We keep the file in Storage for potential recovery
+      // Add a scheduled function to clean up old deleted files if needed
+      
       await logEvent('delete_comms_file', {
         projectId,
-        fileId
+        fileId,
+        fileName: file.name
       })
       
-      showSuccess('File deleted')
+      showSuccess('File deleted successfully')
       
     } catch (error) {
       console.error('Error deleting file:', error)
@@ -276,44 +287,60 @@ export function useProjectFiles(projectId) {
     }
   }
   
-  // Permanently delete file (including storage)
-  async function hardDeleteFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (!file) return
+  // Download file
+  function downloadFile(file) {
+    if (!file.downloadURL) return
     
-    deleting.value = true
+    // Create a temporary link and click it
+    const link = document.createElement('a')
+    link.href = file.downloadURL
+    link.download = file.displayName || file.name
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
     
-    try {
-      // Delete from storage if it's a file (not a link)
-      if (file.storagePath && file.type !== 'external_link') {
-        const fileRef = storageRef(storage, file.storagePath)
-        await deleteObject(fileRef)
-      }
-      
-      // Delete document
-      await deleteDoc(doc(db, 'comms_files', fileId))
-      
-      await logEvent('hard_delete_comms_file', {
-        projectId,
-        fileId,
-        fileName: file.name
-      })
-      
-      showSuccess('File permanently deleted')
-      
-    } catch (error) {
-      console.error('Error permanently deleting file:', error)
-      showError('Failed to permanently delete file')
-      throw error
-    } finally {
-      deleting.value = false
-    }
+    // Log the download
+    logEvent('download_comms_file', {
+      projectId,
+      fileId: file.id,
+      fileName: file.name
+    })
+  }
+  
+  // Get file icon based on type
+  function getFileIcon(file) {
+    if (file.type === 'external_link') return 'mdi-link-variant'
+    
+    const type = file.type || ''
+    
+    if (type.includes('image')) return 'mdi-file-image'
+    if (type.includes('pdf')) return 'mdi-file-pdf-box'
+    if (type.includes('word') || type.includes('document')) return 'mdi-file-word'
+    if (type.includes('excel') || type.includes('spreadsheet')) return 'mdi-file-excel'
+    if (type.includes('powerpoint') || type.includes('presentation')) return 'mdi-file-powerpoint'
+    if (type.includes('video')) return 'mdi-file-video'
+    if (type.includes('audio')) return 'mdi-file-music'
+    if (type.includes('zip') || type.includes('rar')) return 'mdi-folder-zip'
+    if (type.includes('text')) return 'mdi-file-document'
+    
+    return 'mdi-file'
+  }
+  
+  // Format file size
+  function formatFileSize(bytes) {
+    if (!bytes) return '0 B'
+    
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+    
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
   }
   
   return {
     // State
     files,
-    links: computed(() => files.value.filter(f => f.type === 'external_link')),
+    links,
     loading,
     uploading,
     deleting,
@@ -327,8 +354,12 @@ export function useProjectFiles(projectId) {
     cleanup,
     uploadFile,
     addExternalLink,
-    updateFile,
+    updateFileMetadata,
     deleteFile,
-    hardDeleteFile
+    downloadFile,
+    
+    // Utilities
+    getFileIcon,
+    formatFileSize
   }
 }

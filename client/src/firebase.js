@@ -1,9 +1,9 @@
 // client/src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getFirestore }  from 'firebase/firestore';
-import { getAuth, setPersistence, browserSessionPersistence }         from 'firebase/auth'
-import { getFunctions }    from 'firebase/functions'
-
+import { getFirestore } from 'firebase/firestore';
+import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,6 +21,7 @@ export const firebaseApp = initializeApp(firebaseConfig);
 export const db = getFirestore(firebaseApp);
 export const auth = getAuth(firebaseApp);
 export const functions = getFunctions(firebaseApp);
+export const storage = getStorage(firebaseApp);
 
 // Set session persistence - users will be logged out when browser/tab closes
 setPersistence(auth, browserSessionPersistence)
