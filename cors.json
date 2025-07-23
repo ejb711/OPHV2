@@ -8,13 +8,7 @@
       "https://*.web.app"
     ],
     "method": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
-    "responseHeader": [
-      "Content-Type",
-      "Authorization",
-      "Content-Length",
-      "User-Agent",
-      "x-goog-resumable"
-    ],
+    "responseHeader": ["*"],
     "maxAgeSeconds": 3600
   }
 ]

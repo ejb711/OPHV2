@@ -16,9 +16,9 @@ export const router = createRouter({
   routes: [
     //TEST
     {
-    path: '/test-dropdown',
-    name: 'test-dropdown',
-    component: () => import('@/views/TestDropdown.vue'),
+    path: '/test',
+    name: 'test',
+    component: () => import('@/views/TestStorage.vue'),
     meta: { 
     requiresAuth: false  // Make it accessible without login for testing
     }
