@@ -62,11 +62,9 @@ export function useProjectFiles(projectId) {
       grouped[file.name].push(file)
     })
     
-    // Sort versions within each group
+    // Sort each group by version
     Object.keys(grouped).forEach(name => {
-      grouped[name].sort((a, b) => {
-        return (b.version || 1) - (a.version || 1)
-      })
+      grouped[name].sort((a, b) => (b.version || 0) - (a.version || 0))
     })
     
     return grouped
@@ -74,12 +72,12 @@ export function useProjectFiles(projectId) {
   
   // Initialize
   async function initialize() {
-    if (!projectId) return
+    if (!projectId || filesUnsubscribe) return
     
     loading.value = true
     
     try {
-      // Subscribe to files
+      // Set up real-time listener for files
       const filesQuery = query(
         collection(db, 'comms_files'),
         where('projectId', '==', projectId),
@@ -92,12 +90,16 @@ export function useProjectFiles(projectId) {
           id: doc.id,
           ...doc.data()
         }))
+        loading.value = false
+      }, (error) => {
+        console.error('Error listening to files:', error)
+        showError('Failed to load files')
+        loading.value = false
       })
       
     } catch (error) {
       console.error('Error initializing files:', error)
-      showError('Failed to load files')
-    } finally {
+      showError('Failed to initialize files')
       loading.value = false
     }
   }
@@ -114,17 +116,11 @@ export function useProjectFiles(projectId) {
   
   // Upload file
   async function uploadFile(file, metadata = {}) {
-    if (!projectId || !file) return null
+    if (!projectId) return null
     
     uploading.value = true
     
     try {
-      // Check file size (25MB limit)
-      const maxSize = 25 * 1024 * 1024 // 25MB
-      if (file.size > maxSize) {
-        throw new Error('File size exceeds 25MB limit')
-      }
-      
       // Generate storage path
       const timestamp = Date.now()
       const fileName = `${timestamp}_${file.name}`
@@ -222,8 +218,8 @@ export function useProjectFiles(projectId) {
     }
   }
   
-  // Update file/link metadata
-  async function updateFileMetadata(fileId, updates) {
+  // Update file/link metadata - This is the key fix!
+  async function updateFile(fileId, updates) {
     if (!fileId) return
     
     try {
@@ -284,6 +280,44 @@ export function useProjectFiles(projectId) {
       throw error
     } finally {
       deleting.value = false
+    }
+  }
+  
+  // Hard delete file (permanent delete - for admin only)
+  async function hardDeleteFile(fileId) {
+    if (!fileId) return
+    
+    try {
+      // Find the file
+      const file = files.value.find(f => f.id === fileId)
+      if (!file) throw new Error('File not found')
+      
+      // Delete from Storage if not an external link
+      if (file.storagePath && file.type !== 'external_link') {
+        try {
+          const fileRef = storageRef(storage, file.storagePath)
+          await deleteObject(fileRef)
+        } catch (error) {
+          console.warn('Failed to delete file from storage:', error)
+          // Continue with database deletion even if storage deletion fails
+        }
+      }
+      
+      // Delete from database
+      await deleteDoc(doc(db, 'comms_files', fileId))
+      
+      await logEvent('hard_delete_comms_file', {
+        projectId,
+        fileId,
+        fileName: file.name
+      })
+      
+      showSuccess('File permanently deleted')
+      
+    } catch (error) {
+      console.error('Error permanently deleting file:', error)
+      showError('Failed to permanently delete file')
+      throw error
     }
   }
   
@@ -354,8 +388,9 @@ export function useProjectFiles(projectId) {
     cleanup,
     uploadFile,
     addExternalLink,
-    updateFileMetadata,
+    updateFile,  // Fixed: This now correctly points to the function
     deleteFile,
+    hardDeleteFile,
     downloadFile,
     
     // Utilities
