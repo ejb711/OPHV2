@@ -140,27 +140,24 @@ service cloud.firestore {
       );
     }
     
-    // Communications Files collection
+   // Communications Files collection - SIMPLIFIED VERSION
     match /comms_files/{fileId} {
+      // Allow authenticated users with view_comms to read
       allow read: if request.auth != null && 
-        hasPermission('view_comms') &&
-        exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
-        canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
+        hasPermission('view_comms');
       
+      // Allow authenticated users to create files
       allow create: if request.auth != null && 
-        hasPermission('edit_comms_projects') &&
-        exists(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)) &&
-        canViewProject(get(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)).data) &&
-        request.resource.data.uploadedBy == request.auth.uid;
+        request.resource.data.createdBy == request.auth.uid;
       
+      // Allow users to update their own files
       allow update: if request.auth != null && 
-        hasPermission('edit_comms_projects') &&
-        exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
-        canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
+        resource.data.createdBy == request.auth.uid;
       
+      // Allow users to delete their own files
       allow delete: if request.auth != null && (
         hasPermission('manage_comms') ||
-        (hasPermission('delete_comms_projects') && resource.data.uploadedBy == request.auth.uid)
+        resource.data.createdBy == request.auth.uid
       );
     }
     
