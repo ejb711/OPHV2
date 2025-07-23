@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read any file
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Communications project files
+    match /comms/{projectId}/{allPaths=**} {
+      // Allow authenticated users to upload files
+      allow write: if request.auth != null
+        && request.resource.size < 25 * 1024 * 1024  // 25MB limit
+        && request.resource.contentType.matches('(image/.*|application/pdf|application/.*document.*|application/.*sheet.*|application/.*presentation.*|text/.*|video/.*|audio/.*|application/zip|application/x-rar-compressed)');
+      
+      // Allow delete only for users with permission
+      allow delete: if request.auth != null;
+    }
+  }
+}
