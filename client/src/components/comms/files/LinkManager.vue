@@ -84,52 +84,40 @@
           {{ links.length }} External {{ links.length === 1 ? 'Link' : 'Links' }}
         </div>
         
-        <v-list density="compact">
+        <v-list density="compact" class="pa-0">
           <v-list-item
             v-for="link in links"
             :key="link.id"
             :href="link.url"
             target="_blank"
-            class="mb-2"
+            class="px-0"
           >
-            <template v-slot:prepend>
-              <v-icon color="primary">mdi-link-variant</v-icon>
+            <template #prepend>
+              <v-icon size="20" class="mr-3">mdi-link-variant</v-icon>
             </template>
             
             <v-list-item-title>
-              {{ link.title || link.displayName }}
+              {{ link.title || link.displayName || 'Untitled Link' }}
             </v-list-item-title>
             
-            <v-list-item-subtitle v-if="link.description">
-              {{ link.description }}
-            </v-list-item-subtitle>
-            
             <v-list-item-subtitle>
-              <span class="text-caption">
-                {{ formatUrl(link.url) }}
-              </span>
+              {{ formatUrl(link.url) }}
             </v-list-item-subtitle>
             
-            <template v-slot:append v-if="canEdit">
-              <div class="d-flex ga-1">
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  @click.stop.prevent="startEdit(link)"
-                >
-                  <v-icon size="small">mdi-pencil</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  color="error"
-                  @click.stop.prevent="confirmDelete(link)"
-                >
-                  <v-icon size="small">mdi-delete</v-icon>
-                </v-btn>
-              </div>
+            <template v-if="canEdit" #append>
+              <v-btn
+                icon="mdi-pencil"
+                size="small"
+                variant="text"
+                @click.prevent="startEdit(link)"
+              />
+              <v-btn
+                icon="mdi-delete"
+                size="small"
+                variant="text"
+                color="error"
+                @click.prevent="confirmDelete(link)"
+              />
             </template>
           </v-list-item>
         </v-list>
@@ -141,7 +129,10 @@
       <v-card>
         <v-card-title>Delete Link?</v-card-title>
         <v-card-text>
-          Are you sure you want to delete the link "{{ linkToDelete?.title }}"?
+          Are you sure you want to delete this link?
+          <div class="mt-2">
+            <strong>{{ linkToDelete?.title || linkToDelete?.displayName }}</strong>
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -247,12 +238,35 @@ const newLink = ref({
   description: ''
 })
 
+// Helper function to normalize URLs
+function normalizeUrl(url) {
+  if (!url) return ''
+  
+  // Trim whitespace
+  url = url.trim()
+  
+  // If URL doesn't start with http:// or https://, add http://
+  if (!url.match(/^https?:\/\//i)) {
+    // Check if it starts with // (protocol-relative URL)
+    if (url.startsWith('//')) {
+      return 'http:' + url
+    }
+    return 'http://' + url
+  }
+  
+  return url
+}
+
 // Validation rules
 const rules = {
   required: value => !!value || 'Required',
   url: value => {
+    if (!value) return 'URL is required'
+    
     try {
-      new URL(value)
+      // Normalize the URL before validation
+      const normalizedUrl = normalizeUrl(value)
+      new URL(normalizedUrl)
       return true
     } catch {
       return 'Must be a valid URL'
@@ -275,9 +289,10 @@ async function addLink() {
   
   adding.value = true
   try {
+    // Normalize the URL before saving
     await emit('add', {
       title: newLink.value.title,
-      url: newLink.value.url,
+      url: normalizeUrl(newLink.value.url),
       description: newLink.value.description
     })
     
@@ -340,9 +355,10 @@ async function saveEdit() {
   if (!isEditFormValid.value) return
   
   try {
+    // Normalize the URL before saving
     await emit('edit', editingLink.value.id, {
       title: editingLink.value.title,
-      url: editingLink.value.url,
+      url: normalizeUrl(editingLink.value.url),
       description: editingLink.value.description
     })
     editDialog.value = false
