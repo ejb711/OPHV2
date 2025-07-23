@@ -1,18 +1,19 @@
 <!-- client/src/components/comms/projects/detail/tabs/ProjectFilesTab.vue -->
 <template>
   <v-container fluid class="pa-0">
-    <v-row>
-      <!-- File Upload Section -->
-      <v-col cols="12" v-if="canEdit">
-        <FileUploader
-          :project-id="projectId"
-          @uploaded="handleFileUploaded"
-          @error="handleUploadError"
-        />
-      </v-col>
-      
-      <!-- Files List -->
-      <v-col cols="12" :md="hasLinks ? 8 : 12">
+    <!-- File Upload Section -->
+    <div v-if="canEdit" class="mb-4">
+      <FileUploader
+        :project-id="projectId"
+        @uploaded="handleFileUploaded"
+        @error="handleUploadError"
+      />
+    </div>
+    
+    <!-- Single Column Layout for Better Responsiveness -->
+    <div class="files-layout">
+      <!-- Project Files Section -->
+      <div class="mb-4">
         <FileList
           :files="projectFiles"
           :loading="filesLoading"
@@ -21,10 +22,10 @@
           @delete="handleFileDelete"
           @show-versions="handleShowVersions"
         />
-      </v-col>
+      </div>
       
-      <!-- External Links -->
-      <v-col cols="12" md="4" v-if="hasLinks || canEdit">
+      <!-- External Links Section -->
+      <div v-if="hasLinks || canEdit">
         <LinkManager
           :links="projectLinks"
           :can-edit="canEdit"
@@ -32,8 +33,8 @@
           @edit="handleLinkEdit"
           @delete="handleLinkDelete"
         />
-      </v-col>
-    </v-row>
+      </div>
+    </div>
     
     <!-- Version History Dialog -->
     <VersionHistory
@@ -225,3 +226,29 @@ onUnmounted(() => {
   cleanupFiles()
 })
 </script>
+
+<style scoped>
+.files-layout {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ensure cards don't cause horizontal scroll */
+:deep(.v-card) {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Prevent long file names from breaking layout */
+:deep(.v-list-item-title) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ensure form fields in LinkManager don't overflow */
+:deep(.v-text-field),
+:deep(.v-textarea) {
+  max-width: 100%;
+}
+</style>

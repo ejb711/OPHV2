@@ -4,10 +4,10 @@
     v-model="dialogOpen" 
     max-width="900" 
     persistent
-    scrollable
+    class="project-detail-dialog"
   >
-    <v-card v-if="project">
-      <!-- Header -->
+    <v-card v-if="project" class="d-flex flex-column dialog-card">
+      <!-- Header (Fixed) -->
       <ProjectHeader
         :project="project"
         :can-edit="canEdit"
@@ -20,8 +20,8 @@
         @delete="handleDelete"
       />
       
-      <!-- Tabs -->
-      <v-tabs v-model="activeTab" class="border-b">
+      <!-- Tabs (Fixed) -->
+      <v-tabs v-model="activeTab" class="border-b flex-grow-0">
         <v-tab value="details">
           <v-icon class="mr-2">mdi-information</v-icon>
           Details
@@ -36,41 +36,49 @@
         </v-tab>
       </v-tabs>
       
-      <!-- Tab Content -->
-      <v-window v-model="activeTab">
-        <!-- Details Tab -->
-        <v-window-item value="details">
-          <ProjectInfoTab
-            :project="project"
-            :edited-project="editedProject"
-            :editing="editing"
-            :can-edit="canEdit"
-            @update="updateEditedProject"
-          />
-        </v-window-item>
-        
-        <!-- Stages Tab -->
-        <v-window-item value="stages">
-          <ProjectStagesTab
-            :project="project"
-            :edited-project="editedProject"
-            :editing="editing"
-            :can-edit="canEdit"
-            @update="updateEditedProject"
-          />
-        </v-window-item>
-        
-        <!-- Files Tab -->
-        <v-window-item value="files">
-          <ProjectFilesTab
-            :project-id="project.id"
-            :can-edit="canEdit"
-          />
-        </v-window-item>
-      </v-window>
+      <!-- Tab Content (Scrollable) -->
+      <v-card-text class="flex-grow-1 pa-0 overflow-hidden">
+        <v-window v-model="activeTab" class="h-100">
+          <!-- Details Tab -->
+          <v-window-item value="details" class="h-100">
+            <div class="tab-content-wrapper">
+              <ProjectInfoTab
+                :project="project"
+                :edited-project="editedProject"
+                :editing="editing"
+                :can-edit="canEdit"
+                @update="updateEditedProject"
+              />
+            </div>
+          </v-window-item>
+          
+          <!-- Stages Tab -->
+          <v-window-item value="stages" class="h-100">
+            <div class="tab-content-wrapper">
+              <ProjectStagesTab
+                :project="project"
+                :edited-project="editedProject"
+                :editing="editing"
+                :can-edit="canEdit"
+                @update="updateEditedProject"
+              />
+            </div>
+          </v-window-item>
+          
+          <!-- Files Tab -->
+          <v-window-item value="files" class="h-100">
+            <div class="tab-content-wrapper">
+              <ProjectFilesTab
+                :project-id="project.id"
+                :can-edit="canEdit"
+              />
+            </div>
+          </v-window-item>
+        </v-window>
+      </v-card-text>
       
-      <!-- Footer Actions (when not editing) -->
-      <v-card-actions v-if="!editing" class="pa-4">
+      <!-- Footer Actions (Fixed) -->
+      <v-card-actions v-if="!editing" class="pa-4 border-t flex-grow-0">
         <v-spacer />
         <v-btn
           variant="text"
@@ -310,9 +318,27 @@ const emit = defineEmits(['updated', 'deleted'])
 </script>
 
 <style scoped>
-/* Tab styling to match LDH brand */
+/* Ensure proper dialog height */
+:deep(.v-dialog > .v-overlay__content) {
+  max-height: 90vh !important;
+  height: 90vh !important;
+  display: flex !important;
+  margin: 24px !important;
+}
+
+/* Make the card fill the dialog and use flexbox */
+.dialog-card {
+  height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Tab styling */
 :deep(.v-tabs) {
   background-color: #f5f5f5;
+  flex-shrink: 0;
 }
 
 :deep(.v-tab) {
@@ -320,8 +346,93 @@ const emit = defineEmits(['updated', 'deleted'])
   letter-spacing: normal;
 }
 
-/* Dialog max height for scrolling */
-:deep(.v-dialog > .v-overlay__content) {
-  max-height: 90vh;
+/* Card text should flex and contain overflow */
+:deep(.v-card-text) {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  position: relative !important;
+}
+
+/* Window should fill the card text */
+:deep(.v-window) {
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+  height: 100% !important;
+}
+
+/* Window items should be full height */
+:deep(.v-window-item) {
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Scrollable content wrapper */
+.tab-content-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px;
+}
+
+/* Ensure footer stays at bottom */
+:deep(.v-card-actions) {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Mobile adjustments */
+@media (max-width: 599px) {
+  :deep(.v-dialog > .v-overlay__content) {
+    margin: 0 !important;
+    max-height: 100vh !important;
+    height: 100vh !important;
+  }
+  
+  .tab-content-wrapper {
+    padding: 16px;
+  }
+}
+
+/* Utility classes */
+.h-100 {
+  height: 100% !important;
+}
+
+.overflow-hidden {
+  overflow: hidden !important;
+}
+
+.border-t {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.border-b {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Custom scrollbar for better visibility */
+.tab-content-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Firefox scrollbar */
+.tab-content-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f5f5f5;
 }
 </style>

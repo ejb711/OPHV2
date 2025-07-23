@@ -1,0 +1,182 @@
+/* client/src/assets/styles/comms-dialog-fixes.css */
+/* Fixes for Communications Dashboard Dialog Scrolling Issues */
+/* NOTE: This file should be imported in main.css after comms-dashboard.css */
+
+/* ===========================================
+   PROJECT DETAIL DIALOG FIXES
+   =========================================== */
+
+/* Force proper height constraints on v-dialog */
+.project-detail-dialog .v-overlay__content {
+  max-height: calc(100vh - 48px) !important;
+  height: calc(100vh - 48px) !important;
+  margin: 24px auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Ensure dialog card uses full height with flexbox */
+.project-detail-dialog .v-card {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Header should not shrink */
+.project-detail-dialog .v-card > *:first-child {
+  flex-shrink: 0;
+}
+
+/* Tabs should not shrink */
+.project-detail-dialog .v-tabs {
+  flex-shrink: 0;
+}
+
+/* Window (tab content container) should flex and handle overflow */
+.project-detail-dialog .v-window {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Window items need full height */
+.project-detail-dialog .v-window-item {
+  height: 100% !important;
+}
+
+/* Footer actions should not shrink */
+.project-detail-dialog .v-card-actions {
+  flex-shrink: 0;
+}
+
+/* ===========================================
+   GENERAL DIALOG SCROLLING FIXES
+   =========================================== */
+
+/* Fix for all scrollable dialogs */
+.v-dialog--scrollable > .v-overlay__content > .v-card,
+.v-dialog--scrollable > .v-overlay__content > .v-sheet,
+.v-dialog--scrollable > .v-overlay__content > form > .v-card,
+.v-dialog--scrollable > .v-overlay__content > form > .v-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+}
+
+/* Ensure v-card-text in scrollable dialogs actually scrolls */
+.v-dialog--scrollable .v-card-text {
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* ===========================================
+   PROJECT FORM DIALOG FIXES
+   =========================================== */
+
+.create-project-dialog .v-overlay__content {
+  max-height: calc(100vh - 48px) !important;
+  margin: 24px auto !important;
+}
+
+.create-project-dialog .form-container {
+  min-height: 300px !important;
+  max-height: calc(100vh - 400px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* ===========================================
+   MOBILE RESPONSIVE FIXES
+   =========================================== */
+
+@media (max-width: 599px) {
+  /* Full screen on mobile */
+  .project-detail-dialog .v-overlay__content,
+  .create-project-dialog .v-overlay__content {
+    max-height: 100vh !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .create-project-dialog .form-container {
+    max-height: calc(100vh - 300px) !important;
+  }
+}
+
+/* ===========================================
+   VUETIFY 3 DIALOG OVERRIDES
+   =========================================== */
+
+/* Prevent content from being cut off */
+.v-dialog > .v-overlay__content {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Ensure proper stacking context */
+.v-dialog {
+  z-index: 2300 !important;
+}
+
+/* Fix overlay scrim */
+.v-overlay__scrim {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* ===========================================
+   SCROLLBAR STYLING
+   =========================================== */
+
+/* Style scrollbars in dialogs for better visibility */
+.project-detail-dialog .tab-content-scroll::-webkit-scrollbar,
+.create-project-dialog .form-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.project-detail-dialog .tab-content-scroll::-webkit-scrollbar-track,
+.create-project-dialog .form-container::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.project-detail-dialog .tab-content-scroll::-webkit-scrollbar-thumb,
+.create-project-dialog .form-container::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+}
+
+.project-detail-dialog .tab-content-scroll::-webkit-scrollbar-thumb:hover,
+.create-project-dialog .form-container::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+/* Firefox scrollbar styling */
+.project-detail-dialog .tab-content-scroll,
+.create-project-dialog .form-container {
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f5f5f5;
+}
+
+/* ===========================================
+   Z-INDEX MANAGEMENT
+   =========================================== */
+
+/* Ensure dialogs stack properly */
+.v-dialog:nth-of-type(1) { z-index: 2300 !important; }
+.v-dialog:nth-of-type(2) { z-index: 2310 !important; }
+.v-dialog:nth-of-type(3) { z-index: 2320 !important; }
+
+/* Snackbars should appear above dialogs */
+.v-snackbar {
+  z-index: 2400 !important;
+}
