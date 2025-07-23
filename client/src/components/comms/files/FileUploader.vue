@@ -8,48 +8,44 @@
     
     <v-card-text>
       <!-- Drop zone -->
-      <v-sheet
-        :class="[
-          'pa-8 text-center rounded-lg border-dashed',
-          dragover ? 'border-primary' : ''
-        ]"
-        :style="{
-          border: '2px dashed',
-          borderColor: dragover ? 'primary' : '#ccc',
-          backgroundColor: dragover ? 'rgba(33, 150, 243, 0.05)' : 'transparent',
-          transition: 'all 0.3s'
-        }"
+      <div
+        class="drop-zone"
+        :class="{ 'drag-over': dragover }"
         @drop.prevent="handleDrop"
         @dragover.prevent="dragover = true"
         @dragleave.prevent="dragover = false"
       >
-        <v-icon size="48" color="grey">mdi-cloud-upload-outline</v-icon>
-        <p class="text-h6 mt-2">Drop files here or click to browse</p>
-        <p class="text-caption text-grey">Maximum file size: 25MB</p>
-        
         <input
           ref="fileInput"
           type="file"
           multiple
           :accept="acceptedTypes"
-          style="display: none"
           @change="handleFileSelect"
+          style="display: none"
         />
+        
+        <v-icon size="48" color="grey">mdi-cloud-upload</v-icon>
+        <div class="text-h6 mt-2">Drop files here or click to browse</div>
+        <div class="text-caption text-grey">
+          Maximum file size: {{ formatFileSize(maxFileSize) }}
+        </div>
         
         <v-btn
           color="primary"
           variant="tonal"
           class="mt-4"
-          prepend-icon="mdi-file-plus"
           @click="$refs.fileInput.click()"
         >
+          <v-icon left>mdi-folder-open</v-icon>
           Select Files
         </v-btn>
-      </v-sheet>
+      </div>
       
-      <!-- File preview list -->
+      <!-- Selected files list -->
       <div v-if="selectedFiles.length > 0" class="mt-4">
-        <p class="text-subtitle-2 mb-2">Selected files:</p>
+        <div class="text-subtitle-2 mb-2">
+          Selected files:
+        </div>
         
         <v-list density="compact">
           <v-list-item
@@ -88,27 +84,33 @@
         </v-list>
         
         <!-- Upload metadata -->
-        <v-text-field
-          v-model="uploadDescription"
-          label="Description (optional)"
-          placeholder="Add a description for these files"
-          variant="outlined"
-          density="compact"
-          class="mt-3"
-        />
+        <div class="mt-4">
+          <div class="text-subtitle-2 mb-2">Add description (optional)</div>
+          <v-textarea
+            v-model="uploadDescription"
+            placeholder="Add a description for these files"
+            variant="outlined"
+            density="compact"
+            rows="2"
+            hide-details
+            class="mb-3"
+          />
+        </div>
         
         <!-- Tags -->
-        <v-combobox
-          v-model="uploadTags"
-          label="Tags (optional)"
-          placeholder="Add tags"
-          variant="outlined"
-          density="compact"
-          chips
-          closable-chips
-          multiple
-          class="mb-2"
-        />
+        <div>
+          <div class="text-subtitle-2 mb-2">Tags (optional)</div>
+          <v-combobox
+            v-model="uploadTags"
+            placeholder="Add tags"
+            variant="outlined"
+            density="compact"
+            chips
+            closable-chips
+            multiple
+            hide-details
+          />
+        </div>
       </div>
     </v-card-text>
     
@@ -183,24 +185,21 @@ function handleFileSelect(event) {
 
 function processFiles(files) {
   files.forEach(file => {
-    // Check if already selected
+    // Check file size
+    if (file.size > props.maxFileSize) {
+      selectedFiles.value.push({
+        ...file,
+        error: `File too large (max ${formatFileSize(props.maxFileSize)})`
+      })
+      return
+    }
+    
+    // Check if file already selected
     if (selectedFiles.value.some(f => f.name === file.name && f.size === file.size)) {
       return
     }
     
-    // Validate file
-    let error = null
-    if (file.size > props.maxFileSize) {
-      error = 'File exceeds 25MB limit'
-    }
-    
-    selectedFiles.value.push({
-      file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      error
-    })
+    selectedFiles.value.push(file)
   })
 }
 
@@ -215,24 +214,18 @@ function clearFiles() {
 }
 
 async function uploadFiles() {
-  if (!validFiles.value.length) return
-  
   uploading.value = true
-  const results = []
   const errors = []
   
-  for (const fileData of validFiles.value) {
+  for (const file of validFiles.value) {
     try {
-      const metadata = {
+      await emit('uploaded', file, {
         description: uploadDescription.value,
         tags: uploadTags.value
-      }
-      
-      // Emit each file for parent to handle actual upload
-      const result = await emit('uploaded', fileData.file, metadata)
-      results.push(result)
+      })
     } catch (error) {
-      errors.push({ file: fileData.name, error: error.message })
+      console.error('Upload error:', error)
+      errors.push({ file: file.name, error: error.message })
     }
   }
   
@@ -240,31 +233,64 @@ async function uploadFiles() {
   
   if (errors.length > 0) {
     emit('error', errors)
-  }
-  
-  // Clear on success
-  if (results.length > 0) {
+  } else {
     clearFiles()
   }
 }
 
-// Utility functions
 function getFileIcon(type) {
-  if (type.startsWith('image/')) return 'mdi-file-image'
-  if (type.startsWith('video/')) return 'mdi-file-video'
+  if (!type) return 'mdi-file'
+  
+  if (type.includes('image')) return 'mdi-file-image'
   if (type.includes('pdf')) return 'mdi-file-pdf-box'
   if (type.includes('word') || type.includes('document')) return 'mdi-file-word'
   if (type.includes('excel') || type.includes('spreadsheet')) return 'mdi-file-excel'
   if (type.includes('powerpoint') || type.includes('presentation')) return 'mdi-file-powerpoint'
-  if (type.includes('zip') || type.includes('compressed')) return 'mdi-folder-zip'
-  return 'mdi-file-document'
+  if (type.includes('video')) return 'mdi-file-video'
+  if (type.includes('audio')) return 'mdi-file-music'
+  if (type.includes('zip') || type.includes('rar')) return 'mdi-folder-zip'
+  if (type.includes('text')) return 'mdi-file-document'
+  
+  return 'mdi-file'
 }
 
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  if (!bytes) return '0 B'
+  
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
 }
 </script>
+
+<style scoped>
+.drop-zone {
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  padding: 48px;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.drop-zone:hover {
+  border-color: #1976d2;
+  background-color: #f5f5f5;
+}
+
+.drop-zone.drag-over {
+  border-color: #1976d2;
+  background-color: #e3f2fd;
+}
+
+/* Fix for combobox chip spacing */
+:deep(.v-combobox .v-field__input) {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+:deep(.v-combobox .v-chip) {
+  margin: 2px;
+}
+</style>

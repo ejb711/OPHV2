@@ -9,35 +9,41 @@
     <v-card-text>
       <!-- Add link form -->
       <div v-if="showForm">
-        <v-text-field
-          v-model="newLink.title"
-          label="Link Title"
-          placeholder="e.g., Project Documentation"
-          variant="outlined"
-          density="compact"
-          :rules="[rules.required]"
-          class="mb-3"
-        />
+        <div class="mb-3">
+          <div class="text-subtitle-2 mb-2">Link Title <span class="text-error">*</span></div>
+          <v-text-field
+            v-model="newLink.title"
+            placeholder="e.g., Project Documentation"
+            variant="outlined"
+            density="compact"
+            :rules="[rules.required]"
+            hide-details="auto"
+          />
+        </div>
         
-        <v-text-field
-          v-model="newLink.url"
-          label="URL"
-          placeholder="https://example.com/document"
-          variant="outlined"
-          density="compact"
-          :rules="[rules.required, rules.url]"
-          class="mb-3"
-        />
+        <div class="mb-3">
+          <div class="text-subtitle-2 mb-2">URL <span class="text-error">*</span></div>
+          <v-text-field
+            v-model="newLink.url"
+            placeholder="https://example.com/document"
+            variant="outlined"
+            density="compact"
+            :rules="[rules.required, rules.url]"
+            hide-details="auto"
+          />
+        </div>
         
-        <v-textarea
-          v-model="newLink.description"
-          label="Description (optional)"
-          placeholder="Brief description of this link"
-          variant="outlined"
-          density="compact"
-          rows="2"
-          class="mb-3"
-        />
+        <div class="mb-3">
+          <div class="text-subtitle-2 mb-2">Description (optional)</div>
+          <v-textarea
+            v-model="newLink.description"
+            placeholder="Brief description of this link"
+            variant="outlined"
+            density="compact"
+            rows="2"
+            hide-details
+          />
+        </div>
         
         <div class="d-flex justify-end ga-2">
           <v-btn
@@ -78,121 +84,127 @@
           {{ links.length }} External {{ links.length === 1 ? 'Link' : 'Links' }}
         </div>
         
-        <v-list density="compact" class="rounded">
-          <template v-for="(link, index) in links" :key="link.id">
-            <v-list-item>
-              <template v-slot:prepend>
-                <v-icon color="blue">mdi-link</v-icon>
-              </template>
-              
-              <v-list-item-title>
-                <a 
-                  :href="link.url" 
-                  target="_blank"
-                  class="text-decoration-none"
-                  @click.stop
-                >
-                  {{ link.displayName || link.name }}
-                  <v-icon size="x-small" class="ml-1">mdi-open-in-new</v-icon>
-                </a>
-              </v-list-item-title>
-              
-              <v-list-item-subtitle v-if="link.description">
-                {{ link.description }}
-              </v-list-item-subtitle>
-              
-              <v-list-item-subtitle>
-                Added {{ formatDate(link.createdAt) }}
-                <span v-if="link.createdByEmail">by {{ link.createdByEmail }}</span>
-              </v-list-item-subtitle>
-              
-              <template v-slot:append v-if="canEdit">
-                <v-menu>
-                  <template v-slot:activator="{ props }">
-                    <v-btn
-                      icon
-                      size="small"
-                      variant="text"
-                      v-bind="props"
-                    >
-                      <v-icon>mdi-dots-vertical</v-icon>
-                    </v-btn>
-                  </template>
-                  
-                  <v-list density="compact">
-                    <v-list-item @click="editLink(link)">
-                      <template v-slot:prepend>
-                        <v-icon>mdi-pencil</v-icon>
-                      </template>
-                      <v-list-item-title>Edit</v-list-item-title>
-                    </v-list-item>
-                    
-                    <v-list-item @click="copyLink(link.url)">
-                      <template v-slot:prepend>
-                        <v-icon>mdi-content-copy</v-icon>
-                      </template>
-                      <v-list-item-title>Copy URL</v-list-item-title>
-                    </v-list-item>
-                    
-                    <v-divider />
-                    
-                    <v-list-item @click="removeLink(link)" class="text-error">
-                      <template v-slot:prepend>
-                        <v-icon color="error">mdi-delete</v-icon>
-                      </template>
-                      <v-list-item-title>Remove</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
-              </template>
-            </v-list-item>
+        <v-list density="compact">
+          <v-list-item
+            v-for="link in links"
+            :key="link.id"
+            :href="link.url"
+            target="_blank"
+            class="mb-2"
+          >
+            <template v-slot:prepend>
+              <v-icon color="primary">mdi-link-variant</v-icon>
+            </template>
             
-            <v-divider v-if="index < links.length - 1" />
-          </template>
+            <v-list-item-title>
+              {{ link.title || link.displayName }}
+            </v-list-item-title>
+            
+            <v-list-item-subtitle v-if="link.description">
+              {{ link.description }}
+            </v-list-item-subtitle>
+            
+            <v-list-item-subtitle>
+              <span class="text-caption">
+                {{ formatUrl(link.url) }}
+              </span>
+            </v-list-item-subtitle>
+            
+            <template v-slot:append v-if="canEdit">
+              <div class="d-flex ga-1">
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
+                  @click.stop.prevent="startEdit(link)"
+                >
+                  <v-icon size="small">mdi-pencil</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  size="small"
+                  variant="text"
+                  color="error"
+                  @click.stop.prevent="confirmDelete(link)"
+                >
+                  <v-icon size="small">mdi-delete</v-icon>
+                </v-btn>
+              </div>
+            </template>
+          </v-list-item>
         </v-list>
       </div>
     </v-card-text>
     
-    <!-- Edit Dialog -->
+    <!-- Delete confirmation dialog -->
+    <v-dialog v-model="deleteDialog" max-width="400">
+      <v-card>
+        <v-card-title>Delete Link?</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete the link "{{ linkToDelete?.title }}"?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="error" 
+            variant="elevated"
+            @click="deleteLink"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Edit dialog -->
     <v-dialog v-model="editDialog" max-width="500">
       <v-card>
         <v-card-title>Edit Link</v-card-title>
-        
-        <v-card-text v-if="editingLink">
-          <v-text-field
-            v-model="editingLink.title"
-            label="Link Title"
-            variant="outlined"
-            density="compact"
-            :rules="[rules.required]"
-            class="mb-3"
-          />
+        <v-card-text>
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">Link Title <span class="text-error">*</span></div>
+            <v-text-field
+              v-model="editingLink.title"
+              placeholder="e.g., Project Documentation"
+              variant="outlined"
+              density="compact"
+              :rules="[rules.required]"
+              hide-details="auto"
+            />
+          </div>
           
-          <v-text-field
-            v-model="editingLink.url"
-            label="URL"
-            variant="outlined"
-            density="compact"
-            :rules="[rules.required, rules.url]"
-            class="mb-3"
-          />
+          <div class="mb-3">
+            <div class="text-subtitle-2 mb-2">URL <span class="text-error">*</span></div>
+            <v-text-field
+              v-model="editingLink.url"
+              placeholder="https://example.com/document"
+              variant="outlined"
+              density="compact"
+              :rules="[rules.required, rules.url]"
+              hide-details="auto"
+            />
+          </div>
           
-          <v-textarea
-            v-model="editingLink.description"
-            label="Description"
-            variant="outlined"
-            density="compact"
-            rows="2"
-          />
+          <div>
+            <div class="text-subtitle-2 mb-2">Description (optional)</div>
+            <v-textarea
+              v-model="editingLink.description"
+              placeholder="Brief description of this link"
+              variant="outlined"
+              density="compact"
+              rows="2"
+              hide-details
+            />
+          </div>
         </v-card-text>
-        
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="editDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
           <v-btn 
             color="primary" 
             variant="elevated"
-            :loading="saving"
+            :disabled="!isEditFormValid"
             @click="saveEdit"
           >
             Save
@@ -200,23 +212,13 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    
-    <!-- Success snackbar -->
-    <v-snackbar
-      v-model="snackbar"
-      :color="snackbarColor"
-      timeout="3000"
-    >
-      {{ snackbarText }}
-    </v-snackbar>
   </v-card>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { formatDistanceToNow } from 'date-fns'
 
-// Props & Emits
+// Props
 const props = defineProps({
   links: {
     type: Array,
@@ -228,34 +230,32 @@ const props = defineProps({
   }
 })
 
+// Emits
 const emit = defineEmits(['add', 'edit', 'delete'])
 
 // State
 const showForm = ref(false)
 const adding = ref(false)
+const deleteDialog = ref(false)
+const editDialog = ref(false)
+const linkToDelete = ref(null)
+const editingLink = ref({})
+
 const newLink = ref({
   title: '',
   url: '',
   description: ''
 })
 
-const editDialog = ref(false)
-const editingLink = ref(null)
-const saving = ref(false)
-
-const snackbar = ref(false)
-const snackbarText = ref('')
-const snackbarColor = ref('success')
-
 // Validation rules
 const rules = {
-  required: v => !!v || 'Required',
-  url: v => {
+  required: value => !!value || 'Required',
+  url: value => {
     try {
-      new URL(v)
+      new URL(value)
       return true
     } catch {
-      return 'Invalid URL'
+      return 'Must be a valid URL'
     }
   }
 }
@@ -265,12 +265,15 @@ const isFormValid = computed(() => {
   return newLink.value.title && newLink.value.url && rules.url(newLink.value.url) === true
 })
 
+const isEditFormValid = computed(() => {
+  return editingLink.value.title && editingLink.value.url && rules.url(editingLink.value.url) === true
+})
+
 // Methods
 async function addLink() {
   if (!isFormValid.value) return
   
   adding.value = true
-  
   try {
     await emit('add', {
       title: newLink.value.title,
@@ -285,8 +288,8 @@ async function addLink() {
       description: ''
     }
     showForm.value = false
-    
-    showSnackbar('Link added successfully')
+  } catch (error) {
+    console.error('Error adding link:', error)
   } finally {
     adding.value = false
   }
@@ -301,63 +304,84 @@ function cancelAdd() {
   showForm.value = false
 }
 
-function editLink(link) {
+function confirmDelete(link) {
+  linkToDelete.value = link
+  deleteDialog.value = true
+}
+
+async function deleteLink() {
+  if (!linkToDelete.value) return
+  
+  try {
+    await emit('delete', linkToDelete.value.id)
+    deleteDialog.value = false
+    linkToDelete.value = null
+  } catch (error) {
+    console.error('Error deleting link:', error)
+  }
+}
+
+function startEdit(link) {
   editingLink.value = {
     id: link.id,
-    title: link.displayName || link.name,
+    title: link.title || link.displayName,
     url: link.url,
     description: link.description || ''
   }
   editDialog.value = true
 }
 
+function cancelEdit() {
+  editingLink.value = {}
+  editDialog.value = false
+}
+
 async function saveEdit() {
-  if (!editingLink.value) return
-  
-  saving.value = true
+  if (!isEditFormValid.value) return
   
   try {
     await emit('edit', editingLink.value.id, {
-      displayName: editingLink.value.title,
+      title: editingLink.value.title,
       url: editingLink.value.url,
       description: editingLink.value.description
     })
-    
     editDialog.value = false
-    editingLink.value = null
-    
-    showSnackbar('Link updated successfully')
-  } finally {
-    saving.value = false
-  }
-}
-
-async function removeLink(link) {
-  if (confirm(`Remove "${link.displayName || link.name}"?`)) {
-    await emit('delete', link.id)
-    showSnackbar('Link removed')
-  }
-}
-
-function copyLink(url) {
-  navigator.clipboard.writeText(url)
-  showSnackbar('URL copied to clipboard')
-}
-
-function formatDate(timestamp) {
-  if (!timestamp) return 'Unknown date'
-  
-  try {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return formatDistanceToNow(date, { addSuffix: true })
+    editingLink.value = {}
   } catch (error) {
-    return 'Unknown date'
+    console.error('Error updating link:', error)
   }
 }
 
-function showSnackbar(text, color = 'success') {
-  snackbarText.value = text
-  snackbarColor.value = color
-  snackbar.value = true
+function formatUrl(url) {
+  try {
+    const u = new URL(url)
+    return u.hostname + (u.pathname !== '/' ? u.pathname : '')
+  } catch {
+    return url
+  }
 }
 </script>
+
+<style scoped>
+/* Ensure proper spacing for form fields */
+.text-subtitle-2 {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+/* Fix list item hover state */
+.v-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Ensure links are properly styled */
+.v-list-item[href] {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+/* Error state indicator */
+.text-error {
+  color: #d32f2f;
+}
+</style>
