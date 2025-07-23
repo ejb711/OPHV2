@@ -2,87 +2,304 @@
 /* Communications Dashboard Specific Styles */
 
 /* ===========================================
-   V-COMBOBOX FIXES FOR TAGS
+   DIALOG STRUCTURE FIXES
    =========================================== */
 
-/* Prevent object data from displaying in combobox */
-.comms-tags-field .v-combobox__selection-text {
-  display: none !important;
+/* Project Detail Dialog Structure */
+.project-detail-dialog .v-overlay__content {
+  max-height: calc(100vh - 48px) !important;
+  height: auto !important;
+  margin: 24px auto !important;
 }
 
-/* Ensure only chips are visible in the combobox */
-.comms-tags-field .v-field__input {
+.project-detail-dialog .v-card {
   display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 4px !important;
-  align-items: center !important;
-  padding: 8px !important;
+  flex-direction: column !important;
+  max-height: calc(100vh - 48px) !important;
+  overflow: hidden !important;
 }
 
-/* Hide any raw text that's not in a chip */
-.comms-tags-field .v-combobox__selection {
-  display: none !important;
+.project-detail-dialog .dialog-card {
+  height: 100% !important;
 }
 
-/* Only show the chips */
-.comms-tags-field .v-chip {
-  display: inline-flex !important;
+/* Tab Content Wrapper for Scrolling */
+.project-detail-dialog .tab-content-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
 }
 
-/* Style the input area properly */
-.comms-tags-field input {
+.project-detail-dialog .v-window {
   flex: 1 1 auto !important;
-  min-width: 50px !important;
-  max-width: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.project-detail-dialog .v-window-item {
+  height: 100% !important;
 }
 
 /* ===========================================
-   V-SELECT VISIBILITY DROPDOWN FIXES
+   PROJECT DETAIL VIEW MODE FIXES
    =========================================== */
 
-/* Ensure selection text is visible */
-.create-project-dialog .v-select .v-select__selection {
-  display: flex !important;
-  align-items: center !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+/* Plain variant text fields in view mode */
+.project-detail-dialog .v-field--variant-plain {
+  padding: 8px 0 !important;
 }
 
-/* Make sure the selection slot content is visible */
-.create-project-dialog .v-select .v-select__selection span {
-  display: inline-block !important;
+.project-detail-dialog .v-field--variant-plain .v-field__input {
+  padding: 0 !important;
+  min-height: auto !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+  font-size: 1rem !important;
+}
+
+.project-detail-dialog .v-field--variant-plain .v-field__append-inner {
+  display: none !important;
+}
+
+/* Hide dropdown arrows in view mode */
+.project-detail-dialog .v-field--variant-plain .v-select__menu-icon {
+  display: none !important;
+}
+
+/* Priority chip spacing in view mode */
+.project-detail-dialog .field-group .v-chip {
+  margin-top: 4px;
+}
+
+/* ===========================================
+   FORM FIELD STYLING
+   =========================================== */
+
+/* Field Group Spacing and Borders */
+.field-group {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.01);
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.field-group:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  background-color: rgba(0, 0, 0, 0.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.field-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Nested field groups should not have double borders */
+.field-group .field-group {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* Field Labels */
+.field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.6);
+  margin-bottom: 8px;
+}
+
+/* Text Fields and Select Components */
+.project-detail-dialog .v-text-field .v-field,
+.project-detail-dialog .v-textarea .v-field,
+.project-detail-dialog .v-select .v-field {
+  background-color: #fff;
+}
+
+/* Textarea specific fixes for text cutoff */
+.project-detail-dialog .v-textarea .v-field__input {
+  overflow-y: auto !important;
+  word-wrap: break-word !important;
+  white-space: pre-wrap !important;
+  min-height: 1.5em !important;
+}
+
+.project-detail-dialog .v-textarea--auto-grow .v-field__input {
+  overflow-y: hidden !important;
+}
+
+/* Ensure proper padding for textarea content */
+.project-detail-dialog .v-field--variant-plain .v-field__input {
+  padding: 8px 0 !important;
+  line-height: 1.5 !important;
+}
+
+/* Plain variant textarea specific */
+.project-detail-dialog .v-textarea.v-field--variant-plain .v-field__input {
+  display: block !important;
+  width: 100% !important;
+  resize: none !important;
+}
+
+/* Hide resize handle in view mode */
+.project-detail-dialog .v-textarea--no-resize .v-field__input,
+.project-detail-dialog .v-textarea[readonly] .v-field__input {
+  resize: none !important;
+}
+
+/* Ensure description text is fully visible */
+.field-group .v-textarea.v-input--readonly .v-field__input,
+.field-group .v-textarea.v-field--variant-plain .v-field__input {
+  min-height: fit-content !important;
+  height: auto !important;
+}
+
+/* Readonly State Styling */
+.project-detail-dialog .v-field--variant-plain .v-field__overlay {
+  opacity: 0 !important;
+}
+
+.project-detail-dialog .v-field--variant-plain .v-field__outline {
+  opacity: 0 !important;
+}
+
+.project-detail-dialog .v-field--variant-plain {
+  padding: 8px 0 !important;
+}
+
+/* Special styling for multi-row sections */
+.project-detail-dialog .v-row > .v-col > .field-group {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure field groups in same row have equal height */
+.project-detail-dialog .v-row {
+  align-items: stretch;
+}
+
+.project-detail-dialog .v-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Field group content should expand */
+.field-group > .v-text-field,
+.field-group > .v-select,
+.field-group > .v-textarea,
+.field-group > div {
+  flex: 1;
+}
+
+/* Statistics section special styling */
+.project-detail-dialog .text-center {
+  padding: 16px 8px;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.project-detail-dialog .text-center:hover {
+  background-color: #e8e8e8;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ===========================================
+   SELECT DROPDOWN FIXES
+   =========================================== */
+
+/* Priority and Status Select Display */
+.project-detail-dialog .v-select__selection {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+.project-detail-dialog .v-select__selection-text {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure proper text display for object items */
+.project-detail-dialog .v-select .v-select__selection-text {
   color: rgba(0, 0, 0, 0.87) !important;
   font-size: 1rem !important;
   line-height: 1.5 !important;
 }
 
-/* Remove any duplicate text nodes */
-.create-project-dialog .v-select .v-select__selection-text {
-  display: none !important;
+/* ===========================================
+   TAGS COMBOBOX STYLING
+   =========================================== */
+
+.project-detail-dialog .v-combobox--chips .v-field__input {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  align-items: center !important;
+  min-height: 56px !important;
+  padding: 8px !important;
+}
+
+.project-detail-dialog .v-combobox--chips .v-chip {
+  margin: 2px !important;
+  height: 26px !important;
+}
+
+.project-detail-dialog .v-combobox--chips input {
+  margin: 4px !important;
+  min-width: 80px !important;
+  flex: 1 1 auto !important;
+}
+
+/* Tags field group special handling */
+.field-group .v-combobox--chips .v-field--variant-plain {
+  min-height: 40px !important;
+  padding: 8px 0 !important;
+}
+
+.field-group .v-combobox--chips .v-field--variant-plain .v-field__input {
+  padding: 4px 0 !important;
+  min-height: 32px !important;
 }
 
 /* ===========================================
-   GENERAL FORM FIELD ENHANCEMENTS
+   PROJECT STATISTICS STYLING
    =========================================== */
 
-/* Consistent field heights for project form */
-.create-project-dialog .v-field--variant-outlined .v-field__outline {
-  color: rgba(0, 0, 0, 0.38) !important;
+.project-detail-dialog .text-center {
+  padding: 16px 8px;
+  border-radius: 8px;
+  background-color: #f5f5f5;
+  transition: all 0.2s ease;
 }
 
-.create-project-dialog .v-field--focused .v-field__outline {
-  color: rgb(25, 118, 210) !important;
+.project-detail-dialog .text-center:hover {
+  background-color: #e8e8e8;
 }
 
-/* Fix label colors for better visibility */
-.create-project-dialog .v-label {
-  color: rgba(0, 0, 0, 0.6) !important;
-  font-size: 0.875rem !important;
+.project-detail-dialog .text-h6 {
+  font-weight: 600;
+  color: #1976d2;
+  margin-bottom: 4px;
 }
 
-.create-project-dialog .v-field--focused .v-label {
-  color: rgb(25, 118, 210) !important;
+/* ===========================================
+   VISIBILITY SECTION
+   =========================================== */
+
+/* Visibility component within field group */
+.field-group .project-visibility {
+  margin-top: 8px;
 }
 
 /* ===========================================
@@ -91,6 +308,7 @@
 
 .project-card {
   transition: all 0.3s ease !important;
+  cursor: pointer;
 }
 
 .project-card:hover {
@@ -99,32 +317,102 @@
 }
 
 /* ===========================================
-   STEPPER STYLES
+   CREATE PROJECT DIALOG
    =========================================== */
 
+.create-project-dialog .v-card {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+
+.create-project-dialog .form-container {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px;
+}
+
+/* Stepper Styling */
+.project-form-stepper .v-stepper-header {
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 .project-form-stepper .v-stepper-item--selected .v-stepper-item__avatar {
-  background-color: rgb(25, 118, 210) !important;
+  background-color: #1976d2 !important;
 }
 
 .project-form-stepper .v-stepper-item--complete .v-stepper-item__avatar {
-  background-color: rgb(76, 175, 80) !important;
+  background-color: #4caf50 !important;
+}
+
+/* ===========================================
+   SCROLLBAR STYLING
+   =========================================== */
+
+.tab-content-wrapper::-webkit-scrollbar,
+.form-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-track,
+.form-container::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-thumb,
+.form-container::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 4px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-thumb:hover,
+.form-container::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+/* Firefox scrollbar styling */
+.tab-content-wrapper,
+.form-container {
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f5f5f5;
 }
 
 /* ===========================================
    RESPONSIVE ADJUSTMENTS
    =========================================== */
 
+@media (max-width: 960px) {
+  .project-detail-dialog .v-overlay__content {
+    max-width: calc(100% - 32px) !important;
+  }
+}
+
 @media (max-width: 599px) {
-  .create-project-dialog {
-    margin: 16px !important;
+  .project-detail-dialog .v-overlay__content,
+  .create-project-dialog .v-overlay__content {
+    max-height: 100vh !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
   }
   
-  .create-project-dialog .v-card-title {
-    flex-direction: column !important;
-    align-items: flex-start !important;
+  .project-detail-dialog .v-card,
+  .create-project-dialog .v-card {
+    max-height: 100vh !important;
+    border-radius: 0 !important;
   }
   
-  .create-project-dialog .form-container {
-    min-height: 400px !important;
+  .field-group {
+    margin-bottom: 16px;
+  }
+  
+  .tab-content-wrapper,
+  .form-container {
+    padding: 16px;
   }
 }

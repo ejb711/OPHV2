@@ -13,6 +13,7 @@
         :can-edit="canEdit"
         :editing="editing"
         :saving="saving"
+        :has-changes="hasChanges"
         @close="handleClose"
         @edit="startEdit"
         @save="saveChanges"
@@ -125,8 +126,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { onSnapshot, doc } from 'firebase/firestore'
+import { db } from '@/firebase'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import { useSnackbar } from '@/composables/useSnackbar'
+import { useAudit } from '@/composables/useAudit'
 import ProjectHeader from './detail/ProjectHeader.vue'
 import ProjectInfoTab from './detail/tabs/ProjectInfoTab.vue'
 import ProjectStagesTab from './detail/tabs/ProjectStagesTab.vue'
@@ -138,9 +142,11 @@ const {
   getProject, 
   updateProject,
   softDeleteProject,
+  hardDeleteProject,
   canEditProject 
 } = useCommsProjects()
 const { showError, showSuccess } = useSnackbar()
+const { logEvent } = useAudit()
 
 // State
 const dialogOpen = ref(false)
@@ -153,6 +159,9 @@ const error = ref(null)
 const activeTab = ref('details')
 const deleteDialog = ref(false)
 const deleting = ref(false)
+
+// Real-time listener
+let unsubscribe = null
 
 // Computed
 const canEdit = computed(() => {
@@ -170,9 +179,22 @@ const hasChanges = computed(() => {
     const original = project.value[field]
     const edited = editedProject.value[field]
     
-    if (Array.isArray(original)) {
-      return JSON.stringify(original) !== JSON.stringify(edited)
+    // Handle date comparison
+    if (field === 'deadline') {
+      const origDate = original?.toDate ? original.toDate() : original
+      const editDate = edited?.toDate ? edited.toDate() : edited
+      
+      if (!origDate && !editDate) return false
+      if (!origDate || !editDate) return true
+      
+      return origDate.getTime() !== editDate.getTime()
     }
+    
+    // Handle array comparison
+    if (Array.isArray(original)) {
+      return JSON.stringify(original) !== JSON.stringify(edited || [])
+    }
+    
     return original !== edited
   })
 })
@@ -187,8 +209,18 @@ async function open(projectId) {
   activeTab.value = 'details'
   
   try {
+    // Get initial project data
     project.value = await getProject(projectId)
     resetEditedProject()
+    
+    // Set up real-time listener
+    setupRealtimeListener(projectId)
+    
+    // Log view event
+    await logEvent('view_comms_project', {
+      projectId,
+      projectTitle: project.value.title
+    })
   } catch (err) {
     console.error('Failed to load project:', err)
     error.value = err.message || 'Failed to load project details'
@@ -197,11 +229,51 @@ async function open(projectId) {
   }
 }
 
+function setupRealtimeListener(projectId) {
+  // Clean up existing listener
+  if (unsubscribe) {
+    unsubscribe()
+  }
+  
+  // Set up new listener
+  unsubscribe = onSnapshot(
+    doc(db, 'comms_projects', projectId),
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const newData = { id: snapshot.id, ...snapshot.data() }
+        
+        // Only update if not currently editing
+        if (!editing.value) {
+          project.value = newData
+          resetEditedProject()
+        } else {
+          // Store the new data but don't apply it while editing
+          project.value = { ...project.value, ...newData }
+        }
+      } else {
+        // Project was deleted
+        showError('This project has been deleted')
+        close()
+      }
+    },
+    (error) => {
+      console.error('Error listening to project:', error)
+      showError('Lost connection to project updates')
+    }
+  )
+}
+
 function close() {
   if (editing.value && hasChanges.value) {
     if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
       return
     }
+  }
+  
+  // Clean up listener
+  if (unsubscribe) {
+    unsubscribe()
+    unsubscribe = null
   }
   
   dialogOpen.value = false
@@ -222,6 +294,12 @@ function startEdit() {
 }
 
 function cancelEdit() {
+  if (hasChanges.value) {
+    if (!confirm('Are you sure you want to discard your changes?')) {
+      return
+    }
+  }
+  
   editing.value = false
   resetEditedProject()
 }
@@ -242,8 +320,8 @@ function resetEditedProject() {
   }
 }
 
-function updateEditedProject(field, value) {
-  editedProject.value[field] = value
+function updateEditedProject(updates) {
+  editedProject.value = { ...editedProject.value, ...updates }
 }
 
 async function saveChanges() {
@@ -252,14 +330,49 @@ async function saveChanges() {
   saving.value = true
   
   try {
-    await updateProject(project.value.id, editedProject.value)
+    // Extract only changed fields
+    const updates = {}
+    const fields = ['title', 'description', 'region', 'coordinatorId', 
+                    'priority', 'deadline', 'tags', 'stages', 'currentStageIndex']
     
-    // Update local project data
-    Object.assign(project.value, editedProject.value)
+    fields.forEach(field => {
+      const original = project.value[field]
+      const edited = editedProject.value[field]
+      
+      // Special handling for deadline
+      if (field === 'deadline') {
+        const origDate = original?.toDate ? original.toDate() : original
+        const editDate = edited?.toDate ? edited.toDate() : edited
+        
+        if (origDate?.getTime() !== editDate?.getTime()) {
+          updates[field] = edited
+        }
+      }
+      // Array comparison
+      else if (Array.isArray(original)) {
+        if (JSON.stringify(original) !== JSON.stringify(edited || [])) {
+          updates[field] = edited || []
+        }
+      }
+      // Simple comparison
+      else if (original !== edited) {
+        updates[field] = edited
+      }
+    })
     
-    editing.value = false
-    showSuccess('Project updated successfully')
-    emit('updated', project.value)
+    // Only update if there are changes
+    if (Object.keys(updates).length > 0) {
+      await updateProject(project.value.id, updates)
+      
+      // Update local project data
+      Object.assign(project.value, updates)
+      
+      editing.value = false
+      showSuccess('Project updated successfully')
+      emit('updated', project.value)
+    } else {
+      editing.value = false
+    }
   } catch (err) {
     console.error('Failed to save changes:', err)
     showError(err.message || 'Failed to save changes')
@@ -272,14 +385,20 @@ function handleDelete() {
   deleteDialog.value = true
 }
 
-async function confirmDelete() {
+async function confirmDelete(permanently = false) {
   if (!project.value) return
   
   deleting.value = true
   
   try {
-    await softDeleteProject(project.value.id)
-    showSuccess('Project moved to trash')
+    if (permanently && hardDeleteProject) {
+      await hardDeleteProject(project.value.id)
+      showSuccess('Project permanently deleted')
+    } else {
+      await softDeleteProject(project.value.id)
+      showSuccess('Project moved to trash')
+    }
+    
     emit('deleted', project.value.id)
     close()
   } catch (err) {
@@ -298,6 +417,17 @@ function handleEscape(event) {
   }
 }
 
+// Watch for changes to reset when dialog opens/closes
+watch(dialogOpen, (newVal) => {
+  if (!newVal) {
+    // Clean up when closing
+    if (unsubscribe) {
+      unsubscribe()
+      unsubscribe = null
+    }
+  }
+})
+
 // Lifecycle
 onMounted(() => {
   window.addEventListener('keydown', handleEscape)
@@ -305,6 +435,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEscape)
+  
+  // Clean up listener
+  if (unsubscribe) {
+    unsubscribe()
+    unsubscribe = null
+  }
 })
 
 // Expose methods for parent
@@ -314,7 +450,7 @@ defineExpose({
 })
 
 // Emit events
-const emit = defineEmits(['updated', 'deleted'])
+const emit = defineEmits(['closed', 'updated', 'deleted'])
 </script>
 
 <style scoped>

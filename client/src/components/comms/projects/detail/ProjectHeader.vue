@@ -1,103 +1,84 @@
 <!-- client/src/components/comms/projects/detail/ProjectHeader.vue -->
 <template>
-  <div>
-    <v-card-title class="d-flex align-center pa-4">
-      <div class="flex-grow-1">
-        <div class="d-flex align-center ga-2">
-          <h3 class="text-h5">{{ project.title }}</h3>
-          <StatusBadge :status="project.status" />
-          <v-chip 
-            v-if="project.priority === 'high'" 
-            color="error" 
-            size="small"
-            variant="tonal"
-          >
-            High Priority
-          </v-chip>
-        </div>
+  <v-card-title class="d-flex align-center pa-4 border-b">
+    <div class="d-flex align-center flex-grow-1">
+      <StatusBadge :status="project.status" class="mr-3" />
+      <span class="text-h6">{{ project.title }}</span>
+    </div>
+    
+    <v-spacer />
+    
+    <!-- Action Buttons -->
+    <div class="d-flex align-center gap-2">
+      <!-- Edit/Save/Cancel Buttons -->
+      <template v-if="canEdit">
+        <v-btn
+          v-if="!editing"
+          color="primary"
+          variant="text"
+          size="small"
+          @click="$emit('edit')"
+        >
+          <v-icon start>mdi-pencil</v-icon>
+          Edit
+        </v-btn>
         
-        <div class="text-caption text-grey mt-1">
-          Created {{ formatDate(project.createdAt) }} 
-          by {{ project.createdByEmail }}
-        </div>
-      </div>
-      
-      <div class="d-flex align-center ga-2">
-        <!-- Edit/Save/Cancel buttons -->
-        <template v-if="canEdit">
+        <template v-else>
           <v-btn
-            v-if="!editing"
-            variant="tonal"
-            prepend-icon="mdi-pencil"
-            @click="$emit('edit')"
+            color="success"
+            variant="text"
+            size="small"
+            :loading="saving"
+            :disabled="!hasChanges"
+            @click="$emit('save')"
           >
-            Edit
+            <v-icon start>mdi-check</v-icon>
+            Save
           </v-btn>
           
-          <template v-else>
-            <v-btn
-              variant="text"
-              @click="$emit('cancel')"
-            >
-              Cancel
-            </v-btn>
-            <v-btn
-              color="primary"
-              variant="elevated"
-              prepend-icon="mdi-content-save"
-              :loading="saving"
-              @click="$emit('save')"
-            >
-              Save
-            </v-btn>
-          </template>
+          <v-btn
+            color="grey"
+            variant="text"
+            size="small"
+            :disabled="saving"
+            @click="$emit('cancel')"
+          >
+            <v-icon start>mdi-close</v-icon>
+            Cancel
+          </v-btn>
         </template>
-        
-        <!-- More actions -->
-        <v-menu v-if="canEdit && !editing">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              icon
-              variant="text"
-              v-bind="props"
-            >
-              <v-icon>mdi-dots-vertical</v-icon>
-            </v-btn>
-          </template>
-          
-          <v-list density="compact">
-            <v-list-item @click="$emit('delete')">
-              <template v-slot:prepend>
-                <v-icon color="error">mdi-delete</v-icon>
-              </template>
-              <v-list-item-title class="text-error">
-                Delete Project
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-        
-        <!-- Close button -->
-        <v-btn
-          icon
-          variant="text"
-          @click="$emit('close')"
-        >
-          <v-icon>mdi-close</v-icon>
-        </v-btn>
-      </div>
-    </v-card-title>
-    
-    <v-divider />
-  </div>
+      </template>
+      
+      <!-- Delete Button -->
+      <v-btn
+        v-if="canEdit && !editing"
+        color="error"
+        variant="text"
+        size="small"
+        @click="$emit('delete')"
+      >
+        <v-icon start>mdi-delete</v-icon>
+        Delete
+      </v-btn>
+      
+      <!-- Close Button -->
+      <v-btn
+        icon
+        variant="text"
+        size="small"
+        @click="$emit('close')"
+      >
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </div>
+  </v-card-title>
 </template>
 
 <script setup>
-import { formatDistanceToNow } from 'date-fns'
 import StatusBadge from '../../shared/StatusBadge.vue'
 
 // Props
-defineProps({
+const props = defineProps({
   project: {
     type: Object,
     required: true
@@ -113,21 +94,23 @@ defineProps({
   saving: {
     type: Boolean,
     default: false
+  },
+  hasChanges: {
+    type: Boolean,
+    default: false
   }
 })
 
-// Emits
+// Emit
 defineEmits(['close', 'edit', 'save', 'cancel', 'delete'])
-
-// Methods
-function formatDate(timestamp) {
-  if (!timestamp) return 'Unknown date'
-  
-  try {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return formatDistanceToNow(date, { addSuffix: true })
-  } catch (error) {
-    return 'Unknown date'
-  }
-}
 </script>
+
+<style scoped>
+.gap-2 > * + * {
+  margin-left: 8px;
+}
+
+.border-b {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+</style>
