@@ -53,51 +53,57 @@
         </v-menu>
       </v-card-title>
       
-      <v-card-subtitle class="d-flex flex-wrap align-center gap-2 mt-1">
-        <StatusBadge :status="project.status" small />
-        <RegionBadge :region="project.region" small />
-        <span class="text-caption text-medium-emphasis">
-          <v-icon size="x-small" class="mr-1">mdi-calendar</v-icon>
-          {{ formatDate(project.createdAt) }}
-        </span>
+      <v-card-subtitle class="d-flex align-center ga-2 mt-1">
+        <RegionBadge :region="project.region" size="small" />
+        <StatusBadge :status="project.status" size="small" />
       </v-card-subtitle>
     </v-card-item>
-    
+
     <v-card-text>
-      <p class="text-body-2 mb-3 description-text">
-        {{ truncateDescription(project.description) }}
-      </p>
+      <p class="text-body-2 mb-3">{{ project.description || 'No description' }}</p>
       
       <!-- Progress Bar -->
-      <div v-if="project.stages && project.stages.length > 0" class="mb-3">
-        <div class="d-flex justify-space-between align-center mb-1">
-          <span class="text-caption text-medium-emphasis">Progress</span>
-          <span class="text-caption font-weight-bold">
-            {{ currentStage }}
-          </span>
+      <div class="mb-3">
+        <div class="d-flex justify-space-between text-caption mb-1">
+          <span>Progress</span>
+          <span>{{ Math.round(progressPercentage) }}%</span>
         </div>
         <v-progress-linear
           :model-value="progressPercentage"
-          color="primary"
-          height="8"
+          height="6"
           rounded
+          :color="project.status === 'completed' ? 'success' : 'primary'"
         />
+        <div class="text-caption text-medium-emphasis mt-1">
+          Stage: {{ currentStage }}
+        </div>
+      </div>
+      
+      <!-- Coordinator -->
+      <div v-if="project.coordinatorName" class="mb-2">
+        <v-chip
+          size="small"
+          prepend-icon="mdi-account"
+          variant="tonal"
+        >
+          {{ project.coordinatorName }}
+        </v-chip>
       </div>
       
       <!-- Tags -->
-      <div v-if="project.tags && project.tags.length > 0" class="d-flex flex-wrap gap-1">
+      <div v-if="project.tags && project.tags.length > 0" class="d-flex flex-wrap ga-1">
         <v-chip
           v-for="tag in project.tags.slice(0, 3)"
           :key="tag"
           size="x-small"
-          variant="tonal"
+          variant="outlined"
         >
           {{ tag }}
         </v-chip>
         <v-chip
           v-if="project.tags.length > 3"
           size="x-small"
-          variant="text"
+          variant="outlined"
         >
           +{{ project.tags.length - 3 }}
         </v-chip>
@@ -167,63 +173,51 @@ function handleClick() {
   emit('view', props.project)
 }
 
-function truncateDescription(description) {
-  const maxLength = 120
-  if (description.length <= maxLength) return description
-  return description.substring(0, maxLength) + '...'
-}
-
-function formatDate(date) {
-  if (!date) return 'N/A'
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  }).format(date)
-}
-
-function formatDeadline(date) {
-  if (!date) return 'No deadline'
+function getDeadlineColor(deadline) {
+  if (!deadline) return 'grey'
+  
   const now = new Date()
-  const deadline = new Date(date)
-  const diffTime = deadline - now
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  const deadlineDate = new Date(deadline)
+  const daysUntil = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
   
-  if (diffDays < 0) return 'Overdue'
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Tomorrow'
-  if (diffDays <= 7) return `${diffDays} days`
-  
-  return formatDate(date)
+  if (daysUntil < 0) return 'error'
+  if (daysUntil <= 7) return 'warning'
+  if (daysUntil <= 30) return 'info'
+  return 'success'
 }
 
-function getDeadlineColor(date) {
-  if (!date) return 'default'
-  const now = new Date()
-  const deadline = new Date(date)
-  const diffTime = deadline - now
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+function formatDeadline(deadline) {
+  if (!deadline) return 'No deadline'
   
-  if (diffDays < 0) return 'error'
-  if (diffDays <= 3) return 'warning'
-  if (diffDays <= 7) return 'info'
-  return 'default'
+  const now = new Date()
+  const deadlineDate = new Date(deadline)
+  const daysUntil = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
+  
+  if (daysUntil < 0) {
+    return `${Math.abs(daysUntil)} days overdue`
+  } else if (daysUntil === 0) {
+    return 'Due today'
+  } else if (daysUntil === 1) {
+    return 'Due tomorrow'
+  } else if (daysUntil <= 7) {
+    return `${daysUntil} days`
+  } else {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(deadlineDate)
+  }
 }
 </script>
 
 <style scoped>
 .project-card {
   position: relative;
-  transition: all 0.2s ease;
-  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.project-card:hover {
-  transform: translateY(-2px);
-}
-
-.high-priority {
-  border: 1px solid rgba(var(--v-theme-error), 0.3);
+.project-card.high-priority {
+  border: 2px solid rgb(var(--v-theme-error));
 }
 
 .priority-indicator {
@@ -235,8 +229,29 @@ function getDeadlineColor(date) {
   background: rgb(var(--v-theme-error));
 }
 
-.description-text {
-  min-height: 2.5rem;
-  line-height: 1.4;
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure consistent card height */
+.h-100 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.v-card-text {
+  flex: 1;
+}
+
+/* Progress bar styling */
+.v-progress-linear {
+  transition: all 0.3s ease;
+}
+
+/* Tag overflow handling */
+.v-chip + .v-chip {
+  margin-left: 4px;
 }
 </style>

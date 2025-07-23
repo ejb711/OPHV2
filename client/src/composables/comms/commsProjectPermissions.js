@@ -1,69 +1,60 @@
 // client/src/composables/comms/commsProjectPermissions.js
-// Helper functions for checking project permissions
-// Extracted to keep main composable under 350 lines
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { usePermissions } from '@/composables/usePermissions'
 
-export function createProjectPermissionChecker(deps) {
-  const {
-    canViewAllRegions,
-    canManageComms,
-    hasPermission,
-    authStore,
-    currentUserId,
-    currentUserEmail,
-    coordinatorRegions
-  } = deps
-
-  // Check if current user can view a specific project
+export function useCommsProjectPermissions() {
+  // Store and composables
+  const authStore = useAuthStore()
+  const { hasPermission, canManageComms } = usePermissions()
+  
+  // Computed
+  const currentUserId = computed(() => authStore.user?.uid || null)
+  
+  const coordinatorRegions = computed(() => {
+    // Get regions where current user is a coordinator
+    // This would come from user's coordinator assignments
+    // For now, return empty array - will be implemented when coordinator assignments are added
+    return []
+  })
+  
+  // Check if user can view a project
   function canViewProject(project) {
-    // For system-created test projects without visibility settings
-    if (!project.visibility) {
-      console.log('Project has no visibility setting, defaulting to visible')
+    if (!project) return false
+    
+    // Admins and owners can view all projects
+    if (canManageComms.value || hasPermission('view_all_comms_projects')) {
       return true
     }
     
-    const userId = currentUserId.value
-    const userEmail = currentUserEmail.value
-    
-    console.log('Checking visibility for project:', project.title)
-    console.log('Project visibility:', project.visibility)
-    console.log('Current user ID:', userId)
-    console.log('User email:', userEmail)
-    
-    // Check based on visibility level
-    switch (project.visibility) {
-      case 'owner':
-        return canManageComms.value || authStore.userRole === 'owner'
-      
-      case 'admin':
-        return canManageComms.value || ['owner', 'admin'].includes(authStore.userRole)
-      
-      case 'coordinator':
-      case 'team': // Handle alternate naming
-        // Visible to coordinators of the same region, admins, and owners
-        if (canManageComms.value || canViewAllRegions.value) {
-          return true
-        }
-        return coordinatorRegions.value.includes(project.region)
-      
-      case 'creator':
-      case 'private': // Handle legacy/alternate naming
-        // Only visible to the creator, coordinators of same region, and admins
-        if (canManageComms.value || canViewAllRegions.value) {
-          return true
-        }
-        if (project.createdBy === userId || project.createdByEmail === userEmail) {
-          return true
-        }
-        return coordinatorRegions.value.includes(project.region)
-      
-      case 'public':
-      default:
-        return true
+    // Check visibility settings
+    if (project.visibility === 'public' || project.visibility === 'organization') {
+      return hasPermission('view_comms')
     }
+    
+    // Coordinators can view projects in their regions
+    if (project.visibility === 'coordinators' && coordinatorRegions.value.includes(project.region)) {
+      return true
+    }
+    
+    // Creators can always view their own projects
+    if (project.createdBy === currentUserId.value) {
+      return true
+    }
+    
+    // Check if user is in shared list
+    if (project.sharedWith && project.sharedWith.includes(currentUserId.value)) {
+      return true
+    }
+    
+    // Default deny
+    return false
   }
-
+  
   // Check if user can edit a project
   function canEditProject(project) {
+    if (!project) return false
+    
     const userId = currentUserId.value
     
     // Admins and owners can edit any project
@@ -86,6 +77,8 @@ export function createProjectPermissionChecker(deps) {
 
   // Check if user can delete a project
   function canDeleteProject(project) {
+    if (!project) return false
+    
     const userId = currentUserId.value
     
     // Only admins/owners or project creators can delete

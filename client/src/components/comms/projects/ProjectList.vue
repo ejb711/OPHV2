@@ -1,11 +1,32 @@
 <!-- client/src/components/comms/projects/ProjectList.vue -->
 <template>
   <div class="project-list">
+    <!-- List/Grid Toggle -->
+    <div class="d-flex justify-end mb-4">
+      <v-btn-toggle
+        v-model="viewMode"
+        mandatory
+        density="compact"
+        variant="outlined"
+      >
+        <v-btn value="list" icon="mdi-view-list" />
+        <v-btn value="grid" icon="mdi-view-grid" />
+      </v-btn-toggle>
+    </div>
+
     <!-- Loading State -->
-    <v-skeleton-loader
-      v-if="loading"
-      type="card@4"
-      class="mb-4"
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular indeterminate color="primary" />
+      <p class="text-body-2 mt-4">Loading projects...</p>
+    </div>
+
+    <!-- Empty State -->
+    <v-empty-state
+      v-else-if="filteredProjects.length === 0 && !error"
+      icon="mdi-folder-open-outline"
+      headline="No projects found"
+      title="No projects match your filters"
+      text="Try adjusting your filters or create a new project to get started."
     />
 
     <!-- Error State -->
@@ -15,124 +36,168 @@
       variant="tonal"
       class="mb-4"
     >
-      <v-alert-title>Error Loading Projects</v-alert-title>
       {{ error }}
     </v-alert>
 
-    <!-- Empty State -->
-    <v-card
-      v-else-if="projects.length === 0 && !hasFilters"
-      variant="flat"
-      class="text-center pa-8"
-    >
-      <v-icon
-        size="64"
-        color="grey-lighten-1"
-        class="mb-4"
-      >
-        mdi-folder-outline
-      </v-icon>
-      <h3 class="text-h6 mb-2">No Projects Yet</h3>
-      <p class="text-body-2 text-medium-emphasis">
-        Create your first project to get started
-      </p>
-    </v-card>
-
-    <!-- No Results State -->
-    <v-card
-      v-else-if="projects.length === 0 && hasFilters"
-      variant="flat"
-      class="text-center pa-8"
-    >
-      <v-icon
-        size="64"
-        color="grey-lighten-1"
-        class="mb-4"
-      >
-        mdi-magnify-remove-outline
-      </v-icon>
-      <h3 class="text-h6 mb-2">No Matching Projects</h3>
-      <p class="text-body-2 text-medium-emphasis">
-        Try adjusting your filters to see more results
-      </p>
-    </v-card>
-
     <!-- Projects Grid View -->
-    <template v-else-if="viewMode === 'grid'">
-      <v-row>
-        <v-col
-          v-for="project in projects"
-          :key="project.id"
-          cols="12"
-          sm="6"
-          md="4"
-          lg="3"
-        >
-          <ProjectCard
-            :project="project"
-            @view="handleProjectClick"
-            @edit="handleProjectEdit"
-            @delete="handleProjectDelete"
-          />
-        </v-col>
-      </v-row>
-    </template>
+    <v-row v-else-if="viewMode === 'grid'">
+      <v-col
+        v-for="project in paginatedProjects"
+        :key="project.id"
+        cols="12"
+        md="6"
+        lg="4"
+      >
+        <ProjectCard
+          :project="project"
+          @view="$emit('select', $event)"
+          @edit="$emit('select', $event)"
+          @delete="handleDelete"
+        />
+      </v-col>
+    </v-row>
 
     <!-- Projects List View -->
-    <template v-else>
-      <v-list lines="two" class="bg-surface">
-        <template v-for="(project, index) in projects" :key="project.id">
-          <v-list-item
-            @click="handleProjectClick(project)"
-            class="px-4"
-          >
-            <template v-slot:prepend>
-              <v-icon
-                :color="project.priority === 'urgent' ? 'error' : project.priority === 'high' ? 'warning' : ''"
+    <v-list v-else lines="two" class="bg-transparent">
+      <template v-for="(project, index) in paginatedProjects" :key="project.id">
+        <v-list-item
+          :title="project.title"
+          :subtitle="project.description"
+          @click="$emit('select', project)"
+        >
+          <template v-slot:prepend>
+            <v-avatar color="primary" variant="tonal">
+              <v-icon>{{ getProjectIcon(project) }}</v-icon>
+            </v-avatar>
+          </template>
+
+          <template v-slot:append>
+            <div class="d-flex align-center ga-2">
+              <StatusBadge :status="project.status" size="small" />
+              <RegionBadge :region="project.region" size="small" />
+              <v-chip
+                v-if="project.deadline"
+                :color="getDeadlineColor(project.deadline)"
+                size="small"
+                variant="tonal"
               >
-                {{ getPriorityIcon(project.priority) }}
-              </v-icon>
-            </template>
+                {{ formatDate(project.deadline) }}
+              </v-chip>
+              
+              <v-menu location="bottom end">
+                <template v-slot:activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-dots-vertical"
+                    size="small"
+                    variant="text"
+                    @click.stop
+                  />
+                </template>
+                <v-list density="compact">
+                  <v-list-item @click.stop="$emit('select', project)">
+                    <template v-slot:prepend>
+                      <v-icon>mdi-eye</v-icon>
+                    </template>
+                    <v-list-item-title>View Details</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item 
+                    v-if="canEditProject(project)" 
+                    @click.stop="$emit('select', project)"
+                  >
+                    <template v-slot:prepend>
+                      <v-icon>mdi-pencil</v-icon>
+                    </template>
+                    <v-list-item-title>Edit</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item 
+                    v-if="canDeleteProject(project)" 
+                    @click.stop="handleDelete(project)"
+                    class="text-error"
+                  >
+                    <template v-slot:prepend>
+                      <v-icon>mdi-delete</v-icon>
+                    </template>
+                    <v-list-item-title>Delete</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </div>
+          </template>
+        </v-list-item>
+        
+        <v-divider v-if="index < paginatedProjects.length - 1" />
+      </template>
+    </v-list>
 
-            <v-list-item-title class="font-weight-medium">
-              {{ project.title }}
-            </v-list-item-title>
-            
-            <v-list-item-subtitle>
-              <div class="d-flex align-center gap-2">
-                <StatusBadge :status="project.status" small />
-                <RegionBadge :region="project.region" small />
-                <span class="text-caption text-medium-emphasis">
-                  {{ formatDate(project.createdAt) }}
-                </span>
-                <span v-if="project.deadline" class="text-caption">
-                  • Due: {{ formatDate(project.deadline) }}
-                </span>
-              </div>
-            </v-list-item-subtitle>
+    <!-- Pagination -->
+    <div v-if="totalPages > 1" class="d-flex justify-center mt-6">
+      <v-pagination
+        v-model="currentPage"
+        :length="totalPages"
+        :total-visible="7"
+        density="comfortable"
+      />
+    </div>
 
-            <template v-slot:append>
-              <ProjectActions
-                :project="project"
-                :hide-edit="true"
-                :hide-delete="true"
-                :show-more="false"
-              />
-            </template>
-          </v-list-item>
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="500">
+      <v-card>
+        <v-card-title class="text-h6">Delete Project?</v-card-title>
+        <v-card-text>
+          <p class="mb-4">Choose how you want to delete this project:</p>
           
-          <v-divider v-if="index < projects.length - 1" />
-        </template>
-      </v-list>
-    </template>
+          <v-list density="compact" class="mb-4">
+            <v-list-item
+              prepend-icon="mdi-delete-clock"
+              @click="confirmDelete(false)"
+            >
+              <v-list-item-title>Move to Trash</v-list-item-title>
+              <v-list-item-subtitle>
+                Can be restored within 90 days
+              </v-list-item-subtitle>
+            </v-list-item>
+            
+            <v-list-item
+              v-if="canManageComms"
+              prepend-icon="mdi-delete-forever"
+              @click="confirmDelete(true)"
+              class="text-error"
+            >
+              <v-list-item-title>Permanently Delete</v-list-item-title>
+              <v-list-item-subtitle>
+                Cannot be undone - all data will be lost
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+          
+          <v-alert
+            type="warning"
+            variant="tonal"
+            density="compact"
+          >
+            Project: <strong>{{ projectToDelete?.title }}</strong>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="deleteDialog = false"
+          >
+            Cancel
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
+import { usePermissions } from '@/composables/usePermissions'
 import ProjectCard from './ProjectCard.vue'
-import ProjectActions from './ProjectActions.vue'
 import StatusBadge from '../shared/StatusBadge.vue'
 import RegionBadge from '../shared/RegionBadge.vue'
 
@@ -150,53 +215,83 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['select', 'stats-update'])
+const emit = defineEmits(['select', 'stats-update', 'delete'])
 
 // Composables
-const commsProjects = useCommsProjects()
 const { 
   projects, 
   loading, 
-  error, 
+  error,
+  filteredProjects,
   projectStats,
   initialize,
   setFilter,
-  clearFilters
-} = commsProjects
+  canEditProject,
+  canDeleteProject
+} = useCommsProjects()
+
+const { canManageComms } = usePermissions()
 
 // State
 const viewMode = ref('grid')
+const currentPage = ref(1)
+const itemsPerPage = ref(12)
+const deleteDialog = ref(false)
+const projectToDelete = ref(null)
 let unsubscribe = null
-let statsEmitted = false
 
 // Computed
-const hasFilters = computed(() => {
-  return props.filters.region || 
-         props.filters.status || 
-         props.filters.priority || 
-         props.filters.search
+const totalPages = computed(() => 
+  Math.ceil(filteredProjects.value.length / itemsPerPage.value)
+)
+
+const paginatedProjects = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredProjects.value.slice(start, end)
 })
 
 // Methods
-function handleProjectClick(project) {
-  emit('select', project)
+function handleDelete(project) {
+  projectToDelete.value = project
+  deleteDialog.value = true
 }
 
-function handleProjectEdit(project) {
-  emit('select', project)
-}
-
-function handleProjectDelete(project) {
-  emit('select', project)
-}
-
-function getPriorityIcon(priority) {
-  switch (priority) {
-    case 'high': return 'mdi-alert-circle'
-    case 'normal': return 'mdi-circle-medium'
-    case 'low': return 'mdi-circle-outline'
-    default: return 'mdi-circle-outline'
+function confirmDelete(hard) {
+  if (projectToDelete.value) {
+    emit('delete', projectToDelete.value, hard)
   }
+  deleteDialog.value = false
+  projectToDelete.value = null
+}
+
+function getProjectIcon(project) {
+  if (project.priority === 'high') return 'mdi-alert-circle'
+  if (project.status === 'completed') return 'mdi-check-circle'
+  if (project.status === 'in_progress') return 'mdi-progress-clock'
+  return 'mdi-folder'
+}
+
+function getDeadlineColor(deadline) {
+  if (!deadline) return 'grey'
+  
+  const now = new Date()
+  const deadlineDate = new Date(deadline)
+  const daysUntil = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
+  
+  if (daysUntil < 0) return 'error'
+  if (daysUntil <= 7) return 'warning'
+  if (daysUntil <= 30) return 'info'
+  return 'success'
+}
+
+function getDeadlineIcon(deadline) {
+  const daysUntil = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
+  
+  if (daysUntil < 0) return 'mdi-clock-alert-outline'
+  if (daysUntil <= 7) return 'mdi-clock-fast'
+  if (daysUntil <= 30) return 'mdi-clock-outline'
+  return 'mdi-clock-check-outline'
 }
 
 function formatDate(date) {
@@ -226,6 +321,11 @@ watch(() => projects.value, (newProjects) => {
     emit('stats-update', projectStats.value)
   })
 }, { immediate: true })
+
+// Reset page when filters change
+watch(filteredProjects, () => {
+  currentPage.value = 1
+})
 
 // Lifecycle
 onMounted(async () => {

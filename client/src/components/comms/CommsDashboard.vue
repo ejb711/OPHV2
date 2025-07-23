@@ -88,7 +88,7 @@
 import { ref, computed } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
-import { LOUISIANA_REGIONS as louisianaRegions } from '@/config/louisiana-regions'
+import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
 import CommsStats from './CommsStats.vue'
 import CommsFilters from './CommsFilters.vue'
 import ProjectList from './projects/ProjectList.vue'
@@ -98,7 +98,6 @@ import ProjectDetail from './projects/ProjectDetail.vue'
 // Composables
 const { hasPermission } = usePermissions()
 const { 
-  createProject, 
   softDeleteProject, 
   hardDeleteProject 
 } = useCommsProjects()
@@ -158,23 +157,28 @@ function handleProjectUpdated(project) {
   // The list will auto-refresh due to Firestore listener
 }
 
-function handleProjectDeleted(options) {
-  console.log('Project deleted:', options)
-  deleteHard.value = options.hard
+function handleProjectDeleted(project, hard) {
+  console.log('Project deleted from detail:', { project, hard })
+  deleteHard.value = hard
   deleteSnackbar.value = true
   // The list will auto-refresh due to Firestore listener
 }
 
 async function handleProjectDelete(project, hard = false) {
+  console.log('Handling project delete:', { project, hard })
+  
   try {
     if (hard) {
       await hardDeleteProject(project.id)
     } else {
       await softDeleteProject(project.id)
     }
-    handleProjectDeleted({ project, hard })
+    
+    deleteHard.value = hard
+    deleteSnackbar.value = true
   } catch (error) {
     console.error('Error deleting project:', error)
+    // Error handling is done in the composable with snackbar notifications
   }
 }
 </script>
