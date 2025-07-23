@@ -1,4 +1,4 @@
-// client/src/main.js - Enhanced with new features
+// client/src/main.js - Enhanced with proper initialization order
 import { createApp, watch } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
@@ -10,59 +10,70 @@ import '@mdi/font/css/materialdesignicons.css'
 // Import global styles
 import './assets/main.css'
 
-// Firebase and auth
+// Firebase and auth (these don't use Pinia)
 import { auth } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
-import { useAuthStore } from './stores/auth'
-
-// Global error handler
-import { useErrorHandler } from './composables/useErrorHandler'
 
 /* ────────────────────────────────────────────────
-   Hot-reload friendly singleton Vue instance
+   Initialize App and Pinia First
    ─────────────────────────────────────────────── */
-let app = window.__ophv2_app
-if (!app) {
-  app = createApp(App)
+// Create instances
+const app = createApp(App)
+const pinia = createPinia()
+
+// CRITICAL: Install Pinia FIRST before any code that uses stores
+app.use(pinia)
+
+// Install other plugins
+app.use(router)
+   .use(vuetify)
+   .use(permissionDirective)
+
+// NOW we can safely import and use modules that depend on Pinia stores
+import { useAuthStore } from './stores/auth'
+
+/* ────────────────────────────────────────────────
+   Setup error handling (delayed to avoid Pinia issues)
+   ─────────────────────────────────────────────── */
+let errorHandlerSetup = false
+
+function setupErrorHandling() {
+  if (errorHandlerSetup) return
   
-  // Core plugins
-  const pinia = createPinia()
-  app.use(pinia)
-     .use(router)
-     .use(vuetify)
-     .use(permissionDirective) // Add permission directive
-  
-  // Global error handler
-  const { handleError, globalError } = useErrorHandler()
-  
-  // Global error handling
-  app.config.errorHandler = (err, instance, info) => {
-    console.error('Global error:', err, info)
-    handleError(err, {
-      component: instance?.$options.name || 'Unknown',
-      info
-    })
-  }
-  
-  // Global properties
-  app.config.globalProperties.$handleError = handleError
-  
-  // Development helpers
-  if (import.meta.env.DEV) {
-    app.config.globalProperties.$log = console.log
-    app.config.globalProperties.$auth = useAuthStore()
+  // Import and setup error handler only when needed
+  import('./composables/useErrorHandler').then(({ useErrorHandler }) => {
+    const { handleError } = useErrorHandler()
     
-    // Expose to window for debugging
-    window.__ophv2 = {
-      app,
-      router,
-      pinia,
-      auth: useAuthStore()
+    // Global error handling
+    app.config.errorHandler = (err, instance, info) => {
+      console.error('Global error:', err, info)
+      handleError(err, {
+        component: instance?.$options.name || 'Unknown',
+        info
+      })
     }
-  }
+    
+    // Global properties
+    app.config.globalProperties.$handleError = handleError
+  })
   
-  // Remember across Vite HMR swaps
-  window.__ophv2_app = app
+  errorHandlerSetup = true
+}
+
+/* ────────────────────────────────────────────────
+   Development helpers
+   ─────────────────────────────────────────────── */
+if (import.meta.env.DEV) {
+  app.config.globalProperties.$log = console.log
+  app.config.globalProperties.$auth = useAuthStore()
+  
+  // Expose to window for debugging
+  window.__ophv2 = {
+    app,
+    router,
+    pinia,
+    auth: useAuthStore()
+  }
 }
 
 /* ────────────────────────────────────────────────
@@ -75,6 +86,9 @@ let authUnsubscribe = null
 authUnsubscribe = onAuthStateChanged(auth, (user) => {
   if (!booted) {
     booted = true
+    
+    // Setup error handling after auth is ready
+    setupErrorHandling()
     
     // Mount app after first auth callback
     router.isReady().then(() => {
@@ -153,8 +167,10 @@ function handleRoleBasedRedirect(role, previousRole, currentRoute) {
 if (import.meta.env.PROD) {
   // Log app startup time
   window.addEventListener('load', () => {
-    const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart
-    console.log(`[perf] App loaded in ${loadTime}ms`)
+    if (performance.timing) {
+      const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart
+      console.log(`[perf] App loaded in ${loadTime}ms`)
+    }
   })
   
   // Monitor long tasks
