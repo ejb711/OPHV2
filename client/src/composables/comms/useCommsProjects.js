@@ -48,6 +48,7 @@ export function useCommsProjects() {
   const filterRegion = ref(null)
   const filterStatus = ref(null)
   const filterPriority = ref(null)
+  const filterCoordinator = ref(null)
   const filterSearch = ref('')
   const filterDeleted = ref(false)
   
@@ -74,6 +75,9 @@ export function useCommsProjects() {
       
       // Priority filter
       if (filterPriority.value && project.priority !== filterPriority.value) return false
+      
+      // Coordinator filter
+      if (filterCoordinator.value && project.coordinatorId !== filterCoordinator.value) return false
       
       // Search filter
       if (filterSearch.value) {
@@ -202,6 +206,9 @@ export function useCommsProjects() {
       case 'priority':
         filterPriority.value = value
         break
+      case 'coordinator':
+        filterCoordinator.value = value
+        break
       case 'search':
         filterSearch.value = value
         break
@@ -215,6 +222,7 @@ export function useCommsProjects() {
     filterRegion.value = null
     filterStatus.value = null
     filterPriority.value = null
+    filterCoordinator.value = null
     filterSearch.value = ''
     filterDeleted.value = false
   }
