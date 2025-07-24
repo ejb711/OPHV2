@@ -21,21 +21,114 @@
         >
           New Project
         </v-btn>
-        <v-btn
-          variant="outlined"
-          prepend-icon="mdi-export"
-          disabled
-        >
-          Export
-        </v-btn>
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="outlined"
+              prepend-icon="mdi-export"
+              :disabled="visibleProjects.length === 0"
+              :loading="exporting"
+            >
+              Export
+              <v-icon end>mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item @click="handleExportCSV">
+              <v-list-item-title>
+                <v-icon start>mdi-file-excel</v-icon>
+                Export to CSV
+              </v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="handleExportPDF">
+              <v-list-item-title>
+                <v-icon start>mdi-file-pdf-box</v-icon>
+                Export to PDF
+              </v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Analytics Date Range Filter -->
+    <v-row class="mb-4" v-if="analytics?.dateRange">
+      <v-col cols="12" md="6">
+        <v-text-field
+          v-model="analytics.dateRange.value.start"
+          label="Start Date"
+          type="date"
+          variant="outlined"
+          density="compact"
+          hide-details
+          @update:model-value="updateDateRange"
+        />
+      </v-col>
+      <v-col cols="12" md="6">
+        <v-text-field
+          v-model="analytics.dateRange.value.end"
+          label="End Date"
+          type="date"
+          variant="outlined"
+          density="compact"
+          hide-details
+          @update:model-value="updateDateRange"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Stats Cards with Real Analytics -->
     <CommsStats 
-      :stats="projectStats" 
+      :analytics="analyticsData"
       class="mb-6"
     />
+
+    <!-- Coordinator Workload and Regional Distribution -->
+    <v-row class="mb-6">
+      <v-col cols="12" lg="6">
+        <CoordinatorWorkload :projects="projects" />
+      </v-col>
+      
+      <!-- Regional Distribution -->
+      <v-col cols="12" lg="6">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-map-marker-multiple</v-icon>
+            Regional Distribution
+          </v-card-title>
+          <v-card-text>
+            <v-list>
+              <v-list-item
+                v-for="region in analyticsData.regionalDistribution"
+                :key="region.regionId"
+                :title="region.regionName"
+                :subtitle="`${region.count || 0} projects (${region.percentage || 0}%)`"
+              >
+                <template v-slot:prepend>
+                  <v-avatar
+                    :color="LOUISIANA_REGIONS[region.regionId]?.color || 'grey'"
+                    size="32"
+                  >
+                    {{ region.count }}
+                  </v-avatar>
+                </template>
+                <template v-slot:append>
+                  <v-progress-linear
+                    :model-value="region.percentage"
+                    :color="LOUISIANA_REGIONS[region.regionId]?.color || 'grey'"
+                    height="6"
+                    rounded
+                    class="ml-4"
+                    style="min-width: 100px"
+                  />
+                </template>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Filters -->
     <CommsFilters 
@@ -46,6 +139,7 @@
 
     <!-- Projects List -->
     <ProjectList
+      ref="projectListRef"
       :filters="filters"
       @select="handleProjectSelect"
       @stats-update="handleStatsUpdate"
@@ -81,19 +175,55 @@
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Success/Error Snackbars -->
+    <v-snackbar
+      v-model="successSnackbar"
+      color="success"
+      timeout="3000"
+    >
+      {{ successMessage }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="successSnackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
+
+    <v-snackbar
+      v-model="errorSnackbar"
+      color="error"
+      timeout="5000"
+    >
+      {{ errorMessage }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="errorSnackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
+import { useProjectAnalytics } from '@/composables/comms/useProjectAnalytics'
+import { useProjectExport } from '@/composables/comms/useProjectExport'
 import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
 import CommsStats from './CommsStats.vue'
 import CommsFilters from './CommsFilters.vue'
 import ProjectList from './projects/ProjectList.vue'
 import ProjectForm from './projects/ProjectForm.vue'
 import ProjectDetail from './projects/ProjectDetail.vue'
+import CoordinatorWorkload from './coordinators/CoordinatorWorkload.vue'
 
 // Composables
 const { hasPermission } = usePermissions()
@@ -105,8 +235,29 @@ const {
 // State
 const showCreateDialog = ref(false)
 const projectDetailRef = ref(null)
+const projectListRef = ref(null)
 const deleteSnackbar = ref(false)
 const deleteHard = ref(false)
+const successSnackbar = ref(false)
+const successMessage = ref('')
+const errorSnackbar = ref(false)
+const errorMessage = ref('')
+
+// Get projects ref from ProjectList for analytics
+const projects = ref([])
+
+// Add this watch to sync projects from ProjectList
+watch(() => projectListRef.value?.projects, (newProjects) => {
+  if (newProjects) {
+    projects.value = newProjects
+  }
+}, { immediate: true })
+
+// Initialize analytics with projects
+const analytics = useProjectAnalytics(projects)
+
+// Initialize export functionality
+const { exportToCSV, exportToPDF, exporting } = useProjectExport()
 
 // Initialize filters with plain object
 const filters = ref({
@@ -129,6 +280,27 @@ const canCreateProjects = computed(() =>
   hasPermission('create_comms_projects')
 )
 
+// Get visible projects from ProjectList for export
+const visibleProjects = computed(() => {
+  // Access projects from the ProjectList component if available
+  return projectListRef.value?.visibleProjects || []
+})
+
+// Safe analytics data for template - ensure all computed refs are properly accessed
+const analyticsData = computed(() => {
+  return {
+    metrics: analytics.metrics || { total: 0, active: 0, completed: 0, pending: 0 },
+    completionRate: analytics.completionRate || 0,
+    avgCompletionTime: analytics.avgCompletionTime || 0,
+    statusBreakdown: analytics.statusBreakdown || [],
+    priorityDistribution: analytics.priorityDistribution || { high: 0, medium: 0, low: 0 },
+    regionalDistribution: analytics.regionalDistribution || [],
+    activeCoordinators: analytics.activeCoordinators || new Set(),
+    totalFiles: analytics.totalFiles || 0,
+    totalMessages: analytics.totalMessages || 0
+  }
+})
+
 // Methods
 function handleFilterUpdate(newFilters) {
   // Simply assign the new filters
@@ -143,8 +315,13 @@ function handleProjectSelect(project) {
 }
 
 function handleStatsUpdate(stats) {
-  // Directly update stats without comparison
+  // Update both legacy stats and projects for analytics
   projectStats.value = stats
+  
+  // Update projects ref if ProjectList provides it
+  if (projectListRef.value?.projects) {
+    projects.value = projectListRef.value.projects
+  }
 }
 
 function handleProjectCreated(project) {
@@ -181,6 +358,76 @@ async function handleProjectDelete(project, hard = false) {
     // Error handling is done in the composable with snackbar notifications
   }
 }
+
+// Export handlers
+async function handleExportCSV() {
+  const projectsToExport = visibleProjects.value
+  if (projectsToExport.length === 0) {
+    showError('No projects to export')
+    return
+  }
+  
+  const success = await exportToCSV(projectsToExport, 'comms_projects')
+  if (success) {
+    showSuccess('Projects exported to CSV successfully')
+  } else {
+    showError('Failed to export projects')
+  }
+}
+
+async function handleExportPDF() {
+  const projectsToExport = visibleProjects.value
+  if (projectsToExport.length === 0) {
+    showError('No projects to export')
+    return
+  }
+  
+  const success = await exportToPDF(projectsToExport, 'comms_projects_report')
+  if (success) {
+    showSuccess('Projects exported to PDF successfully')
+  } else {
+    showError('Failed to export projects')
+  }
+}
+
+// Update date range for analytics
+function updateDateRange() {
+  if (analytics?.setDateRange) {
+    analytics.setDateRange(
+      analytics.dateRange.value.start,
+      analytics.dateRange.value.end
+    )
+  }
+}
+
+// Notification helpers
+function showSuccess(message) {
+  successMessage.value = message
+  successSnackbar.value = true
+}
+
+function showError(message) {
+  errorMessage.value = message
+  errorSnackbar.value = true
+}
+
+// Check for analytics initialization
+onMounted(() => {
+  // Get initial projects on mount
+  // Wait for ProjectList to be ready
+  setTimeout(() => {
+    if (projectListRef.value?.projects) {
+      projects.value = projectListRef.value.projects
+    }
+  }, 500)
+})
+
+// Clean up analytics on unmount
+onUnmounted(() => {
+  if (analytics?.cleanup && typeof analytics.cleanup === 'function') {
+    analytics.cleanup()
+  }
+})
 </script>
 
 <style scoped>

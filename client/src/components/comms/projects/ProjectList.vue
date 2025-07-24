@@ -339,6 +339,11 @@ onUnmounted(() => {
     unsubscribe()
   }
 })
+
+defineExpose({
+  projects,
+  visibleProjects
+})
 </script>
 
 <style scoped>

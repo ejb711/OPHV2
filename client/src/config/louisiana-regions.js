@@ -2,11 +2,24 @@
 // Louisiana Health Regions Configuration for Communications Dashboard
 
 /**
+ * Louisiana Department of Health brand colors
+ * Used throughout the Communications Dashboard
+ */
+export const REGION_COLORS = {
+  primary: '#003057',     // Louisiana Navy Blue
+  secondary: '#62B1BC',   // Louisiana Teal
+  accent: '#B89D18',      // Louisiana Gold
+  error: '#D32F2F',       // Red
+  warning: '#F57C00',     // Orange
+  success: '#388E3C',     // Green
+  info: '#1976D2'         // Blue
+}
+
+/**
  * Louisiana Department of Health Regional Structure
  * 9 regions covering all 64 parishes
  * Used for organizing communications projects by geographic area
  */
-
 export const LOUISIANA_REGIONS = {
   // Region 1 - Greater New Orleans
   '1': {
