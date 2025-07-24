@@ -1,6 +1,10 @@
 <!-- client/src/components/comms/files/VersionHistory.vue -->
 <template>
-  <v-dialog v-model="dialog" max-width="600" scrollable>
+  <v-dialog
+    v-model="dialog"
+    max-width="600"
+    scrollable
+  >
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon class="mr-2">mdi-history</v-icon>
@@ -17,40 +21,34 @@
       
       <v-divider />
       
-      <v-card-text class="pa-0" style="max-height: 400px">
+      <v-card-text class="pa-0">
         <v-list v-if="versions.length > 0">
           <template v-for="(version, index) in versions" :key="version.id">
             <v-list-item>
               <template v-slot:prepend>
-                <v-avatar 
-                  :color="index === 0 ? 'primary' : 'grey'" 
-                  variant="tonal"
-                >
-                  <span class="text-caption font-weight-bold">
-                    v{{ version.version || 1 }}
-                  </span>
+                <v-avatar color="primary" variant="tonal">
+                  <span class="text-h6">v{{ version.version || 1 }}</span>
                 </v-avatar>
               </template>
               
               <v-list-item-title>
-                {{ version.displayName || version.name }}
-                <v-chip 
-                  v-if="index === 0" 
-                  size="x-small" 
-                  color="primary"
+                Version {{ version.version || 1 }}
+                <v-chip
+                  v-if="index === 0"
+                  size="x-small"
+                  color="success"
                   class="ml-2"
                 >
-                  Current
+                  Latest
                 </v-chip>
               </v-list-item-title>
               
               <v-list-item-subtitle>
                 {{ formatFileSize(version.size) }} • 
-                Uploaded {{ formatDate(version.createdAt) }}
-              </v-list-item-subtitle>
-              
-              <v-list-item-subtitle v-if="version.createdByEmail">
-                by {{ version.createdByEmail }}
+                {{ formatDate(version.createdAt) }}
+                <span v-if="version.createdByEmail" class="ml-2">
+                  by {{ version.createdByEmail }}
+                </span>
               </v-list-item-subtitle>
               
               <template v-if="version.description">
@@ -60,29 +58,27 @@
               </template>
               
               <template v-slot:append>
-                <div class="d-flex align-center ga-1">
-                  <!-- Download -->
+                <div class="d-flex align-center">
+                  <!-- View button -->
                   <v-btn
                     icon
                     size="small"
                     variant="text"
                     :href="version.downloadURL"
                     target="_blank"
-                    @click.stop
                   >
                     <v-icon>mdi-download</v-icon>
                     <v-tooltip activator="parent" location="top">
-                      Download v{{ version.version || 1 }}
+                      Download version
                     </v-tooltip>
                   </v-btn>
                   
-                  <!-- Restore (for older versions) -->
+                  <!-- Restore button -->
                   <v-btn
                     v-if="canRestore && index > 0"
                     icon
                     size="small"
                     variant="text"
-                    color="primary"
                     @click="restoreVersion(version)"
                   >
                     <v-icon>mdi-restore</v-icon>
@@ -91,9 +87,9 @@
                     </v-tooltip>
                   </v-btn>
                   
-                  <!-- Delete (for admins) -->
+                  <!-- Delete button -->
                   <v-btn
-                    v-if="canDelete"
+                    v-if="canDelete && versions.length > 1"
                     icon
                     size="small"
                     variant="text"
@@ -102,7 +98,7 @@
                   >
                     <v-icon>mdi-delete</v-icon>
                     <v-tooltip activator="parent" location="top">
-                      Delete this version
+                      Delete version
                     </v-tooltip>
                   </v-btn>
                 </div>
@@ -118,13 +114,6 @@
           <p class="text-grey mt-2">No version history available</p>
         </div>
       </v-card-text>
-      
-      <v-divider />
-      
-      <v-card-actions>
-        <v-spacer />
-        <v-btn variant="text" @click="close">Close</v-btn>
-      </v-card-actions>
     </v-card>
     
     <!-- Restore Confirmation -->
@@ -134,6 +123,7 @@
         
         <v-card-text>
           Are you sure you want to restore version {{ restoringVersion?.version || 1 }}?
+          <br><br>
           This will create a new version (v{{ latestVersion + 1 }}) with the content from this version.
         </v-card-text>
         
@@ -181,7 +171,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { formatDistanceToNow } from 'date-fns'
+import { formatFileSize, formatDate } from '@/utils/fileUtils'
 
 // Props & Emits
 const props = defineProps({
@@ -235,26 +225,6 @@ watch(dialog, (val) => {
 // Methods
 function close() {
   dialog.value = false
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return 'Unknown size'
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-function formatDate(timestamp) {
-  if (!timestamp) return 'Unknown date'
-  
-  try {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return formatDistanceToNow(date, { addSuffix: true })
-  } catch (error) {
-    return 'Unknown date'
-  }
 }
 
 function restoreVersion(version) {

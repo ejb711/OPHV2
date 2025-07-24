@@ -14,27 +14,27 @@
     <div class="files-layout">
       <!-- Project Files Section -->
       <div class="mb-4">
-        <FileList
+          <FileList
           :files="projectFiles"
           :loading="filesLoading"
           :can-edit="canEdit"
           @edit="handleFileEdit"
           @delete="handleFileDelete"
           @show-versions="handleShowVersions"
-        />
+                  />
+        </div>
+        
+        <!-- External Links Section -->
+        <div v-if="hasLinks || canEdit">
+          <LinkManager
+            :links="projectLinks"
+            :can-edit="canEdit"
+            @add="handleAddLink"
+            @edit="handleLinkEdit"
+            @delete="handleLinkDelete"
+          />
+        </div>
       </div>
-      
-      <!-- External Links Section -->
-      <div v-if="hasLinks || canEdit">
-        <LinkManager
-          :links="projectLinks"
-          :can-edit="canEdit"
-          @add="handleAddLink"
-          @edit="handleLinkEdit"
-          @delete="handleLinkDelete"
-        />
-      </div>
-    </div>
     
     <!-- Version History Dialog -->
     <VersionHistory

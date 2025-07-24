@@ -22,162 +22,14 @@
     
     <v-list v-else>
       <template v-for="(file, index) in sortedFiles" :key="file.id">
-        <v-list-item
-          :class="{ 'bg-grey-lighten-5': file.type === 'external_link' }"
-        >
-          <template v-slot:prepend>
-            <v-avatar :color="file.type === 'external_link' ? 'blue' : 'primary'" variant="tonal">
-              <v-icon>{{ getFileIcon(file) }}</v-icon>
-            </v-avatar>
-          </template>
-          
-          <v-list-item-title>
-            {{ file.displayName || file.name }}
-            <!-- Version indicators -->
-            <v-chip 
-              v-if="isLatestVersion(file)" 
-              size="x-small" 
-              color="success"
-              class="ml-2"
-            >
-              <v-icon size="x-small" start>mdi-check</v-icon>
-              Latest
-            </v-chip>
-            <v-chip 
-              v-else-if="file.version && file.version > 1" 
-              size="x-small" 
-              color="orange"
-              class="ml-2"
-            >
-              v{{ file.version }}
-            </v-chip>
-            <v-chip 
-              v-else-if="isSingleVersion(file)" 
-              size="x-small" 
-              color="blue-grey"
-              variant="outlined"
-              class="ml-2"
-            >
-              <v-icon size="x-small" start>mdi-file-check</v-icon>
-              Current
-            </v-chip>
-          </v-list-item-title>
-          
-          <v-list-item-subtitle>
-            <span v-if="file.type === 'external_link'">
-              External Link
-            </span>
-            <span v-else>
-              {{ formatFileSize(file.size) }} • 
-              {{ formatDate(file.createdAt) }}
-            </span>
-            <span v-if="file.createdByEmail" class="ml-2">
-              by {{ file.createdByEmail }}
-            </span>
-          </v-list-item-subtitle>
-          
-          <template v-if="file.description">
-            <v-list-item-subtitle class="mt-1">
-              {{ file.description }}
-            </v-list-item-subtitle>
-          </template>
-          
-          <template v-if="file.tags && file.tags.length > 0">
-            <div class="mt-1">
-              <v-chip
-                v-for="tag in file.tags"
-                :key="tag"
-                size="x-small"
-                variant="tonal"
-                class="mr-1"
-              >
-                {{ tag }}
-              </v-chip>
-            </div>
-          </template>
-          
-          <template v-slot:append>
-            <div class="d-flex align-center">
-              <!-- View/Download button -->
-              <v-btn
-                v-if="file.type === 'external_link'"
-                icon
-                size="small"
-                variant="text"
-                :href="file.url"
-                target="_blank"
-                @click.stop
-              >
-                <v-icon>mdi-open-in-new</v-icon>
-                <v-tooltip activator="parent" location="top">
-                  Open link
-                </v-tooltip>
-              </v-btn>
-              <v-btn
-                v-else
-                icon
-                size="small"
-                variant="text"
-                :href="file.downloadURL"
-                target="_blank"
-                @click.stop
-              >
-                <v-icon>mdi-download</v-icon>
-                <v-tooltip activator="parent" location="top">
-                  Download
-                </v-tooltip>
-              </v-btn>
-              
-              <!-- Show versions button -->
-              <v-btn
-                v-if="hasMultipleVersions(file)"
-                icon
-                size="small"
-                variant="text"
-                @click="showVersions(file)"
-              >
-                <v-icon>mdi-history</v-icon>
-                <v-tooltip activator="parent" location="top">
-                  Version history
-                </v-tooltip>
-              </v-btn>
-              
-              <!-- Actions menu -->
-              <v-menu v-if="canEdit" location="start">
-                <template v-slot:activator="{ props }">
-                  <v-btn
-                    icon
-                    size="small"
-                    variant="text"
-                    v-bind="props"
-                  >
-                    <v-icon>mdi-dots-vertical</v-icon>
-                  </v-btn>
-                </template>
-                
-                <v-list density="compact">
-                  <v-list-item @click="editFile(file)">
-                    <template v-slot:prepend>
-                      <v-icon>mdi-pencil</v-icon>
-                    </template>
-                    <v-list-item-title>Edit details</v-list-item-title>
-                  </v-list-item>
-                  
-                  <v-list-item 
-                    @click="deleteFile(file)"
-                    class="text-error"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon>mdi-delete</v-icon>
-                    </template>
-                    <v-list-item-title>Delete</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </template>
-        </v-list-item>
-        
+        <FileListItem
+          :file="file"
+          :can-edit="canEdit"
+          :file-version-groups="fileVersionGroups"
+          @edit="editFile"
+          @delete="deleteFile"
+          @show-versions="handleShowVersions"
+        />
         <v-divider v-if="index < sortedFiles.length - 1" />
       </template>
     </v-list>
@@ -258,8 +110,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { formatDistanceToNow } from 'date-fns'
+import { ref, toRefs } from 'vue'
+import FileListItem from './FileListItem.vue'
+import { useFileDisplay } from '@/composables/comms/useFileDisplay'
 
 // Props & Emits
 const props = defineProps({
@@ -279,6 +132,10 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'delete', 'show-versions'])
 
+// Composables
+const { files } = toRefs(props)
+const { sortedFiles, fileVersionGroups } = useFileDisplay(files)
+
 // State
 const editDialog = ref(false)
 const editingFile = ref(null)
@@ -287,113 +144,7 @@ const deleteDialog = ref(false)
 const deletingFile = ref(null)
 const deleting = ref(false)
 
-// Computed
-const sortedFiles = computed(() => {
-  return [...props.files].sort((a, b) => {
-    // Sort by createdAt descending (newest first)
-    const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0
-    const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0
-    return bTime - aTime
-  })
-})
-
-// Group files by base name to find latest versions
-const fileVersionGroups = computed(() => {
-  const groups = {}
-  
-  props.files.forEach(file => {
-    // Skip external links
-    if (file.type === 'external_link') return
-    
-    const baseName = file.name || file.originalName || ''
-    if (!groups[baseName]) {
-      groups[baseName] = []
-    }
-    groups[baseName].push(file)
-  })
-  
-  // Sort each group by version (descending)
-  Object.keys(groups).forEach(baseName => {
-    groups[baseName].sort((a, b) => {
-      const versionA = a.version || 1
-      const versionB = b.version || 1
-      return versionB - versionA
-    })
-  })
-  
-  return groups
-})
-
 // Methods
-function isLatestVersion(file) {
-  // External links are never versioned
-  if (file.type === 'external_link') return false
-  
-  const baseName = file.name || file.originalName || ''
-  const group = fileVersionGroups.value[baseName]
-  
-  if (!group || group.length <= 1) return false
-  
-  // Check if this file has the highest version in its group
-  const fileVersion = file.version || 1
-  const maxVersion = Math.max(...group.map(f => f.version || 1))
-  
-  return fileVersion === maxVersion && group.length > 1
-}
-
-function isSingleVersion(file) {
-  // External links get a different treatment
-  if (file.type === 'external_link') return false
-  
-  const baseName = file.name || file.originalName || ''
-  const group = fileVersionGroups.value[baseName]
-  
-  // It's a single version if it's the only file with this name
-  return group && group.length === 1
-}
-
-function hasMultipleVersions(file) {
-  if (file.type === 'external_link') return false
-  
-  const baseName = file.name || file.originalName || ''
-  const group = fileVersionGroups.value[baseName]
-  
-  return group && group.length > 1
-}
-
-function getFileIcon(file) {
-  if (file.type === 'external_link') return 'mdi-link'
-  const type = file.type || ''
-  if (type.startsWith('image/')) return 'mdi-file-image'
-  if (type.startsWith('video/')) return 'mdi-file-video'
-  if (type.includes('pdf')) return 'mdi-file-pdf-box'
-  if (type.includes('word') || type.includes('document')) return 'mdi-file-word'
-  if (type.includes('excel') || type.includes('spreadsheet')) return 'mdi-file-excel'
-  if (type.includes('powerpoint') || type.includes('presentation')) return 'mdi-file-powerpoint'
-  if (type.includes('zip') || type.includes('compressed')) return 'mdi-folder-zip'
-  return 'mdi-file-document'
-}
-
-function formatFileSize(bytes) {
-  if (!bytes) return 'Unknown size'
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-function formatDate(timestamp) {
-  if (!timestamp) return 'Unknown date'
-  
-  try {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-    return formatDistanceToNow(date, { addSuffix: true })
-  } catch (error) {
-    return 'Unknown date'
-  }
-}
-
 function editFile(file) {
   editingFile.value = {
     id: file.id,
@@ -442,28 +193,7 @@ async function confirmDelete() {
   }
 }
 
-function showVersions(file) {
-  emit('show-versions', file.name)
+function handleShowVersions(fileName) {
+  emit('show-versions', fileName)
 }
 </script>
-
-<style scoped>
-/* Add subtle animation to version badges */
-.v-chip {
-  transition: all 0.2s ease;
-}
-
-.v-list-item:hover .v-chip {
-  transform: translateY(-1px);
-}
-
-/* Ensure consistent list item spacing */
-.v-list-item {
-  min-height: 72px;
-}
-
-/* Better visual hierarchy for file information */
-.v-list-item-subtitle {
-  opacity: 0.8;
-}
-</style>
