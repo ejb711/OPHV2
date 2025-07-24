@@ -1,0 +1,66 @@
+/* Communications Filter Labels Fix */
+/* Ensures dropdown labels are always visible */
+
+/* Force labels to show in CommsFilters dropdowns */
+.comms-filters-container .v-select .v-field__field {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.comms-filters-container .v-select .v-label {
+  position: absolute !important;
+  max-width: 90% !important;
+  top: -8px !important;
+  left: 12px !important;
+  background-color: white !important;
+  padding: 0 4px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  opacity: 1 !important;
+  transform: scale(0.75) !important;
+  transform-origin: top left !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Focused state */
+.comms-filters-container .v-select.v-field--focused .v-label {
+  color: rgb(25, 118, 210) !important;
+}
+
+/* When select has a value */
+.comms-filters-container .v-select.v-field--dirty .v-label {
+  opacity: 1 !important;
+}
+
+/* Ensure the field border doesn't cover the label */
+.comms-filters-container .v-select .v-field__outline {
+  z-index: 0 !important;
+}
+
+/* Fix for the search field as well */
+.comms-filters-container .v-text-field .v-label {
+  opacity: 1 !important;
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Alternative approach using placeholder if labels still don't work */
+.comms-filters-container .v-select .v-field__input::placeholder {
+  color: rgba(0, 0, 0, 0.6) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure input area is properly sized */
+.comms-filters-container .v-select .v-field__input {
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 14px !important; /* Space for label */
+}
+
+/* Fix label positioning for comfortable density */
+.comms-filters-container .v-input--density-comfortable .v-select .v-field__input {
+  padding-top: 10px !important;
+  min-height: 48px !important;
+}

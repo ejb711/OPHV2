@@ -1,13 +1,13 @@
-<!-- client/src/components/comms/search/SavedFiltersDialog.vue -->
+<!-- Saved Filters Dialog Component -->
 <template>
   <v-card>
     <v-card-title class="d-flex align-center">
-      <v-icon class="mr-2">mdi-folder-open</v-icon>
-      Load Saved Filters
+      <span>Saved Filters</span>
       <v-spacer />
       <v-btn
         icon
-        density="comfortable"
+        variant="text"
+        size="small"
         @click="$emit('close')"
       >
         <v-icon>mdi-close</v-icon>
@@ -16,134 +16,95 @@
 
     <v-divider />
 
-    <v-card-text class="pa-4">
-      <v-tabs v-model="tab" color="primary" class="mb-4">
-        <v-tab value="saved">
-          <v-icon start>mdi-content-save</v-icon>
-          Saved Filters
-        </v-tab>
-        <v-tab value="recent">
-          <v-icon start>mdi-history</v-icon>
-          Recent Filters
-        </v-tab>
-      </v-tabs>
+    <v-card-text class="pa-0">
+      <v-list v-if="savedFilters.length > 0" lines="two">
+        <v-list-item
+          v-for="filterSet in savedFilters"
+          :key="filterSet.id"
+          @click="loadFilter(filterSet)"
+        >
+          <template v-slot:prepend>
+            <v-icon>mdi-filter-variant</v-icon>
+          </template>
 
-      <v-window v-model="tab">
-        <!-- Saved Filters Tab -->
-        <v-window-item value="saved">
-          <v-list v-if="savedFilters.length > 0">
-            <v-list-item
-              v-for="filterSet in savedFilters"
-              :key="filterSet.id"
-              @click="loadFilter(filterSet)"
-              :title="filterSet.name"
-              :subtitle="filterSet.description || formatFilterSummary(filterSet)"
-            >
-              <template v-slot:prepend>
-                <v-icon>mdi-filter-variant</v-icon>
-              </template>
-              <template v-slot:append>
-                <v-chip size="x-small" variant="tonal">
-                  {{ formatDate(filterSet.createdAt) }}
-                </v-chip>
-                <v-btn
-                  icon
-                  size="x-small"
-                  variant="text"
-                  class="ml-2"
-                  @click.stop="deleteFilter(filterSet.id)"
-                >
-                  <v-icon size="small" color="error">mdi-delete</v-icon>
-                </v-btn>
-              </template>
-            </v-list-item>
-          </v-list>
-          
-          <v-alert
-            v-else
-            type="info"
-            variant="tonal"
-            text="No saved filters yet. Save your current filters to reuse them later."
-          />
-        </v-window-item>
+          <v-list-item-title>{{ filterSet.name }}</v-list-item-title>
+          <v-list-item-subtitle>
+            {{ filterSet.description || 'No description' }}
+          </v-list-item-subtitle>
+          <v-list-item-subtitle class="text-caption">
+            Created {{ formatDate(filterSet.createdAt) }}
+          </v-list-item-subtitle>
 
-        <!-- Recent Filters Tab -->
-        <v-window-item value="recent">
-          <v-list v-if="recentFilters.length > 0">
-            <v-list-item
-              v-for="(recent, index) in recentFilters"
-              :key="index"
-              @click="loadFilter(recent)"
-              :title="`Filter from ${formatDate(recent.timestamp)}`"
-              :subtitle="formatFilterSummary(recent)"
+          <template v-slot:append>
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              @click.stop="deleteFilter(filterSet.id)"
             >
-              <template v-slot:prepend>
-                <v-icon>mdi-history</v-icon>
-              </template>
-            </v-list-item>
-          </v-list>
-          
-          <v-alert
-            v-else
-            type="info"
-            variant="tonal"
-            text="No recent filters. Your filter history will appear here."
-          />
-        </v-window-item>
-      </v-window>
+              <v-icon size="small" color="error">mdi-delete</v-icon>
+            </v-btn>
+          </template>
+        </v-list-item>
+      </v-list>
+
+      <v-empty-state
+        v-else
+        icon="mdi-filter-off"
+        title="No saved filters"
+        text="Save your current filter configuration to quickly apply it later."
+        class="my-8"
+      />
     </v-card-text>
+
+    <v-divider />
+
+    <v-card-actions>
+      <v-btn
+        variant="text"
+        @click="$emit('close')"
+      >
+        Cancel
+      </v-btn>
+    </v-card-actions>
   </v-card>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useProjectFilters } from '@/composables/comms/useProjectFilters'
 
 // Emits
 const emit = defineEmits(['load', 'close'])
 
 // Composables
-const { savedFilters, recentFilters, deleteFilterSet } = useProjectFilters()
-
-// State
-const tab = ref('saved')
+const { savedFilters, deleteFilterSet } = useProjectFilters()
 
 // Methods
 function loadFilter(filterSet) {
   emit('load', filterSet)
 }
 
-function deleteFilter(filterSetId) {
+function deleteFilter(filterId) {
   if (confirm('Delete this saved filter?')) {
-    deleteFilterSet(filterSetId)
+    deleteFilterSet(filterId)
   }
 }
 
-function formatFilterSummary(filterSet) {
-  const filters = filterSet.filters || {}
-  const parts = []
-  
-  if (filters.region) parts.push('Region')
-  if (filters.status) parts.push('Status')
-  if (filters.priority) parts.push('Priority')
-  if (filters.tags?.length) parts.push('Tags')
-  
-  return parts.length > 0 ? parts.join(', ') : 'No filters'
-}
-
 function formatDate(dateString) {
-  if (!dateString) return ''
   const date = new Date(dateString)
   const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  const diffTime = Math.abs(now - date)
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  
-  return date.toLocaleDateString()
+  if (diffDays < 1) {
+    return 'today'
+  } else if (diffDays === 1) {
+    return 'yesterday'
+  } else if (diffDays < 7) {
+    return `${diffDays} days ago`
+  } else {
+    return date.toLocaleDateString()
+  }
 }
 </script>
