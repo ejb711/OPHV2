@@ -57,126 +57,90 @@
 
 /* Fix for all scrollable dialogs */
 .v-dialog--scrollable > .v-overlay__content > .v-card,
-.v-dialog--scrollable > .v-overlay__content > .v-sheet,
-.v-dialog--scrollable > .v-overlay__content > form > .v-card,
-.v-dialog--scrollable > .v-overlay__content > form > .v-sheet {
-  display: flex;
-  flex-direction: column;
-  max-height: 100%;
-}
-
-/* Ensure v-card-text in scrollable dialogs actually scrolls */
-.v-dialog--scrollable .v-card-text {
-  overflow-y: auto;
-  flex: 1 1 auto;
-}
-
-/* ===========================================
-   PROJECT FORM DIALOG FIXES
-   =========================================== */
-
-.create-project-dialog .v-overlay__content {
-  max-height: calc(100vh - 48px) !important;
-  margin: 24px auto !important;
-}
-
-.create-project-dialog .form-container {
-  min-height: 300px !important;
-  max-height: calc(100vh - 400px) !important;
+.v-dialog--scrollable > .v-overlay__content > .v-card > .v-card-text {
   overflow-y: auto !important;
-  overflow-x: hidden !important;
+}
+
+/* Ensure tab content scrolls properly */
+.tab-content-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+}
+
+/* Custom scrollbar styling */
+.tab-content-wrapper::-webkit-scrollbar,
+.v-dialog--scrollable .v-card-text::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-track,
+.v-dialog--scrollable .v-card-text::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-thumb,
+.v-dialog--scrollable .v-card-text::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.tab-content-wrapper::-webkit-scrollbar-thumb:hover,
+.v-dialog--scrollable .v-card-text::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* ===========================================
-   MOBILE RESPONSIVE FIXES
+   RESPONSIVE DIALOG FIXES
    =========================================== */
 
-@media (max-width: 599px) {
-  /* Full screen on mobile */
-  .project-detail-dialog .v-overlay__content,
-  .create-project-dialog .v-overlay__content {
-    max-height: 100vh !important;
-    height: 100vh !important;
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .project-detail-dialog .v-overlay__content {
     margin: 0 !important;
-    max-width: 100% !important;
     width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
   }
   
-  .create-project-dialog .form-container {
-    max-height: calc(100vh - 300px) !important;
+  .project-detail-dialog .v-card {
+    border-radius: 0 !important;
+  }
+}
+
+/* Tablet adjustments */
+@media (max-width: 960px) {
+  .project-detail-dialog .v-overlay__content {
+    margin: 12px !important;
+    max-width: calc(100% - 24px) !important;
   }
 }
 
 /* ===========================================
-   VUETIFY 3 DIALOG OVERRIDES
+   PERFORMANCE OPTIMIZATIONS
    =========================================== */
 
-/* Prevent content from being cut off */
-.v-dialog > .v-overlay__content {
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
+/* GPU acceleration for smooth scrolling */
+.tab-content-wrapper {
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
 }
 
-/* Ensure proper stacking context */
-.v-dialog {
-  z-index: 2300 !important;
-}
-
-/* Fix overlay scrim */
-.v-overlay__scrim {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
+/* Prevent layout thrashing */
+.project-detail-dialog .v-card-text {
+  contain: layout style;
 }
 
 /* ===========================================
-   SCROLLBAR STYLING
+   Z-INDEX FIXES
    =========================================== */
 
-/* Style scrollbars in dialogs for better visibility */
-.project-detail-dialog .tab-content-scroll::-webkit-scrollbar,
-.create-project-dialog .form-container::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Ensure delete dialog appears above detail dialog */
+.v-dialog:not(.project-detail-dialog) {
+  z-index: 2100 !important;
 }
 
-.project-detail-dialog .tab-content-scroll::-webkit-scrollbar-track,
-.create-project-dialog .form-container::-webkit-scrollbar-track {
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-
-.project-detail-dialog .tab-content-scroll::-webkit-scrollbar-thumb,
-.create-project-dialog .form-container::-webkit-scrollbar-thumb {
-  background: #c0c0c0;
-  border-radius: 4px;
-}
-
-.project-detail-dialog .tab-content-scroll::-webkit-scrollbar-thumb:hover,
-.create-project-dialog .form-container::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
-}
-
-/* Firefox scrollbar styling */
-.project-detail-dialog .tab-content-scroll,
-.create-project-dialog .form-container {
-  scrollbar-width: thin;
-  scrollbar-color: #c0c0c0 #f5f5f5;
-}
-
-/* ===========================================
-   Z-INDEX MANAGEMENT
-   =========================================== */
-
-/* Ensure dialogs stack properly */
-.v-dialog:nth-of-type(1) { z-index: 2300 !important; }
-.v-dialog:nth-of-type(2) { z-index: 2310 !important; }
-.v-dialog:nth-of-type(3) { z-index: 2320 !important; }
-
-/* Snackbars should appear above dialogs */
-.v-snackbar {
-  z-index: 2400 !important;
+.project-detail-dialog {
+  z-index: 2000 !important;
 }
