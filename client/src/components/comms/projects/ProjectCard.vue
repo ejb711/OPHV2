@@ -147,10 +147,22 @@ const { canEditProject, canDeleteProject } = useCommsProjects()
 const canEdit = computed(() => canEditProject(props.project))
 const canDelete = computed(() => canDeleteProject(props.project))
 
+// Calculate progress based on completed stages (matching ProjectStagesTab logic)
+const completedStages = computed(() => {
+  if (!props.project.stages || props.project.stages.length === 0) return 0
+  return props.project.stages.filter(stage => {
+    // Handle both object stages and simple string stages
+    if (typeof stage === 'object' && stage !== null) {
+      return stage.completed === true
+    }
+    return false
+  }).length
+})
+
 const progressPercentage = computed(() => {
   if (!props.project.stages || props.project.stages.length === 0) return 0
-  const currentIndex = props.project.currentStageIndex || 0
-  return ((currentIndex + 1) / props.project.stages.length) * 100
+  const totalStages = props.project.stages.length
+  return (completedStages.value / totalStages) * 100
 })
 
 const currentStage = computed(() => {
@@ -177,81 +189,77 @@ function getDeadlineColor(deadline) {
   if (!deadline) return 'grey'
   
   const now = new Date()
-  const deadlineDate = new Date(deadline)
+  const deadlineDate = deadline.toDate ? deadline.toDate() : new Date(deadline)
   const daysUntil = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
   
   if (daysUntil < 0) return 'error'
-  if (daysUntil <= 7) return 'warning'
-  if (daysUntil <= 30) return 'info'
-  return 'success'
+  if (daysUntil <= 3) return 'warning'
+  if (daysUntil <= 7) return 'orange'
+  return 'grey'
 }
 
 function formatDeadline(deadline) {
-  if (!deadline) return 'No deadline'
+  if (!deadline) return ''
   
+  const deadlineDate = deadline.toDate ? deadline.toDate() : new Date(deadline)
   const now = new Date()
-  const deadlineDate = new Date(deadline)
   const daysUntil = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
   
   if (daysUntil < 0) {
     return `${Math.abs(daysUntil)} days overdue`
   } else if (daysUntil === 0) {
-    return 'Due today'
+    return 'Today'
   } else if (daysUntil === 1) {
-    return 'Due tomorrow'
+    return 'Tomorrow'
   } else if (daysUntil <= 7) {
     return `${daysUntil} days`
   } else {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric'
-    }).format(deadlineDate)
+    return deadlineDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    })
   }
 }
 </script>
 
 <style scoped>
 .project-card {
-  position: relative;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.project-card.high-priority {
-  border: 2px solid rgb(var(--v-theme-error));
+.project-card:hover {
+  transform: translateY(-2px);
+}
+
+.high-priority {
+  border: 2px solid #FF5252;
 }
 
 .priority-indicator {
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
-  height: 4px;
-  background: rgb(var(--v-theme-error));
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 40px 40px 0;
+  border-color: transparent #FF5252 transparent transparent;
 }
 
-.project-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+.priority-indicator::after {
+  content: '!';
+  position: absolute;
+  top: 2px;
+  right: -32px;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
 }
 
 /* Ensure consistent card height */
-.h-100 {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
 .v-card-text {
   flex: 1;
-}
-
-/* Progress bar styling */
-.v-progress-linear {
-  transition: all 0.3s ease;
-}
-
-/* Tag overflow handling */
-.v-chip + .v-chip {
-  margin-left: 4px;
 }
 </style>

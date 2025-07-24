@@ -33,13 +33,33 @@
           
           <v-list-item-title>
             {{ file.displayName || file.name }}
+            <!-- Version indicators -->
             <v-chip 
-              v-if="file.version && file.version > 1" 
+              v-if="isLatestVersion(file)" 
+              size="x-small" 
+              color="success"
+              class="ml-2"
+            >
+              <v-icon size="x-small" start>mdi-check</v-icon>
+              Latest
+            </v-chip>
+            <v-chip 
+              v-else-if="file.version && file.version > 1" 
               size="x-small" 
               color="orange"
               class="ml-2"
             >
               v{{ file.version }}
+            </v-chip>
+            <v-chip 
+              v-else-if="isSingleVersion(file)" 
+              size="x-small" 
+              color="blue-grey"
+              variant="outlined"
+              class="ml-2"
+            >
+              <v-icon size="x-small" start>mdi-file-check</v-icon>
+              Current
             </v-chip>
           </v-list-item-title>
           
@@ -89,9 +109,10 @@
                 @click.stop
               >
                 <v-icon>mdi-open-in-new</v-icon>
-                <v-tooltip activator="parent" location="top">Open link</v-tooltip>
+                <v-tooltip activator="parent" location="top">
+                  Open link
+                </v-tooltip>
               </v-btn>
-              
               <v-btn
                 v-else
                 icon
@@ -102,11 +123,27 @@
                 @click.stop
               >
                 <v-icon>mdi-download</v-icon>
-                <v-tooltip activator="parent" location="top">Download</v-tooltip>
+                <v-tooltip activator="parent" location="top">
+                  Download
+                </v-tooltip>
               </v-btn>
               
-              <!-- More actions -->
-              <v-menu v-if="canEdit">
+              <!-- Show versions button -->
+              <v-btn
+                v-if="hasMultipleVersions(file)"
+                icon
+                size="small"
+                variant="text"
+                @click="showVersions(file)"
+              >
+                <v-icon>mdi-history</v-icon>
+                <v-tooltip activator="parent" location="top">
+                  Version history
+                </v-tooltip>
+              </v-btn>
+              
+              <!-- Actions menu -->
+              <v-menu v-if="canEdit" location="start">
                 <template v-slot:activator="{ props }">
                   <v-btn
                     icon
@@ -123,24 +160,15 @@
                     <template v-slot:prepend>
                       <v-icon>mdi-pencil</v-icon>
                     </template>
-                    <v-list-item-title>Edit Details</v-list-item-title>
+                    <v-list-item-title>Edit details</v-list-item-title>
                   </v-list-item>
                   
                   <v-list-item 
-                    v-if="file.version && file.version > 1"
-                    @click="showVersions(file)"
+                    @click="deleteFile(file)"
+                    class="text-error"
                   >
                     <template v-slot:prepend>
-                      <v-icon>mdi-history</v-icon>
-                    </template>
-                    <v-list-item-title>Version History</v-list-item-title>
-                  </v-list-item>
-                  
-                  <v-divider />
-                  
-                  <v-list-item @click="deleteFile(file)" class="text-error">
-                    <template v-slot:prepend>
-                      <v-icon color="error">mdi-delete</v-icon>
+                      <v-icon>mdi-delete</v-icon>
                     </template>
                     <v-list-item-title>Delete</v-list-item-title>
                   </v-list-item>
@@ -159,7 +187,7 @@
       <v-card>
         <v-card-title>Edit File Details</v-card-title>
         
-        <v-card-text v-if="editingFile">
+        <v-card-text>
           <v-text-field
             v-model="editingFile.displayName"
             label="Display Name"
@@ -180,9 +208,9 @@
             label="Tags"
             variant="outlined"
             density="compact"
+            multiple
             chips
             closable-chips
-            multiple
           />
         </v-card-text>
         
@@ -201,13 +229,15 @@
       </v-card>
     </v-dialog>
     
-    <!-- Delete Confirmation -->
+    <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-error">Delete File</v-card-title>
+        <v-card-title>Delete File</v-card-title>
         
         <v-card-text>
           Are you sure you want to delete "{{ deletingFile?.displayName || deletingFile?.name }}"?
+          <br><br>
+          This action cannot be undone.
         </v-card-text>
         
         <v-card-actions>
@@ -267,7 +297,70 @@ const sortedFiles = computed(() => {
   })
 })
 
+// Group files by base name to find latest versions
+const fileVersionGroups = computed(() => {
+  const groups = {}
+  
+  props.files.forEach(file => {
+    // Skip external links
+    if (file.type === 'external_link') return
+    
+    const baseName = file.name || file.originalName || ''
+    if (!groups[baseName]) {
+      groups[baseName] = []
+    }
+    groups[baseName].push(file)
+  })
+  
+  // Sort each group by version (descending)
+  Object.keys(groups).forEach(baseName => {
+    groups[baseName].sort((a, b) => {
+      const versionA = a.version || 1
+      const versionB = b.version || 1
+      return versionB - versionA
+    })
+  })
+  
+  return groups
+})
+
 // Methods
+function isLatestVersion(file) {
+  // External links are never versioned
+  if (file.type === 'external_link') return false
+  
+  const baseName = file.name || file.originalName || ''
+  const group = fileVersionGroups.value[baseName]
+  
+  if (!group || group.length <= 1) return false
+  
+  // Check if this file has the highest version in its group
+  const fileVersion = file.version || 1
+  const maxVersion = Math.max(...group.map(f => f.version || 1))
+  
+  return fileVersion === maxVersion && group.length > 1
+}
+
+function isSingleVersion(file) {
+  // External links get a different treatment
+  if (file.type === 'external_link') return false
+  
+  const baseName = file.name || file.originalName || ''
+  const group = fileVersionGroups.value[baseName]
+  
+  // It's a single version if it's the only file with this name
+  return group && group.length === 1
+}
+
+function hasMultipleVersions(file) {
+  if (file.type === 'external_link') return false
+  
+  const baseName = file.name || file.originalName || ''
+  const group = fileVersionGroups.value[baseName]
+  
+  return group && group.length > 1
+}
+
 function getFileIcon(file) {
   if (file.type === 'external_link') return 'mdi-link'
   const type = file.type || ''
@@ -353,3 +446,24 @@ function showVersions(file) {
   emit('show-versions', file.name)
 }
 </script>
+
+<style scoped>
+/* Add subtle animation to version badges */
+.v-chip {
+  transition: all 0.2s ease;
+}
+
+.v-list-item:hover .v-chip {
+  transform: translateY(-1px);
+}
+
+/* Ensure consistent list item spacing */
+.v-list-item {
+  min-height: 72px;
+}
+
+/* Better visual hierarchy for file information */
+.v-list-item-subtitle {
+  opacity: 0.8;
+}
+</style>

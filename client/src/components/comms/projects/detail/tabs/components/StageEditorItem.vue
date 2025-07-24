@@ -3,7 +3,7 @@
   <div class="stage-edit-item">
     <v-row dense align="center">
       <v-col cols="auto">
-        <v-icon class="drag-handle">mdi-drag</v-icon>
+        <v-icon class="drag-handle" size="small">mdi-drag-vertical</v-icon>
       </v-col>
       
       <v-col cols="5">
@@ -30,13 +30,14 @@
       
       <v-col cols="auto">
         <v-btn
-          icon="mdi-delete"
+          icon
           size="small"
-          variant="text"
+          variant="tonal"
           color="error"
           :disabled="!canDelete"
           @click="$emit('remove')"
         >
+          <v-icon size="small">mdi-delete-outline</v-icon>
           <v-tooltip activator="parent" location="top">
             {{ canDelete ? 'Remove stage' : 'Cannot remove last stage' }}
           </v-tooltip>
@@ -77,11 +78,17 @@ function updateField(field, value) {
 
 <style scoped>
 .stage-edit-item {
-  padding: 8px;
+  padding: 12px;
   margin-bottom: 8px;
   background-color: white;
-  border-radius: 4px;
+  border-radius: 8px;
   border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.stage-edit-item:hover {
+  border-color: #bdbdbd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .stage-edit-item:last-child {
@@ -90,11 +97,27 @@ function updateField(field, value) {
 
 .drag-handle {
   cursor: move;
-  opacity: 0.5;
-  transition: opacity 0.2s;
+  color: #9e9e9e;
+  transition: all 0.2s ease;
 }
 
 .drag-handle:hover {
+  color: #616161;
+  transform: scale(1.1);
+}
+
+/* Ensure button is visible */
+.v-btn--icon {
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.v-btn--icon:hover:not(:disabled) {
   opacity: 1;
+  transform: scale(1.05);
+}
+
+.v-btn--icon:disabled {
+  opacity: 0.3;
 }
 </style>

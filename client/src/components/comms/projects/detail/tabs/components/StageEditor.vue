@@ -66,9 +66,36 @@ function updateStage(index, updates) {
 
 <style scoped>
 .stage-editor {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
+  border: 2px dashed #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
   background-color: #fafafa;
+  max-height: 400px;
+  overflow-y: auto;
+  transition: all 0.3s ease;
+}
+
+.stage-editor:hover {
+  border-color: #bdbdbd;
+  background-color: #f5f5f5;
+}
+
+/* Custom scrollbar */
+.stage-editor::-webkit-scrollbar {
+  width: 8px;
+}
+
+.stage-editor::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.stage-editor::-webkit-scrollbar-thumb {
+  background: #bdbdbd;
+  border-radius: 4px;
+}
+
+.stage-editor::-webkit-scrollbar-thumb:hover {
+  background: #9e9e9e;
 }
 </style>
