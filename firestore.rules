@@ -169,14 +169,15 @@ service cloud.firestore {
         canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
       
       allow create: if request.auth != null && 
-        hasPermission('view_comms') &&
+        hasPermission('view_comms') &&  // Allow anyone with view_comms to post
         exists(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)) &&
         canViewProject(get(/databases/$(database)/documents/comms_projects/$(request.resource.data.projectId)).data) &&
         request.resource.data.authorId == request.auth.uid;
       
+      // FIXED: Added 'deleted' to allowed fields for soft delete functionality
       allow update: if request.auth != null && 
         resource.data.authorId == request.auth.uid &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'editedAt', 'deleted']);
       
       allow delete: if request.auth != null && (
         hasPermission('manage_comms') ||

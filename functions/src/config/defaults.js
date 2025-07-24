@@ -48,6 +48,7 @@ const DEFAULT_PERMISSIONS = [
   { id: 'manage_comms_templates', name: 'Manage Communications Templates', description: 'Create and manage project templates', category: 'communications' },
   { id: 'export_comms_data', name: 'Export Communications Data', description: 'Export project data and reports', category: 'communications' },
   { id: 'approve_comms_projects', name: 'Approve Communications Projects', description: 'Approve projects in pending status', category: 'communications' },
+  { id: 'post_comms_messages', name: 'Post Communications Messages', description: 'Post messages in project discussions', category: 'communications' },
   
   // Profile Management
   { id: 'view_own_profile', name: 'View Own Profile', description: 'View personal profile information', category: 'profile' },
@@ -105,7 +106,7 @@ const DEFAULT_ROLES = [
       'view_forums', 'create_posts', 'edit_posts',
       'view_calendar', 'create_events', 'edit_events',
       // Basic communications permissions
-      'view_comms', 'create_comms_projects', 'edit_comms_projects'
+      'view_comms', 'create_comms_projects', 'edit_comms_projects','post_comms_messages'
     ]
   },
   {

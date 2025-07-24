@@ -36,6 +36,10 @@
           <v-icon class="mr-2">mdi-paperclip</v-icon>
           Files & Links
         </v-tab>
+        <v-tab value="discussion">
+          <v-icon class="mr-2">mdi-forum</v-icon>
+          Discussion
+        </v-tab>
       </v-tabs>
       
       <!-- Tab Content (Scrollable) -->
@@ -73,6 +77,16 @@
               <ProjectFilesTab
                 :project-id="project.id"
                 :can-edit="canEdit"
+              />
+            </div>
+          </v-window-item>
+          
+          <!-- Discussion Tab -->
+          <v-window-item value="discussion" class="h-100">
+            <div class="tab-content-wrapper">
+              <ProjectForum
+                :project-id="project.id"
+                :can-post="canViewAndPost"
               />
             </div>
           </v-window-item>
@@ -126,13 +140,15 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import ProjectDetailHeader from './detail/ProjectDetailHeader.vue'
 import ProjectInfoTab from './detail/tabs/ProjectInfoTab.vue'
 import ProjectStagesTab from './detail/tabs/ProjectStagesTab.vue'
 import ProjectFilesTab from './detail/tabs/ProjectFilesTab.vue'
 import ProjectDeleteDialog from './detail/dialogs/ProjectDeleteDialog.vue'
+import ProjectForum from '../forum/ProjectForum.vue'
 import { useProjectDetail } from './detail/useProjectDetail'
+import { useAuthStore } from '@/stores/auth'
 
 // Use the composable for all business logic
 const {
@@ -163,6 +179,16 @@ const {
   handleDelete,
   confirmDelete
 } = useProjectDetail()
+
+// Add auth store
+const authStore = useAuthStore()
+
+// Add computed property for forum posting permission
+const canViewAndPost = computed(() => {
+  // Allow posting if user has view_comms permission
+  // This matches the Firestore security rules
+  return authStore.hasPermission('view_comms')
+})
 
 // Expose methods for parent
 defineExpose({
