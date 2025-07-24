@@ -1,84 +1,111 @@
 <!-- client/src/components/comms/projects/ProjectVisibility.vue -->
 <template>
   <div class="project-visibility">
-    <h3 class="text-subtitle-1 font-weight-bold mb-2">Visibility Settings</h3>
-    
-    <!-- Visibility Level -->
-    <v-select
-      :model-value="modelValue"
-      @update:model-value="$emit('update:modelValue', $event)"
-      :items="visibilityOptions"
-      label="Who can view this project?"
-      :readonly="readonly"
-      variant="outlined"
-      density="compact"
-      class="mb-3"
-    >
-      <template v-slot:item="{ item, props }">
-        <v-list-item v-bind="props">
-          <template v-slot:prepend>
-            <v-icon :icon="item.raw.icon" />
-          </template>
-          <v-list-item-subtitle>{{ item.raw.description }}</v-list-item-subtitle>
-        </v-list-item>
-      </template>
-    </v-select>
+    <!-- Visibility Level (Read-only view) -->
+    <div v-if="readonly">
+      <v-select
+        :model-value="modelValue"
+        :items="visibilityOptions"
+        :readonly="true"
+        variant="plain"
+        density="compact"
+        hide-details
+      >
+        <template v-slot:item="{ item, props }">
+          <v-list-item v-bind="props">
+            <template v-slot:prepend>
+              <v-icon :icon="item.raw.icon" />
+            </template>
+            <v-list-item-subtitle>{{ item.raw.description }}</v-list-item-subtitle>
+          </v-list-item>
+        </template>
+      </v-select>
 
-    <!-- Shared With (for creator visibility) -->
-    <v-expand-transition>
-      <div v-if="modelValue === 'creator' && !readonly">
-        <v-combobox
-          :model-value="sharedWith"
-          @update:model-value="$emit('update:sharedWith', $event)"
-          label="Share with specific users (email addresses)"
-          :items="suggestedUsers"
-          multiple
-          chips
-          closable-chips
-          variant="outlined"
-          density="compact"
-          hint="Enter email addresses of users who should have access"
-          persistent-hint
-          :rules="[validateEmails]"
-        >
-          <template v-slot:chip="{ item, props }">
-            <v-chip v-bind="props" size="small">
-              <v-icon start size="small">mdi-account</v-icon>
-              {{ item.title }}
-            </v-chip>
-          </template>
-        </v-combobox>
-      </div>
-    </v-expand-transition>
-
-    <!-- Current Access Summary -->
-    <v-card 
-      v-if="!readonly" 
-      variant="outlined" 
-      density="compact" 
-      class="mt-3 pa-3"
-    >
-      <div class="text-caption text-medium-emphasis">
-        <strong>Current Access:</strong>
-        <ul class="mt-1 ml-4">
-          <li v-for="(item, index) in accessSummary" :key="index">
+      <!-- Current Access Summary (Compact) -->
+      <div v-if="accessSummary.length > 0" class="current-access-info mt-3">
+        <div class="text-caption font-weight-medium mb-1">Current Access:</div>
+        <div class="access-summary">
+          <div v-for="(item, index) in accessSummary" :key="index" class="text-body-2">
+            <v-icon size="x-small" class="mr-1">mdi-check</v-icon>
             {{ item }}
-          </li>
-        </ul>
+          </div>
+        </div>
       </div>
-    </v-card>
+    </div>
+
+    <!-- Edit Mode -->
+    <div v-else>
+      <h3 class="text-subtitle-1 font-weight-bold mb-2">Visibility Settings</h3>
+      
+      <!-- Visibility Level -->
+      <v-select
+        :model-value="modelValue"
+        @update:model-value="$emit('update:modelValue', $event)"
+        :items="visibilityOptions"
+        label="Who can view this project?"
+        variant="outlined"
+        density="compact"
+        class="mb-3"
+      >
+        <template v-slot:item="{ item, props }">
+          <v-list-item v-bind="props">
+            <template v-slot:prepend>
+              <v-icon :icon="item.raw.icon" />
+            </template>
+            <v-list-item-subtitle>{{ item.raw.description }}</v-list-item-subtitle>
+          </v-list-item>
+        </template>
+      </v-select>
+
+      <!-- Shared With (for creator visibility) -->
+      <v-expand-transition>
+        <div v-if="modelValue === 'creator'">
+          <v-combobox
+            :model-value="sharedWith"
+            @update:model-value="$emit('update:sharedWith', $event)"
+            label="Share with specific users (email addresses)"
+            :items="suggestedUsers"
+            multiple
+            chips
+            closable-chips
+            variant="outlined"
+            density="compact"
+            hint="Enter email addresses of users who should have access"
+            persistent-hint
+            :rules="[validateEmails]"
+          >
+            <template v-slot:chip="{ item, props }">
+              <v-chip v-bind="props" size="small">
+                <v-icon start size="small">mdi-account</v-icon>
+                {{ item.title }}
+              </v-chip>
+            </template>
+          </v-combobox>
+        </div>
+      </v-expand-transition>
+
+      <!-- Current Access Summary (Edit Mode) -->
+      <div v-if="accessSummary.length > 0 && modelValue !== 'creator'" class="current-access-info mt-3">
+        <div class="text-caption font-weight-medium mb-1">Current Access:</div>
+        <div class="access-summary">
+          <div v-for="(item, index) in accessSummary" :key="index" class="text-body-2">
+            <v-icon size="x-small" class="mr-1">mdi-check</v-icon>
+            {{ item }}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 
 // Props
 const props = defineProps({
   modelValue: {
     type: String,
-    default: 'coordinator'
+    default: 'coordinators'
   },
   sharedWith: {
     type: Array,
@@ -88,84 +115,63 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  projectRegion: {
-    type: String,
-    default: null
+  canEdit: {
+    type: Boolean,
+    default: false
   }
 })
 
 // Emits
 const emit = defineEmits(['update:modelValue', 'update:sharedWith'])
 
-// Composables
-const authStore = useAuthStore()
-
 // Visibility options
 const visibilityOptions = [
   {
-    title: 'Owner Only',
-    value: 'owner',
-    icon: 'mdi-shield-crown',
-    description: 'Only system owners can view this project'
-  },
-  {
-    title: 'Admins',
-    value: 'admin',
-    icon: 'mdi-shield-account',
-    description: 'System owners and administrators'
-  },
-  {
-    title: 'Regional Coordinators',
-    value: 'coordinator',
-    icon: 'mdi-account-supervisor',
-    description: 'Coordinators in the same region, plus admins'
-  },
-  {
-    title: 'Creator & Shared',
+    title: 'Private',
     value: 'creator',
-    icon: 'mdi-account-lock',
-    description: 'Only you and specific users you share with'
+    icon: 'mdi-lock',
+    description: 'Only you and people you share with'
   },
   {
-    title: 'All Users',
-    value: 'public',
+    title: 'Coordinators',
+    value: 'coordinators',
     icon: 'mdi-account-multiple',
+    description: 'Regional coordinators (same region)'
+  },
+  {
+    title: 'Organization',
+    value: 'organization',
+    icon: 'mdi-domain',
+    description: 'All system owners and administrators'
+  },
+  {
+    title: 'Public',
+    value: 'public',
+    icon: 'mdi-earth',
     description: 'Anyone with access to the Communications Dashboard'
   }
 ]
 
-// Suggested users for sharing (in real app, would fetch from API)
-const suggestedUsers = computed(() => {
-  // This would typically come from an API
-  return []
-})
+// Suggested users (would come from a real API)
+const suggestedUsers = []
 
-// Access summary based on current settings
+// Computed access summary
 const accessSummary = computed(() => {
   const summary = []
   
   switch (props.modelValue) {
-    case 'owner':
-      summary.push('System owners only')
-      break
-    case 'admin':
-      summary.push('System owners')
-      summary.push('System administrators')
-      break
-    case 'coordinator':
-      summary.push('System owners and administrators')
-      if (props.projectRegion) {
-        summary.push(`Regional coordinators for ${props.projectRegion}`)
-      } else {
-        summary.push('Regional coordinators (same region)')
-      }
-      break
     case 'creator':
-      summary.push('You (creator)')
-      summary.push('System owners and administrators')
-      if (props.sharedWith.length > 0) {
+      summary.push('Project creator (you)')
+      if (props.sharedWith && props.sharedWith.length > 0) {
         summary.push(`${props.sharedWith.length} shared user${props.sharedWith.length > 1 ? 's' : ''}`)
       }
+      break
+    case 'coordinators':
+      summary.push('System owners and administrators')
+      summary.push('Regional coordinators (same region)')
+      break
+    case 'organization':
+      summary.push('System owners and administrators')
       break
     case 'public':
       summary.push('All users with Communications Dashboard access')
@@ -192,6 +198,31 @@ function validateEmails(emails) {
 
 <style scoped>
 .project-visibility {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+}
+
+/* Compact current access info styling */
+.current-access-info {
+  background-color: rgba(76, 175, 80, 0.08);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+.access-summary {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.access-summary > div {
+  line-height: 1.6;
+}
+
+/* Remove excessive margins in readonly mode */
+.project-visibility .v-field--variant-plain {
+  margin-bottom: 0;
+}
+
+.project-visibility .v-field--variant-plain .v-select__selection {
+  font-weight: 500;
 }
 </style>
