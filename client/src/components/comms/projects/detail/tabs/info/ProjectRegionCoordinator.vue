@@ -1,84 +1,86 @@
 <template>
-  <v-row>
-    <v-col cols="12" sm="6">
-      <div class="field-group">
-        <label>Region <span v-if="editing" class="text-error">*</span></label>
-        <!-- Show chip in view mode -->
-        <v-chip
-          v-if="!editing"
-          :color="getRegionColor(region)"
-          variant="tonal"
-          size="small"
-        >
-          {{ displayedRegion }}
-        </v-chip>
-        <!-- Show select in edit mode - ALWAYS ENABLED -->
-        <v-select
-          v-else
-          :model-value="region"
-          :items="regionOptions"
-          item-title="name"
-          item-value="id"
-          variant="outlined"
-          density="comfortable"
-          :rules="rules.region || [v => !!v || 'Region is required']"
-          clearable
-          :disabled="false"
-          :hint="localCoordinatorId ? 'Changing the region will automatically assign the default coordinator for the new region' : 'Select a region to auto-assign a coordinator'"
-          persistent-hint
-          @update:model-value="handleRegionChange"
-        />
-      </div>
-    </v-col>
+  <div>
+    <v-row>
+      <v-col cols="12" sm="6">
+        <div class="field-group">
+          <label>Region <span v-if="editing" class="text-error">*</span></label>
+          <!-- Show chip in view mode -->
+          <v-chip
+            v-if="!editing"
+            :color="getRegionColor(localRegion)"
+            variant="tonal"
+            size="small"
+          >
+            {{ displayedRegion }}
+          </v-chip>
+          <!-- Show select in edit mode - ALWAYS ENABLED -->
+          <v-select
+            v-else
+            v-model="localRegion"
+            :items="regionOptions"
+            item-title="name"
+            item-value="id"
+            variant="outlined"
+            density="comfortable"
+            :rules="rules.region || [v => !!v || 'Region is required']"
+            clearable
+            :disabled="false"
+            :hint="localCoordinatorId ? 'Changing the region will automatically assign the default coordinator for the new region' : 'Select a region to auto-assign a coordinator'"
+            persistent-hint
+          />
+        </div>
+      </v-col>
+      
+      <v-col cols="12" sm="6">
+        <div class="field-group">
+          <label>Coordinator 
+            <span v-if="editing && autoSelected" class="text-caption text-grey">(Auto-assigned)</span>
+          </label>
+          <!-- Show text in view mode -->
+          <v-text-field
+            v-if="!editing"
+            :model-value="displayedCoordinator"
+            readonly
+            variant="plain"
+            density="comfortable"
+          />
+          <!-- Use modular coordinator select in edit mode -->
+          <CoordinatorSelectField
+            v-else
+            v-model="localCoordinatorId"
+            :items="coordinatorOptions"
+            :loading="loadingCoordinators"
+            :region="localRegion"
+            :auto-selected="autoSelected"
+            :default-coordinator-id="defaultCoordinatorId"
+            @non-default-selected="handleNonDefaultSelected"
+            :hint="editing && !localRegion ? 'Please select a region first' : ''"
+            :disabled="!localRegion"
+          />
+        </div>
+      </v-col>
+    </v-row>
     
-    <v-col cols="12" sm="6">
-      <div class="field-group">
-        <label>Coordinator 
-          <span v-if="editing && autoSelected" class="text-caption text-grey">(Auto-assigned)</span>
-        </label>
-        <!-- Show text in view mode -->
-        <v-text-field
-          v-if="!editing"
-          :model-value="displayedCoordinator"
-          readonly
-          variant="plain"
+    <!-- Non-default coordinator alert - moved outside of v-row for better display -->
+    <v-row v-if="editing && showNonDefaultAlert" class="mt-0">
+      <v-col cols="12">
+        <v-alert
+          type="info"
+          variant="tonal"
           density="comfortable"
-        />
-        <!-- Use modular coordinator select in edit mode -->
-        <CoordinatorSelectField
-          v-else
-          v-model="localCoordinatorId"
-          :items="coordinatorOptions"
-          :loading="loadingCoordinators"
-          :region="region"
-          :auto-selected="autoSelected"
-          :default-coordinator-id="defaultCoordinatorId"
-          @non-default-selected="handleNonDefaultSelected"
-          :hint="editing && !region ? 'Please select a region first' : ''"
-          :disabled="!region"
-        />
-      </div>
-    </v-col>
-  </v-row>
-  
-  <!-- Non-default coordinator alert -->
-  <v-alert
-    v-if="editing && showNonDefaultAlert"
-    type="info"
-    variant="tonal"
-    density="compact"
-    class="mt-3"
-    closable
-    @click:close="showNonDefaultAlert = false"
-  >
-    <template v-slot:title>
-      Non-default coordinator selected
-    </template>
-    <template v-slot:text>
-      You've selected {{ nonDefaultCoordinatorName }} instead of the default coordinator for this region. 
-      This is allowed but may require additional coordination.
-    </template>
-  </v-alert>
+          closable
+          class="mb-0"
+          @click:close="showNonDefaultAlert = false"
+        >
+          <strong>Non-default coordinator selected</strong>
+          <div class="mt-1">
+            You've selected <strong>{{ nonDefaultCoordinatorName }}</strong> instead of the default coordinator for this region. 
+            This is allowed but may require additional coordination.
+          </div>
+        </v-alert>
+      </v-col>
+    </v-row>
+  </div>
 </template>
 
 <script setup>
@@ -125,6 +127,7 @@ const {
 } = useCoordinatorSelection()
 
 // State
+const localRegion = ref(props.region)
 const localCoordinatorId = ref(props.coordinatorId)
 const autoSelected = ref(false)
 const showNonDefaultAlert = ref(false)
@@ -143,43 +146,39 @@ const hasLoadedCoordinators = computed(() => {
 })
 
 const displayedRegion = computed(() => {
-  if (!props.region) return ''
-  const region = regionOptions.value.find(r => r.id === props.region)
-  return region?.name || props.region
+  if (!localRegion.value) return ''
+  const region = regionOptions.value.find(r => r.id === localRegion.value)
+  return region?.name || localRegion.value
 })
 
 const displayedCoordinator = computed(() => {
-  if (!props.coordinatorId) return 'Not assigned'
+  if (!localCoordinatorId.value) return 'Not assigned'
   
-  // If coordinators are still loading, show loading state
-  if (loadingCoordinators.value) return 'Loading...'
-  
-  // Find the coordinator in our loaded list
-  const coordinator = allCoordinators.value.find(c => c.id === props.coordinatorId)
-  return coordinator ? (coordinator.displayName || coordinator.name || coordinator.email) : 'Unknown coordinator'
+  // Use the composable's function to get the display name
+  return getCoordinatorDisplayName(localCoordinatorId.value)
 })
 
 // Format coordinators for v-select with all coordinators visible
 const coordinatorOptions = computed(() => {
   if (!allCoordinators.value.length) return []
   
-  return formatCoordinatorsForSelect(props.region)
+  return formatCoordinatorsForSelect(localRegion.value)
 })
 
 const defaultCoordinatorId = computed(() => {
-  const defaultCoord = getDefaultCoordinatorForRegion(props.region)
+  const defaultCoord = getDefaultCoordinatorForRegion(localRegion.value)
   return defaultCoord?.id || ''
 })
 
 // Methods
 async function autoSelectCoordinator() {
-  if (!props.region || allCoordinators.value.length === 0) {
+  if (!localRegion.value || allCoordinators.value.length === 0) {
     return
   }
 
   await nextTick()
 
-  const defaultCoordinator = getDefaultCoordinatorForRegion(props.region)
+  const defaultCoordinator = getDefaultCoordinatorForRegion(localRegion.value)
   if (defaultCoordinator) {
     localCoordinatorId.value = defaultCoordinator.id
     autoSelected.value = true
@@ -193,21 +192,6 @@ async function autoSelectCoordinator() {
   }
 }
 
-function handleRegionChange(newRegion) {
-  emit('update:region', newRegion)
-  
-  if (!newRegion) {
-    localCoordinatorId.value = ''
-    autoSelected.value = false
-    showNonDefaultAlert.value = false
-    nonDefaultCoordinatorName.value = ''
-    return
-  }
-  
-  autoSelected.value = false
-  autoSelectCoordinator()
-}
-
 function handleNonDefaultSelected(selectedItem) {
   nonDefaultCoordinatorName.value = selectedItem.label
   showNonDefaultAlert.value = true
@@ -215,9 +199,44 @@ function handleNonDefaultSelected(selectedItem) {
 }
 
 // Watchers
+watch(localRegion, async (newRegion, oldRegion) => {
+  if (newRegion !== oldRegion) {
+    emit('update:region', newRegion)
+    
+    if (!newRegion) {
+      // Clear coordinator when region is cleared
+      localCoordinatorId.value = ''
+      autoSelected.value = false
+      showNonDefaultAlert.value = false
+      nonDefaultCoordinatorName.value = ''
+      emit('update:coordinator', '')
+      return
+    }
+    
+    // Clear existing coordinator and state when region changes
+    localCoordinatorId.value = ''
+    autoSelected.value = false
+    showNonDefaultAlert.value = false
+    nonDefaultCoordinatorName.value = ''
+    emit('update:coordinator', '')
+    
+    // Wait for the clear to propagate
+    await nextTick()
+    
+    // Then auto-select the new region's default coordinator
+    await autoSelectCoordinator()
+  }
+})
+
 watch(localCoordinatorId, (newValue, oldValue) => {
   if (newValue !== oldValue) {
     emit('update:coordinator', newValue)
+  }
+})
+
+watch(() => props.region, (newValue) => {
+  if (newValue !== localRegion.value) {
+    localRegion.value = newValue
   }
 })
 
@@ -227,28 +246,23 @@ watch(() => props.coordinatorId, (newValue) => {
   }
 })
 
-watch(() => props.region, async (newRegion, oldRegion) => {
-  if (newRegion !== oldRegion && props.editing) {
-    await autoSelectCoordinator()
-  }
-})
-
 watch(() => props.editing, async (newVal) => {
-  if (newVal && props.region && !localCoordinatorId.value) {
+  if (newVal && localRegion.value && !localCoordinatorId.value) {
     await autoSelectCoordinator()
   }
 })
 
 // Initialize local coordinator ID from props
 onMounted(async () => {
-  // Set initial local coordinator value
+  // Set initial local values from props
+  localRegion.value = props.region || ''
   localCoordinatorId.value = props.coordinatorId || ''
   
   // Load all coordinators
   await loadAllCoordinators()
   
   // If editing mode and region is set but no coordinator, auto-select
-  if (props.editing && props.region && !props.coordinatorId) {
+  if (props.editing && localRegion.value && !props.coordinatorId) {
     await autoSelectCoordinator()
   }
 })
@@ -260,8 +274,20 @@ onMounted(async () => {
   cursor: default;
 }
 
-/* Alert styling */
+/* Alert styling - ensure proper display */
 .v-alert {
-  margin-top: 16px;
+  width: 100%;
+  min-height: auto;
+}
+
+/* Ensure alert content is visible */
+.v-alert strong {
+  font-weight: 600;
+}
+
+/* Fix any potential z-index issues */
+.v-row:has(.v-alert) {
+  position: relative;
+  z-index: 1;
 }
 </style>
