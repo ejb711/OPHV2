@@ -40,8 +40,10 @@
 
     <!-- Messages Container -->
     <div 
+      ref="messagesContainer"
       class="messages-container"
       :class="{ 'messages-empty': !visibleMessages.length && !loading }"
+      @scroll.passive="updateScrollPosition"
     >
       <!-- Empty State -->
       <div 
@@ -55,12 +57,7 @@
       </div>
 
       <!-- Message List -->
-      <TransitionGroup
-        v-else
-        name="message"
-        tag="div"
-        class="messages-list"
-      >
+      <div v-else class="messages-list">
         <ForumMessage
           v-for="message in visibleMessages"
           :key="message.id"
@@ -70,15 +67,17 @@
           @edit="handleEdit"
           @delete="handleDelete"
         />
-      </TransitionGroup>
+      </div>
     </div>
 
     <!-- Message Composer -->
-    <ForumComposer
-      :sending="sendingMessage"
-      :disabled="!canPost"
-      @send="handleSend"
-    />
+    <div class="composer-container">
+      <ForumComposer
+        :sending="sendingMessage"
+        :disabled="!canPost"
+        @send="handleSend"
+      />
+    </div>
 
     <!-- Scroll to Bottom Button -->
     <v-fab
@@ -87,13 +86,13 @@
       color="primary"
       icon="mdi-arrow-down"
       class="scroll-to-bottom"
-      @click="scrollToBottom"
+      @click="doScrollToBottom"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useProjectForum } from '@/composables/comms/useProjectForum'
 import ForumMessage from './ForumMessage.vue'
 import ForumComposer from './ForumComposer.vue'
@@ -132,29 +131,56 @@ const {
   clearError
 } = useProjectForum(projectIdRef)
 
-// Local state
-const showScrollButton = ref(false)
+// Refs
 const messagesContainer = ref(null)
 
-// Clear error
-const handleClearError = () => {
-  if (clearError) {
-    clearError()
-  } else {
-    error.value = null
+// State
+const showScrollButton = ref(false)
+const isNearBottom = ref(true)
+const lastScrollTop = ref(0)
+const messageCountRef = ref(0)
+
+// Simple scroll to bottom function
+const doScrollToBottom = () => {
+  const container = messagesContainer.value
+  if (!container) {
+    console.warn('No messages container found')
+    return
   }
+  
+  // Direct DOM manipulation - most reliable
+  container.scrollTop = container.scrollHeight
+  
+  // Update button visibility
+  showScrollButton.value = false
+  isNearBottom.value = true
+}
+
+// Update scroll position tracking
+const updateScrollPosition = () => {
+  const container = messagesContainer.value
+  if (!container) return
+  
+  const { scrollTop, scrollHeight, clientHeight } = container
+  const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+  
+  // Track if near bottom (within 100px)
+  isNearBottom.value = distanceFromBottom < 100
+  showScrollButton.value = distanceFromBottom > 100
+  
+  lastScrollTop.value = scrollTop
 }
 
 // Handle sending a message
 const handleSend = async (content) => {
-  handleClearError() // Clear any previous errors
+  handleClearError()
+  
   const success = await sendMessage(content)
   if (success) {
     showSnackbar('Message sent', 'success')
-    await nextTick()
-    scrollToBottom()
+    // Always scroll to bottom for own messages
+    setTimeout(doScrollToBottom, 150)
   } else {
-    // Error is already set by sendMessage
     console.error('Failed to send message:', error.value)
   }
 }
@@ -183,28 +209,39 @@ const handleDelete = async (messageId) => {
   }
 }
 
-// Scroll to bottom of messages
-const scrollToBottom = () => {
-  const container = document.querySelector('.messages-container')
-  if (container) {
-    container.scrollTop = container.scrollHeight
+// Clear error handler
+const handleClearError = () => {
+  if (clearError) {
+    clearError()
+  } else {
+    error.value = null
   }
 }
 
-// Check if should show scroll button
-const checkScroll = () => {
-  const container = document.querySelector('.messages-container')
-  if (container) {
-    const { scrollTop, scrollHeight, clientHeight } = container
-    showScrollButton.value = scrollHeight - scrollTop - clientHeight > 100
+// Watch for new messages - SIMPLE APPROACH
+watch(() => visibleMessages.value.length, (newCount, oldCount) => {
+  // Store the count
+  messageCountRef.value = newCount
+  
+  // Skip if no messages
+  if (newCount === 0) return
+  
+  // Initial load or new message
+  if (oldCount === 0 || (newCount > oldCount && isNearBottom.value)) {
+    // Use RAF to ensure DOM is updated
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        doScrollToBottom()
+      })
+    })
   }
-}
+})
 
-// Watch for new messages and auto-scroll
-watch(visibleMessages, async (newMessages, oldMessages) => {
-  if (newMessages.length > oldMessages?.length) {
-    await nextTick()
-    scrollToBottom()
+// Also watch the loading state
+watch(loading, (isLoading, wasLoading) => {
+  if (wasLoading && !isLoading && visibleMessages.value.length > 0) {
+    // Messages just finished loading
+    setTimeout(doScrollToBottom, 200)
   }
 })
 
@@ -212,27 +249,22 @@ watch(visibleMessages, async (newMessages, oldMessages) => {
 onMounted(() => {
   watchMessages()
   
-  // Add scroll listener
-  const container = document.querySelector('.messages-container')
-  if (container) {
-    container.addEventListener('scroll', checkScroll)
-  }
+  // Initial scroll after mount
+  setTimeout(() => {
+    if (visibleMessages.value.length > 0) {
+      doScrollToBottom()
+    }
+  }, 300)
 })
 
 onUnmounted(() => {
   stopWatching()
-  
-  // Remove scroll listener
-  const container = document.querySelector('.messages-container')
-  if (container) {
-    container.removeEventListener('scroll', checkScroll)
-  }
 })
 </script>
 
 <style scoped>
 .project-forum {
-  height: 100%;
+  height: calc(100% - 20px);
   display: flex;
   flex-direction: column;
 }
@@ -240,12 +272,13 @@ onUnmounted(() => {
 .messages-container {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: rgb(var(--v-theme-grey-lighten-5));
   border-radius: 8px;
   padding: 16px;
-  margin-bottom: 16px;
-  min-height: 300px;
-  max-height: 500px;
+  margin-bottom: 8px;
+  min-height: 200px;
+  max-height: calc(100vh - 400px);
 }
 
 .messages-empty {
@@ -260,35 +293,46 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-/* Message transitions */
-.message-enter-active {
-  transition: all 0.3s ease;
-}
-
-.message-leave-active {
-  transition: all 0.3s ease;
-  position: absolute;
-  width: 100%;
-}
-
-.message-enter-from {
-  transform: translateX(-30px);
-  opacity: 0;
-}
-
-.message-leave-to {
-  transform: translateX(30px);
-  opacity: 0;
-}
-
 .scroll-to-bottom {
   position: absolute;
-  bottom: 80px;
+  bottom: 150px;
   right: 24px;
+  z-index: 10;
 }
 
 /* Ensure rounded corners */
 .rounded {
   border-radius: 4px;
+}
+
+/* Custom scrollbar */
+.messages-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Composer container styling */
+.composer-container {
+  margin-top: auto;
+  padding: 8px 0 0 0;
+  background-color: transparent;
+}
+
+/* Hide any Vue devtools overlay if present */
+.project-forum :deep([data-v-inspector]) {
+  display: none !important;
 }
 </style>

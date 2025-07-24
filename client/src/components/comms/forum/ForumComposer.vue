@@ -1,35 +1,30 @@
 <!-- client/src/components/comms/forum/ForumComposer.vue -->
 <template>
-  <v-card variant="outlined" class="forum-composer">
-    <v-card-text>
-      <v-textarea
-        v-model="messageContent"
-        :placeholder="placeholder"
-        :rows="2"
-        :disabled="disabled || sending"
-        variant="outlined"
-        density="compact"
-        hide-details
-        auto-grow
-        @keydown.enter.ctrl="sendMessage"
-        @keydown.enter.meta="sendMessage"
-      />
-      <div class="d-flex align-center justify-space-between mt-3">
-        <div class="text-caption text-grey">
-          <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send
-        </div>
-        <v-btn
-          color="primary"
-          :disabled="!canSend"
-          :loading="sending"
-          @click="sendMessage"
-        >
-          <v-icon left>mdi-send</v-icon>
-          Send Message
-        </v-btn>
-      </div>
-    </v-card-text>
-  </v-card>
+  <div class="forum-composer-minimal">
+    <textarea
+      v-model="messageContent"
+      :placeholder="placeholder"
+      :disabled="disabled || sending"
+      class="message-input"
+      @keydown.enter.ctrl="sendMessage"
+      @keydown.enter.meta="sendMessage"
+    />
+    <div class="controls">
+      <span class="hint">
+        <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send
+      </span>
+      <v-btn
+        color="primary"
+        size="small"
+        variant="flat"
+        :disabled="!canSend"
+        :loading="sending"
+        @click="sendMessage"
+      >
+        Send
+      </v-btn>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -75,20 +70,86 @@ const sendMessage = () => {
 </script>
 
 <style scoped>
-.forum-composer {
-  border: 2px solid rgba(var(--v-theme-primary), 0.2);
+.forum-composer-minimal {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+.message-input {
+  flex: 1;
+  height: 100px;
+  min-height: 100px;
+  max-height: 100px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.23);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  overflow-y: auto;
+  background-color: white;
   transition: border-color 0.2s ease;
 }
 
-.forum-composer:focus-within {
-  border-color: rgba(var(--v-theme-primary), 0.5);
+.message-input:focus {
+  border-color: #1976d2;
+  border-width: 2px;
+  padding: 11px 13px;
+}
+
+.message-input:disabled {
+  background-color: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.38);
+  cursor: not-allowed;
+}
+
+.message-input::placeholder {
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
 }
 
 kbd {
-  background-color: rgba(var(--v-theme-on-surface), 0.1);
+  background-color: rgba(0, 0, 0, 0.08);
   border-radius: 3px;
-  padding: 2px 4px;
-  font-size: 0.8em;
+  padding: 1px 3px;
+  font-size: 0.7em;
   font-family: monospace;
+}
+
+/* Scrollbar styling */
+.message-input::-webkit-scrollbar {
+  width: 6px;
+}
+
+.message-input::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.message-input::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.message-input::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>

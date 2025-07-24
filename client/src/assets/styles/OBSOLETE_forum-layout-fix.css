@@ -1,0 +1,49 @@
+/* Add this CSS to your project to ensure proper forum height expansion */
+
+/* Ensure the forum tab content fills available space */
+.project-detail-dialog .v-window-item--active .project-forum {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix for tab content wrapper to properly expand */
+.project-detail-dialog .tab-content-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure the v-window and v-window-item expand properly */
+.project-detail-dialog .v-window {
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-detail-dialog .v-window__container {
+  height: 100%;
+}
+
+.project-detail-dialog .v-window-item {
+  height: 100%;
+}
+
+/* Forum specific layout fixes */
+.project-forum {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for Firefox flex children */
+}
+
+.project-forum .messages-container {
+  flex: 1 1 auto;
+  min-height: 0; /* Important for Firefox flex children */
+  overflow-y: auto;
+}
+
+.project-forum .forum-composer-wrapper {
+  flex: 0 0 auto;
+}
