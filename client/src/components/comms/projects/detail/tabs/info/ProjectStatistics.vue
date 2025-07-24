@@ -40,7 +40,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot 
+} from 'firebase/firestore'
+import { db } from '@/firebase'
 
 // Props
 const props = defineProps({
@@ -50,17 +57,17 @@ const props = defineProps({
   }
 })
 
+// State
+const fileCount = ref(0)
+const messageCount = ref(0)
+
+// Firestore listeners
+let filesUnsubscribe = null
+let messagesUnsubscribe = null
+
 // Computed properties
-const fileCount = computed(() => {
-  return props.project.files?.length || 0
-})
-
-const messageCount = computed(() => {
-  return props.project.messageCount || 0
-})
-
 const daysActive = computed(() => {
-  if (!props.project.createdAt) return 0
+  if (!props.project?.createdAt) return 0
   
   const created = props.project.createdAt.toDate 
     ? props.project.createdAt.toDate() 
@@ -70,6 +77,72 @@ const daysActive = computed(() => {
   const diff = now - created
   
   return Math.floor(diff / (1000 * 60 * 60 * 24))
+})
+
+// Watch for project changes
+watch(() => props.project?.id, (newId, oldId) => {
+  // Clean up old listeners
+  if (oldId) {
+    cleanupListeners()
+  }
+  
+  // Set up new listeners
+  if (newId) {
+    setupListeners(newId)
+  }
+}, { immediate: true })
+
+// Set up real-time listeners for counts
+function setupListeners(projectId) {
+  if (!projectId) return
+  
+  // Listen to files count
+  const filesQuery = query(
+    collection(db, 'comms_files'),
+    where('projectId', '==', projectId),
+    where('deleted', '==', false)
+  )
+  
+  filesUnsubscribe = onSnapshot(filesQuery, (snapshot) => {
+    fileCount.value = snapshot.size
+  }, (error) => {
+    console.error('Error listening to files:', error)
+  })
+  
+  // Listen to messages count
+  const messagesQuery = query(
+    collection(db, 'comms_messages'),
+    where('projectId', '==', projectId),
+    where('deleted', '==', false)
+  )
+  
+  messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+    messageCount.value = snapshot.size
+  }, (error) => {
+    console.error('Error listening to messages:', error)
+  })
+}
+
+// Clean up listeners
+function cleanupListeners() {
+  if (filesUnsubscribe) {
+    filesUnsubscribe()
+    filesUnsubscribe = null
+  }
+  
+  if (messagesUnsubscribe) {
+    messagesUnsubscribe()
+    messagesUnsubscribe = null
+  }
+  
+  // Reset counts
+  fileCount.value = 0
+  messageCount.value = 0
+}
+
+// Cleanup on unmount
+onUnmounted(() => {
+  cleanupListeners()
 })
 </script>
 
