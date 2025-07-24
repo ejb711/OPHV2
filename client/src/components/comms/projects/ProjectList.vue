@@ -1,33 +1,15 @@
-<!-- client/src/components/comms/projects/ProjectList.vue -->
+// client/src/components/comms/projects/ProjectList.vue
 <template>
   <div class="project-list">
-    <!-- List/Grid Toggle -->
-    <div class="d-flex justify-end mb-4">
-      <v-btn-toggle
-        v-model="viewMode"
-        mandatory
-        density="compact"
-        variant="outlined"
-      >
-        <v-btn value="list" icon="mdi-view-list" />
-        <v-btn value="grid" icon="mdi-view-grid" />
-      </v-btn-toggle>
-    </div>
-
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-8">
-      <v-progress-circular indeterminate color="primary" />
-      <p class="text-body-2 mt-4">Loading projects...</p>
+      <v-progress-circular
+        indeterminate
+        size="64"
+        color="primary"
+      />
+      <p class="mt-4 text-body-1">Loading projects...</p>
     </div>
-
-    <!-- Empty State -->
-    <v-empty-state
-      v-else-if="filteredProjects.length === 0 && !error"
-      icon="mdi-folder-open-outline"
-      headline="No projects found"
-      title="No projects match your filters"
-      text="Try adjusting your filters or create a new project to get started."
-    />
 
     <!-- Error State -->
     <v-alert
@@ -39,164 +21,136 @@
       {{ error }}
     </v-alert>
 
-    <!-- Projects Grid View -->
-    <v-row v-else-if="viewMode === 'grid'">
-      <v-col
-        v-for="project in paginatedProjects"
-        :key="project.id"
-        cols="12"
-        md="6"
-        lg="4"
-      >
-        <ProjectCard
-          :project="project"
-          @view="$emit('select', $event)"
-          @edit="$emit('select', $event)"
-          @delete="handleDelete"
-        />
-      </v-col>
-    </v-row>
+    <!-- Empty State -->
+    <v-empty-state
+      v-else-if="!loading && visibleProjects.length === 0"
+      icon="mdi-folder-open-outline"
+      title="No projects found"
+      :text="emptyStateText"
+      class="py-8"
+    />
 
-    <!-- Projects List View -->
-    <v-list v-else lines="two" class="bg-transparent">
-      <template v-for="(project, index) in paginatedProjects" :key="project.id">
-        <v-list-item
-          :title="project.title"
-          :subtitle="project.description"
-          @click="$emit('select', project)"
+    <!-- Projects Grid/List -->
+    <template v-else>
+      <!-- View Toggle -->
+      <div class="d-flex justify-end mb-4">
+        <v-btn-toggle
+          v-model="viewMode"
+          mandatory
+          density="compact"
+          variant="outlined"
         >
-          <template v-slot:prepend>
-            <v-avatar color="primary" variant="tonal">
-              <v-icon>{{ getProjectIcon(project) }}</v-icon>
-            </v-avatar>
-          </template>
+          <v-btn value="grid" icon="mdi-view-grid" />
+          <v-btn value="list" icon="mdi-view-list" />
+        </v-btn-toggle>
+      </div>
 
-          <template v-slot:append>
-            <div class="d-flex align-center ga-2">
-              <StatusBadge :status="project.status" size="small" />
-              <RegionBadge :region="project.region" size="small" />
-              <v-chip
-                v-if="project.deadline"
-                :color="getDeadlineColor(project.deadline)"
-                size="small"
-                variant="tonal"
-              >
-                {{ formatDate(project.deadline) }}
-              </v-chip>
-              
-              <v-menu location="bottom end">
-                <template v-slot:activator="{ props }">
+      <!-- Grid View -->
+      <v-row v-if="viewMode === 'grid'">
+        <v-col
+          v-for="project in paginatedProjects"
+          :key="project.id"
+          cols="12"
+          sm="6"
+          md="4"
+          lg="3"
+        >
+          <ProjectCard
+            :project="project"
+            @click="selectProject(project)"
+            @delete="handleDelete"
+          />
+        </v-col>
+      </v-row>
+
+      <!-- List View -->
+      <v-list v-else lines="three" class="bg-transparent">
+        <template v-for="(project, index) in paginatedProjects" :key="project.id">
+          <v-list-item
+            @click="selectProject(project)"
+            :prepend-icon="getPriorityIcon(project.priority)"
+            :prepend-color="getPriorityColor(project.priority)"
+          >
+            <template v-slot:title>
+              <div class="d-flex align-center ga-2">
+                <span class="font-weight-medium">{{ project.title }}</span>
+                <StatusBadge :status="project.status" small />
+                <RegionBadge :region="project.region" small />
+              </div>
+            </template>
+
+            <template v-slot:subtitle>
+              <div>
+                {{ project.description }}
+              </div>
+              <div class="mt-1 text-caption">
+                <v-chip
+                  v-if="project.coordinatorName"
+                  size="x-small"
+                  variant="tonal"
+                  prepend-icon="mdi-account"
+                  class="mr-2"
+                >
+                  {{ project.coordinatorName }}
+                </v-chip>
+                <v-chip
+                  v-if="project.deadline"
+                  size="x-small"
+                  variant="tonal"
+                  :color="getDeadlineColor(project.deadline)"
+                  :prepend-icon="getDeadlineIcon(project.deadline)"
+                >
+                  {{ formatDate(project.deadline) }}
+                </v-chip>
+              </div>
+            </template>
+
+            <template v-slot:append>
+              <div class="text-right">
+                <div class="text-caption text-disabled">
+                  Updated {{ formatRelativeTime(project.updatedAt) }}
+                </div>
+                <div class="mt-2">
                   <v-btn
-                    v-bind="props"
-                    icon="mdi-dots-vertical"
+                    v-if="canEditProject(project)"
+                    icon="mdi-pencil"
                     size="small"
                     variant="text"
-                    @click.stop
+                    @click.stop="selectProject(project)"
                   />
-                </template>
-                <v-list density="compact">
-                  <v-list-item @click.stop="$emit('select', project)">
-                    <template v-slot:prepend>
-                      <v-icon>mdi-eye</v-icon>
-                    </template>
-                    <v-list-item-title>View Details</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item 
-                    v-if="canEditProject(project)" 
-                    @click.stop="$emit('select', project)"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon>mdi-pencil</v-icon>
-                    </template>
-                    <v-list-item-title>Edit</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item 
-                    v-if="canDeleteProject(project)" 
+                  <v-btn
+                    v-if="canDeleteProject(project)"
+                    icon="mdi-delete"
+                    size="small"
+                    variant="text"
+                    color="error"
                     @click.stop="handleDelete(project)"
-                    class="text-error"
-                  >
-                    <template v-slot:prepend>
-                      <v-icon>mdi-delete</v-icon>
-                    </template>
-                    <v-list-item-title>Delete</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </template>
-        </v-list-item>
-        
-        <v-divider v-if="index < paginatedProjects.length - 1" />
-      </template>
-    </v-list>
+                  />
+                </div>
+              </div>
+            </template>
+          </v-list-item>
+          <v-divider v-if="index < paginatedProjects.length - 1" />
+        </template>
+      </v-list>
 
-    <!-- Pagination -->
-    <div v-if="totalPages > 1" class="d-flex justify-center mt-6">
+      <!-- Pagination -->
       <v-pagination
+        v-if="pageCount > 1"
         v-model="currentPage"
-        :length="totalPages"
+        :length="pageCount"
         :total-visible="7"
-        density="comfortable"
+        rounded="circle"
+        class="mt-4"
       />
-    </div>
-
-    <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteDialog" max-width="500">
-      <v-card>
-        <v-card-title class="text-h6">Delete Project?</v-card-title>
-        <v-card-text>
-          <p class="mb-4">Choose how you want to delete this project:</p>
-          
-          <v-list density="compact" class="mb-4">
-            <v-list-item
-              prepend-icon="mdi-delete-clock"
-              @click="confirmDelete(false)"
-            >
-              <v-list-item-title>Move to Trash</v-list-item-title>
-              <v-list-item-subtitle>
-                Can be restored within 90 days
-              </v-list-item-subtitle>
-            </v-list-item>
-            
-            <v-list-item
-              v-if="canManageComms"
-              prepend-icon="mdi-delete-forever"
-              @click="confirmDelete(true)"
-              class="text-error"
-            >
-              <v-list-item-title>Permanently Delete</v-list-item-title>
-              <v-list-item-subtitle>
-                Cannot be undone - all data will be lost
-              </v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
-          
-          <v-alert
-            type="warning"
-            variant="tonal"
-            density="compact"
-          >
-            Project: <strong>{{ projectToDelete?.title }}</strong>
-          </v-alert>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn
-            variant="text"
-            @click="deleteDialog = false"
-          >
-            Cancel
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
-import { usePermissions } from '@/composables/usePermissions'
+import { formatDistanceToNow } from 'date-fns'
 import ProjectCard from './ProjectCard.vue'
 import StatusBadge from '../shared/StatusBadge.vue'
 import RegionBadge from '../shared/RegionBadge.vue'
@@ -218,66 +172,94 @@ const props = defineProps({
 const emit = defineEmits(['select', 'stats-update', 'delete'])
 
 // Composables
-const { 
-  projects, 
-  loading, 
+const {
+  projects,
+  loading,
   error,
   filteredProjects,
   projectStats,
-  initialize,
   setFilter,
+  initialize,
   canEditProject,
   canDeleteProject
 } = useCommsProjects()
 
-const { canManageComms } = usePermissions()
-
 // State
 const viewMode = ref('grid')
 const currentPage = ref(1)
-const itemsPerPage = ref(12)
-const deleteDialog = ref(false)
-const projectToDelete = ref(null)
+const itemsPerPage = computed(() => viewMode.value === 'grid' ? 12 : 20)
 let unsubscribe = null
 
-// Computed
-const totalPages = computed(() => 
-  Math.ceil(filteredProjects.value.length / itemsPerPage.value)
-)
+// Computed properties for fixing the undefined error
+const visibleProjects = computed(() => {
+  // Return filtered projects that aren't deleted (unless specifically showing deleted)
+  if (props.filters?.showDeleted) {
+    return filteredProjects.value || []
+  }
+  return (filteredProjects.value || []).filter(p => !p.deleted)
+})
+
+const pageCount = computed(() => {
+  return Math.ceil(visibleProjects.value.length / itemsPerPage.value)
+})
 
 const paginatedProjects = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
-  return filteredProjects.value.slice(start, end)
+  return visibleProjects.value.slice(start, start + itemsPerPage.value)
+})
+
+const emptyStateText = computed(() => {
+  if (props.filters?.search) {
+    return `No projects found matching "${props.filters.search}"`
+  }
+  if (props.filters?.region || props.filters?.status || props.filters?.priority) {
+    return 'No projects match the selected filters'
+  }
+  return 'No projects have been created yet'
 })
 
 // Methods
+function selectProject(project) {
+  emit('select', project)
+}
+
 function handleDelete(project) {
-  projectToDelete.value = project
-  deleteDialog.value = true
+  emit('delete', project)
 }
 
-function confirmDelete(hard) {
-  if (projectToDelete.value) {
-    emit('delete', projectToDelete.value, hard)
+function formatRelativeTime(date) {
+  if (!date) return 'never'
+  
+  try {
+    const dateObj = date instanceof Date ? date : date.toDate()
+    return formatDistanceToNow(dateObj, { addSuffix: true })
+  } catch (error) {
+    return 'unknown'
   }
-  deleteDialog.value = false
-  projectToDelete.value = null
 }
 
-function getProjectIcon(project) {
-  if (project.priority === 'high') return 'mdi-alert-circle'
-  if (project.status === 'completed') return 'mdi-check-circle'
-  if (project.status === 'in_progress') return 'mdi-progress-clock'
-  return 'mdi-folder'
+function getPriorityIcon(priority) {
+  const icons = {
+    high: 'mdi-alert-circle',
+    medium: 'mdi-alert',
+    low: 'mdi-information'
+  }
+  return icons[priority] || 'mdi-information'
+}
+
+function getPriorityColor(priority) {
+  const colors = {
+    high: 'error',
+    medium: 'warning',
+    low: 'info'
+  }
+  return colors[priority] || 'grey'
 }
 
 function getDeadlineColor(deadline) {
   if (!deadline) return 'grey'
   
-  const now = new Date()
-  const deadlineDate = new Date(deadline)
-  const daysUntil = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24))
+  const daysUntil = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
   
   if (daysUntil < 0) return 'error'
   if (daysUntil <= 7) return 'warning'

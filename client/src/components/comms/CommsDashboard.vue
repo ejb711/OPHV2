@@ -289,15 +289,15 @@ const visibleProjects = computed(() => {
 // Safe analytics data for template - ensure all computed refs are properly accessed
 const analyticsData = computed(() => {
   return {
-    metrics: analytics.metrics || { total: 0, active: 0, completed: 0, pending: 0 },
-    completionRate: analytics.completionRate || 0,
-    avgCompletionTime: analytics.avgCompletionTime || 0,
-    statusBreakdown: analytics.statusBreakdown || [],
-    priorityDistribution: analytics.priorityDistribution || { high: 0, medium: 0, low: 0 },
-    regionalDistribution: analytics.regionalDistribution || [],
-    activeCoordinators: analytics.activeCoordinators || new Set(),
-    totalFiles: analytics.totalFiles || 0,
-    totalMessages: analytics.totalMessages || 0
+    metrics: analytics.metrics?.value || { total: 0, active: 0, completed: 0, pending: 0 },
+    completionRate: analytics.completionRate?.value || 0,
+    avgCompletionTime: analytics.avgCompletionTime?.value || 0,
+    statusBreakdown: analytics.statusBreakdown?.value || [],
+    priorityDistribution: analytics.priorityDistribution?.value || { high: 0, medium: 0, low: 0 },
+    regionalDistribution: analytics.regionalDistribution?.value || [],
+    activeCoordinators: analytics.activeCoordinators?.value || new Set(),
+    totalFiles: analytics.totalFiles?.value || 0,
+    totalMessages: analytics.totalMessages?.value || 0
   }
 })
 

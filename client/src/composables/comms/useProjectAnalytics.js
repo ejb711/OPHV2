@@ -163,124 +163,132 @@ export function useProjectAnalytics(projects = ref([])) {
       ? projectsArray.filter(p => p && p.region === selectedRegion.value)
       : projectsArray
       
-    const total = filtered.filter(p => p && !p.deleted).length
-    const completed = filtered.filter(p => p && p.status === 'completed' && !p.deleted).length
+    const nonDeleted = filtered.filter(p => p && !p.deleted)
+    if (nonDeleted.length === 0) return 0
     
-    return total > 0 ? Math.round((completed / total) * 100) : 0
+    const completed = nonDeleted.filter(p => p.status === 'completed').length
+    return Math.round((completed / nonDeleted.length) * 100)
   })
   
-  // Average completion time
+  // Average completion time (in days)
   const avgCompletionTime = computed(() => {
     const projectsArray = filteredProjects.value || []
-    const completedProjects = projectsArray.filter(p => 
-      p && p.status === 'completed' && p.completedAt && !p.deleted
+    const completed = projectsArray.filter(p => 
+      p && p.status === 'completed' && p.createdAt && p.completedAt
     )
     
-    if (completedProjects.length === 0) return 0
+    if (completed.length === 0) return 0
     
-    const totalDays = completedProjects.reduce((sum, project) => {
-      if (!project) return sum
-      const created = project.createdAt instanceof Date ? project.createdAt : project.createdAt?.toDate()
-      const completed = project.completedAt instanceof Date ? project.completedAt : project.completedAt?.toDate()
-      
-      if (created && completed) {
-        const days = Math.floor((completed - created) / (1000 * 60 * 60 * 24))
+    const totalDays = completed.reduce((sum, project) => {
+      const created = project.createdAt instanceof Date 
+        ? project.createdAt 
+        : project.createdAt?.toDate()
+      const completedDate = project.completedAt instanceof Date 
+        ? project.completedAt 
+        : project.completedAt?.toDate()
+        
+      if (created && completedDate) {
+        const days = Math.ceil((completedDate - created) / (1000 * 60 * 60 * 24))
         return sum + days
       }
       return sum
     }, 0)
     
-    return Math.round(totalDays / completedProjects.length)
+    return Math.round(totalDays / completed.length)
   })
   
-  // Upcoming deadlines
-  const upcomingDeadlines = computed(() => {
-    const now = new Date()
-    const projectsArray = filteredProjects.value || []
-    const filtered = selectedRegion.value 
-      ? projectsArray.filter(p => p && p.region === selectedRegion.value)
-      : projectsArray
-      
-    return filtered
-      .filter(p => {
-        if (!p || p.deleted || p.status === 'completed') return false
-        const deadline = p.deadline instanceof Date ? p.deadline : p.deadline?.toDate()
-        return deadline && deadline > now
-      })
-      .map(p => {
-        const deadline = p.deadline instanceof Date ? p.deadline : p.deadline?.toDate()
-        return {
-          ...p,
-          daysUntil: deadline ? Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)) : 0
-        }
-      })
-      .sort((a, b) => a.daysUntil - b.daysUntil)
-      .slice(0, 5)
-  })
+  // Count coordinators
+  watch(projects, (newProjects) => {
+    if (!newProjects || !Array.isArray(newProjects)) return
+    
+    const coordinators = new Set()
+    const projectsArray = newProjects || []
+    projectsArray.forEach(project => {
+      if (project && project.coordinatorId) {
+        coordinators.add(project.coordinatorId)
+      }
+    })
+    activeCoordinators.value = coordinators
+  }, { immediate: true })
   
-  // Set up real-time listeners
-  const setupListeners = () => {
+  // Set up file counters listener
+  const setupFileCounters = () => {
+    if (!authStore.currentUser?.uid) return
+
+    const q = query(
+      collection(db, 'comms_files'),
+      where('deleted', '==', false)
+    )
+    
+    return onSnapshot(q, 
+      (snapshot) => {
+        totalFiles.value = snapshot.size
+      },
+      (err) => {
+        console.error('Error listening to files:', err)
+      }
+    )
+  }
+  
+  // Set up message counters listener with improved permission check
+  const setupMessageCounters = () => {
+    if (!authStore.currentUser?.uid) return
+    
+    // Check if user has permission to view messages
+    if (!authStore.hasPermission('view_comms')) {
+      console.log('User does not have permission to view communications messages')
+      return
+    }
+
     try {
-      // Listen to messages count
-      const messagesQuery = query(collection(db, 'comms_messages'), where('deleted', '==', false))
-      const messagesUnsubscribe = onSnapshot(messagesQuery, 
+      const q = query(
+        collection(db, 'comms_messages'),
+        where('deleted', '==', false)
+      )
+      
+      return onSnapshot(q, 
         (snapshot) => {
           totalMessages.value = snapshot.size
         },
-        (error) => {
-          console.error('Error listening to messages:', error)
-          totalMessages.value = 0
+        (err) => {
+          // Don't log permission errors as they're expected for users without access
+          if (err.code !== 'permission-denied') {
+            console.error('Error listening to messages:', err)
+          }
         }
       )
-      
-      // Listen to files count
-      const filesQuery = query(collection(db, 'comms_files'), where('deleted', '==', false))
-      const filesUnsubscribe = onSnapshot(filesQuery, 
-        (snapshot) => {
-          totalFiles.value = snapshot.size
-        },
-        (error) => {
-          console.error('Error listening to files:', error)
-          totalFiles.value = 0
-        }
-      )
-      
-      // Listen to coordinators
-      const coordinatorsQuery = collection(db, 'comms_coordinators')
-      const coordinatorsUnsubscribe = onSnapshot(coordinatorsQuery, 
-        (snapshot) => {
-          activeCoordinators.value = new Set(snapshot.docs.map(doc => doc.id))
-        },
-        (error) => {
-          console.error('Error listening to coordinators:', error)
-          activeCoordinators.value = new Set()
-        }
-      )
-      
-      // Return cleanup function
-      return () => {
-        try {
-          messagesUnsubscribe()
-          filesUnsubscribe()
-          coordinatorsUnsubscribe()
-        } catch (error) {
-          console.error('Error during cleanup:', error)
-        }
-      }
     } catch (error) {
-      console.error('Error setting up analytics listeners:', error)
-      return () => {} // Return empty cleanup function
+      console.error('Error setting up message listener:', error)
     }
   }
   
-  // Initialize
-  let cleanup = () => {}
-  try {
-    initializeDateRange()
-    cleanup = setupListeners()
-  } catch (error) {
-    console.error('Error initializing analytics:', error)
+  // Set date range
+  const setDateRange = (start, end) => {
+    dateRange.value = { start, end }
   }
+  
+  // Set selected region
+  const setSelectedRegion = (region) => {
+    selectedRegion.value = region
+  }
+  
+  // Initialize
+  let unsubscribeFiles = null
+  let unsubscribeMessages = null
+  
+  const initialize = () => {
+    initializeDateRange()
+    unsubscribeFiles = setupFileCounters()
+    unsubscribeMessages = setupMessageCounters()
+  }
+  
+  const cleanup = () => {
+    if (unsubscribeFiles) unsubscribeFiles()
+    if (unsubscribeMessages) unsubscribeMessages()
+  }
+  
+  // Initialize on creation
+  initialize()
   
   return {
     // State
@@ -297,20 +305,15 @@ export function useProjectAnalytics(projects = ref([])) {
     timelineData,
     completionRate,
     avgCompletionTime,
-    upcomingDeadlines,
-    totalMessages,
+    
+    // Counters
     totalFiles,
+    totalMessages,
     activeCoordinators,
     
     // Methods
-    setDateRange: (start, end) => {
-      if (start && end) {
-        dateRange.value = { start, end }
-      }
-    },
-    setRegion: (region) => {
-      selectedRegion.value = region || ''
-    },
+    setDateRange,
+    setSelectedRegion,
     cleanup
   }
 }

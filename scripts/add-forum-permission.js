@@ -107,11 +107,13 @@ async function addForumPermission() {
     console.log('Users can now post messages in project discussions.');
     
   } catch (error) {
-    console.error('❌ Error adding forum permission:', error);
-  } finally {
-    process.exit();
+    console.error('❌ Error:', error);
+    process.exit(1);
   }
 }
 
 // Run the script
-addForumPermission();
+addForumPermission().then(() => {
+  console.log('\n✨ Done!');
+  process.exit(0);
+});
