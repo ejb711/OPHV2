@@ -28,31 +28,57 @@ export function useProjectStages(props, emit) {
 
   // Methods
   function toggleStageComplete(index) {
-    const stages = [...props.editedProject.stages]
-    stages[index].completed = !stages[index].completed
-    
-    if (stages[index].completed) {
-      stages[index].completedAt = new Date()
+    // If in edit mode, update the edited project
+    if (props.editing) {
+      const stages = [...props.editedProject.stages]
+      stages[index].completed = !stages[index].completed
+      
+      if (stages[index].completed) {
+        stages[index].completedAt = new Date()
+      } else {
+        stages[index].completedAt = null
+      }
+      
+      emit('update', { stages })
     } else {
-      stages[index].completedAt = null
+      // If not in edit mode, emit a direct update event
+      const stage = props.project.stages[index]
+      emit('update', { 
+        stageIndex: index,
+        stageUpdate: {
+          completed: !stage.completed,
+          completedAt: !stage.completed ? new Date() : null
+        },
+        direct: true // Flag to indicate this is a direct update
+      })
     }
-    
-    emit('update', { stages })
   }
 
   function moveToNextStage() {
     const nextIndex = currentStageIndex.value + 1
     if (nextIndex < totalStages.value) {
-      // Mark current stage as completed
-      const stages = [...props.editedProject.stages]
-      stages[currentStageIndex.value].completed = true
-      stages[currentStageIndex.value].completedAt = new Date()
-      
-      // Update current stage index
-      emit('update', { 
-        stages,
-        currentStageIndex: nextIndex 
-      })
+      if (props.editing) {
+        // In edit mode, update edited project
+        const stages = [...props.editedProject.stages]
+        stages[currentStageIndex.value].completed = true
+        stages[currentStageIndex.value].completedAt = new Date()
+        
+        emit('update', { 
+          stages,
+          currentStageIndex: nextIndex 
+        })
+      } else {
+        // Not in edit mode, emit direct update
+        emit('update', {
+          stageIndex: currentStageIndex.value,
+          stageUpdate: {
+            completed: true,
+            completedAt: new Date()
+          },
+          currentStageIndex: nextIndex,
+          direct: true
+        })
+      }
     }
   }
 

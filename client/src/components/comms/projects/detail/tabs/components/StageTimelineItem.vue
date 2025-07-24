@@ -45,8 +45,8 @@
           </div>
         </div>
         
-        <!-- Stage Actions (Edit Mode) -->
-        <div v-if="editing && canEdit" class="ml-4">
+        <!-- Stage Actions (Available when user has edit permissions) -->
+        <div v-if="canEdit" class="ml-4">
           <v-btn-group density="compact">
             <v-btn
               icon="mdi-check"

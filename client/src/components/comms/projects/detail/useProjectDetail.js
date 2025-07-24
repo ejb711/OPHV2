@@ -160,7 +160,56 @@ export function useProjectDetail() {
   }
 
   function updateEditedProject(updates) {
-    editedProject.value = { ...editedProject.value, ...updates }
+    // Check if this is a direct update (not in edit mode)
+    if (updates.direct) {
+      handleDirectUpdate(updates)
+    } else {
+      // Normal edit mode update
+      editedProject.value = { ...editedProject.value, ...updates }
+    }
+  }
+
+  async function handleDirectUpdate(updates) {
+    if (!project.value || !canEdit.value) return
+    
+    saving.value = true
+    
+    try {
+      const projectUpdates = {}
+      
+      // Handle stage-specific updates
+      if (updates.stageIndex !== undefined && updates.stageUpdate) {
+        const stages = [...project.value.stages]
+        stages[updates.stageIndex] = {
+          ...stages[updates.stageIndex],
+          ...updates.stageUpdate
+        }
+        projectUpdates.stages = stages
+      }
+      
+      // Handle current stage index update
+      if (updates.currentStageIndex !== undefined) {
+        projectUpdates.currentStageIndex = updates.currentStageIndex
+      }
+      
+      // Update the project
+      await updateProject(project.value.id, projectUpdates)
+      
+      // Log the action
+      await logEvent('stage_updated', {
+        projectId: project.value.id,
+        projectTitle: project.value.title,
+        updates: projectUpdates
+      })
+      
+      showSuccess('Stage updated successfully')
+      
+    } catch (err) {
+      console.error('Error updating stage:', err)
+      showError(err.message || 'Failed to update stage')
+    } finally {
+      saving.value = false
+    }
   }
 
   async function saveChanges() {
@@ -204,6 +253,14 @@ export function useProjectDetail() {
       }
       
       await updateProject(project.value.id, updates)
+      
+      // Log the action
+      await logEvent('project_updated', {
+        projectId: project.value.id,
+        projectTitle: project.value.title,
+        fieldsUpdated: Object.keys(updates)
+      })
+      
       editing.value = false
       showSuccess('Project updated successfully')
       
@@ -227,8 +284,16 @@ export function useProjectDetail() {
     try {
       if (hardDelete) {
         await hardDeleteProject(project.value.id)
+        await logEvent('project_hard_deleted', {
+          projectId: project.value.id,
+          projectTitle: project.value.title
+        })
       } else {
         await softDeleteProject(project.value.id)
+        await logEvent('project_soft_deleted', {
+          projectId: project.value.id,
+          projectTitle: project.value.title
+        })
       }
       
       close()
