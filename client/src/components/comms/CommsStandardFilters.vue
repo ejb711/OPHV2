@@ -2,7 +2,7 @@
 <template>
   <v-row align="center">
     <!-- Search -->
-    <v-col cols="12" md="4">
+    <v-col cols="12" md="3">
       <v-text-field
         :model-value="filters.search"
         label="Search projects"
@@ -44,7 +44,7 @@
     </v-col>
 
     <!-- Region Filter -->
-    <v-col cols="12" sm="6" md="2">
+    <v-col cols="6" sm="4" md="2">
       <div class="field-group">
         <label class="field-label">Region</label>
         <v-select
@@ -61,7 +61,7 @@
     </v-col>
 
     <!-- Status Filter -->
-    <v-col cols="12" sm="6" md="2">
+    <v-col cols="6" sm="4" md="2">
       <div class="field-group">
         <label class="field-label">Status</label>
         <v-select
@@ -78,7 +78,7 @@
     </v-col>
 
     <!-- Priority Filter -->
-    <v-col cols="12" sm="6" md="2">
+    <v-col cols="6" sm="4" md="2">
       <div class="field-group">
         <label class="field-label">Priority</label>
         <v-select
@@ -94,8 +94,26 @@
       </div>
     </v-col>
 
+    <!-- Coordinator Filter -->
+    <v-col cols="6" sm="4" md="2">
+      <div class="field-group">
+        <label class="field-label">Coordinator</label>
+        <v-select
+          :model-value="filters.coordinator"
+          :items="coordinatorOptions"
+          :loading="loadingCoordinators"
+          placeholder="All coordinators"
+          density="comfortable"
+          hide-details
+          clearable
+          variant="outlined"
+          @update:model-value="updateFilter('coordinator', $event)"
+        />
+      </div>
+    </v-col>
+
     <!-- Actions -->
-    <v-col cols="12" sm="6" md="2" class="text-right">
+    <v-col cols="12" sm="6" md="1" class="text-right">
       <v-menu>
         <template v-slot:activator="{ props }">
           <v-btn
@@ -144,8 +162,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useProjectSearch } from '@/composables/comms/useProjectSearch'
+import { useCoordinatorSelection } from '@/composables/comms/useCoordinatorSelection'
 import { STATUS_OPTIONS, PRIORITY_OPTIONS, getRegionOptions } from '@/config/commsFilterOptions'
 
 // Props
@@ -174,11 +193,20 @@ const emit = defineEmits([
 
 // Composables
 const { searchHistory, addToHistory } = useProjectSearch()
+const { allCoordinators, loadingCoordinators, loadAllCoordinators } = useCoordinatorSelection()
 
 // Options
 const regionOptions = computed(() => getRegionOptions())
 const statusOptions = STATUS_OPTIONS
 const priorityOptions = PRIORITY_OPTIONS
+
+// Coordinator options formatted for v-select
+const coordinatorOptions = computed(() => {
+  return allCoordinators.value.map(coord => ({
+    title: coord.displayName || coord.name || coord.email,
+    value: coord.id
+  }))
+})
 
 // Debounce timer
 let debounceTimer = null
@@ -204,6 +232,11 @@ function updateSearch(value) {
 function selectSearchHistory(term) {
   updateFilter('search', term)
 }
+
+// Load coordinators on mount
+onMounted(() => {
+  loadAllCoordinators()
+})
 </script>
 
 <style scoped>
@@ -246,14 +279,27 @@ function selectSearchHistory(term) {
 }
 
 /* Responsive adjustments */
-@media (max-width: 599px) {
+@media (max-width: 959px) {
   .text-right {
     text-align: left !important;
   }
   
-  /* Add spacing between field groups on mobile */
+  /* Add spacing between field groups on tablet/mobile */
   .field-group {
     margin-bottom: 16px;
+  }
+  
+  /* Stack filters better on smaller screens */
+  .v-col {
+    padding-bottom: 8px;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Full width on mobile */
+  .v-col {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
   }
 }
 </style>

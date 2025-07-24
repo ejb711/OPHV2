@@ -35,6 +35,7 @@ export const DEFAULT_FILTERS = {
   region: null,
   status: null,
   priority: null,
+  coordinator: null,
   search: '',
   quickFilters: [],
   advancedSearch: null

@@ -3,8 +3,7 @@
   <v-card elevation="0" class="rounded-lg">
     <!-- Quick Filters Bar -->
     <CommsQuickFilters
-      :active-filters="activeQuickFilters"
-      @update:active-filters="activeQuickFilters = $event"
+      :current-filters="localFilters"
       @toggle-filter="toggleQuickFilter"
       @advanced-search="handleAdvancedSearch"
       @advanced-filter="handleAdvancedFilter"
@@ -24,7 +23,7 @@
 
       <!-- Active Filters Summary -->
       <v-expand-transition>
-        <div v-if="filterSummary" class="mt-3">
+        <div v-if="activeFilterSummary" class="mt-3">
           <v-chip
             size="small"
             closable
@@ -32,7 +31,7 @@
             @click:close="clearAllFilters"
           >
             <v-icon start size="small">mdi-filter</v-icon>
-            {{ filterSummary }}
+            {{ activeFilterSummary }}
           </v-chip>
         </div>
       </v-expand-transition>
@@ -68,11 +67,10 @@ const props = defineProps({
 const emit = defineEmits(['update:filters'])
 
 // Composables
-const { filterSummary, clearAllFilters: clearFilters } = useProjectFilters()
+const { clearAllFilters: clearFilters } = useProjectFilters()
 
 // Local state
 const localFilters = ref({ ...props.filters })
-const activeQuickFilters = ref([])
 const showSavedFilters = ref(false)
 const hasAdvancedSearch = ref(false)
 
@@ -82,8 +80,8 @@ const hasActiveFilters = computed(() => {
     localFilters.value.region ||
     localFilters.value.status ||
     localFilters.value.priority ||
-    localFilters.value.search ||
-    activeQuickFilters.value.length > 0
+    localFilters.value.coordinator ||
+    localFilters.value.search
   )
 })
 
@@ -92,24 +90,31 @@ const totalActiveFilters = computed(() => {
   if (localFilters.value.region) count++
   if (localFilters.value.status) count++
   if (localFilters.value.priority) count++
+  if (localFilters.value.coordinator) count++
   if (localFilters.value.search) count++
-  count += activeQuickFilters.value.length
   if (hasAdvancedSearch.value) count++
   return count
+})
+
+const activeFilterSummary = computed(() => {
+  const parts = []
+  if (localFilters.value.region) parts.push('Region')
+  if (localFilters.value.status) parts.push('Status')
+  if (localFilters.value.priority) parts.push('Priority')
+  if (localFilters.value.coordinator) parts.push('Coordinator')
+  if (localFilters.value.search) parts.push('Search')
+  if (hasAdvancedSearch.value) parts.push('Advanced')
+  return parts.join(', ')
 })
 
 // Methods
 function updateFilters(filters) {
   localFilters.value = filters
-  emit('update:filters', {
-    ...filters,
-    quickFilters: activeQuickFilters.value
-  })
+  emit('update:filters', filters)
 }
 
 function clearAllFilters() {
   localFilters.value = { ...DEFAULT_FILTERS }
-  activeQuickFilters.value = []
   hasAdvancedSearch.value = false
   clearFilters()
   emit('update:filters', { ...DEFAULT_FILTERS })
@@ -122,6 +127,8 @@ function toggleQuickFilter(filter) {
     newFilters.status = newFilters.status === filter.value ? null : filter.value
   } else if (filter.field === 'priority') {
     newFilters.priority = newFilters.priority === filter.value ? null : filter.value
+  } else if (filter.field === 'coordinator') {
+    newFilters.coordinator = newFilters.coordinator === filter.value ? null : filter.value
   }
   updateFilters(newFilters)
 }
@@ -151,6 +158,7 @@ function loadSavedFilter(filterSet) {
       region: filterSet.filters.region || null,
       status: filterSet.filters.status || null,
       priority: filterSet.filters.priority || null,
+      coordinator: filterSet.filters.coordinator || null,
       search: filterSet.filters.search || ''
     })
   }
