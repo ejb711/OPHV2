@@ -1,8 +1,9 @@
 <template>
   <v-dialog
     v-model="dialog"
-    fullscreen
-    transition="dialog-bottom-transition"
+    :max-width="1000"
+    :max-height="600"
+    transition="dialog-transition"
     :persistent="false"
   >
     <v-card class="d-flex flex-column analytics-card">
@@ -290,7 +291,8 @@ function handleEndDateChange(value) {
 <style scoped>
 /* Make card fill dialog and use flexbox */
 .analytics-card {
-  height: 100% !important;
+  height: 600px !important;
+  max-height: 80vh !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -323,14 +325,14 @@ function handleEndDateChange(value) {
 
 /* Responsive container */
 .v-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 100%;
+  padding: 0 16px;
 }
 
 /* Card styling for better visibility */
 .coordinator-workload-card,
 .regional-card {
-  min-height: 300px;
+  min-height: 250px;
 }
 
 /* Responsive adjustments */
