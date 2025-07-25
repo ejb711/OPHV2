@@ -3,8 +3,9 @@
   <v-dialog 
     v-model="dialogOpen" 
     max-width="900" 
-    persistent
+    :persistent="editing && hasChanges"
     class="project-detail-dialog"
+    @click:outside="handleClose"
   >
     <!-- Main Card -->
     <v-card v-if="project" class="d-flex flex-column dialog-card">

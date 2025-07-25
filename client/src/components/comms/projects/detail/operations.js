@@ -65,7 +65,7 @@ export function createProjectOperations(state, computed, editOperations, {
         })
       }
       
-      close(computed)
+      close()
       
     } catch (err) {
       console.error('Error deleting project:', err)
@@ -76,7 +76,7 @@ export function createProjectOperations(state, computed, editOperations, {
     }
   }
 
-  function close(computed) {
+  function close() {
     if (state.editing.value && computed.hasChanges?.value) {
       if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
         return
