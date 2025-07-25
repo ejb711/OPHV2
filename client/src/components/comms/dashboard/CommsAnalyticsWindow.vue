@@ -1,12 +1,12 @@
 <template>
   <v-dialog
     v-model="dialog"
-    :max-width="1000"
-    :max-height="600"
+    :max-width="1200"
     transition="dialog-transition"
     :persistent="false"
+    :fullscreen="$vuetify.display.smAndDown"
   >
-    <v-card class="d-flex flex-column analytics-card">
+    <v-card class="d-flex flex-column analytics-card" :height="$vuetify.display.smAndDown ? '100%' : '90vh'">
       <!-- Fixed Toolbar -->
       <v-toolbar color="primary" dark class="flex-grow-0" density="compact">
         <v-btn icon size="small" @click="close">
@@ -23,8 +23,10 @@
       <v-tabs 
         v-model="activeTab" 
         color="primary"
-        class="flex-grow-0 border-b"
+        class="flex-grow-0 border-b tabs-container"
         density="compact"
+        :show-arrows="$vuetify.display.smAndDown"
+        hide-slider
       >
         <v-tab value="overview">
           <v-icon size="small" class="mr-1">mdi-view-dashboard</v-icon>
@@ -49,11 +51,11 @@
       </v-tabs>
 
       <!-- Scrollable Tab Content -->
-      <v-card-text class="flex-grow-1 pa-0 overflow-hidden">
-        <v-window v-model="activeTab" class="h-100">
+      <v-card-text class="flex-grow-1 pa-0 overflow-hidden d-flex flex-column">
+        <v-window v-model="activeTab" class="flex-grow-1 overflow-hidden">
           <!-- Overview Tab -->
-          <v-window-item value="overview" class="h-100">
-            <div class="tab-content">
+          <v-window-item value="overview" class="h-100 overflow-hidden">
+            <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Analytics Overview</h2>
                 
@@ -99,8 +101,8 @@
           </v-window-item>
 
           <!-- Statistics Tab -->
-          <v-window-item value="statistics" class="h-100">
-            <div class="tab-content">
+          <v-window-item value="statistics" class="h-100 overflow-hidden">
+            <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Detailed Statistics</h2>
                 
@@ -132,8 +134,8 @@
           </v-window-item>
 
           <!-- Coordinators Tab -->
-          <v-window-item value="coordinators" class="h-100">
-            <div class="tab-content">
+          <v-window-item value="coordinators" class="h-100 overflow-hidden">
+            <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Coordinator Workload Analysis</h2>
                 <CoordinatorWorkload 
@@ -145,8 +147,8 @@
           </v-window-item>
 
           <!-- Regional Tab -->
-          <v-window-item value="regional" class="h-100">
-            <div class="tab-content">
+          <v-window-item value="regional" class="h-100 overflow-hidden">
+            <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Regional Distribution</h2>
                 <CommsRegionalDistribution 
@@ -158,8 +160,8 @@
           </v-window-item>
 
           <!-- Exports Tab -->
-          <v-window-item value="exports" class="h-100">
-            <div class="tab-content">
+          <v-window-item value="exports" class="h-100 overflow-hidden">
+            <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Export Analytics Data</h2>
                 
@@ -291,18 +293,18 @@ function handleEndDateChange(value) {
 <style scoped>
 /* Make card fill dialog and use flexbox */
 .analytics-card {
-  height: 600px !important;
-  max-height: 80vh !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  position: relative;
 }
 
 /* Tab content wrapper with scrolling */
 .tab-content {
-  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  position: relative;
+  padding-bottom: 16px;
 }
 
 /* Custom scrollbar */
@@ -326,7 +328,15 @@ function handleEndDateChange(value) {
 /* Responsive container */
 .v-container {
   max-width: 100%;
-  padding: 0 16px;
+  padding: 16px;
+}
+
+/* Tab container styling */
+.tabs-container {
+  background-color: #fafafa;
+  z-index: 2;
+  flex-shrink: 0;
+  min-height: 48px;
 }
 
 /* Card styling for better visibility */
@@ -339,10 +349,28 @@ function handleEndDateChange(value) {
 @media (max-width: 960px) {
   .v-container {
     max-width: 100%;
+    padding: 12px;
   }
   
-  .v-tabs {
+  .tabs-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .analytics-card {
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .v-container {
+    padding: 8px;
+  }
+  
+  :deep(.v-tab) {
+    min-width: 90px;
+    font-size: 0.75rem;
+    padding: 0 8px;
   }
 }
 
@@ -351,18 +379,55 @@ function handleEndDateChange(value) {
   text-transform: none;
   letter-spacing: normal;
   min-width: 100px;
-  min-height: 40px;
+  min-height: 48px;
   padding: 0 12px;
+  white-space: nowrap;
+}
+
+:deep(.v-tab__content) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Ensure proper card text flex */
 :deep(.v-card-text) {
   display: flex !important;
   flex-direction: column !important;
+  position: relative;
+}
+
+/* Window styling */
+:deep(.v-window) {
+  height: 100%;
+}
+
+:deep(.v-window__container) {
+  height: 100%;
+}
+
+:deep(.v-window-item) {
+  height: 100%;
 }
 
 /* Border utility */
 .border-b {
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Height utility */
+.h-100 {
+  height: 100%;
+}
+
+/* Ensure dialog fills viewport on mobile */
+@media (max-width: 600px) {
+  :deep(.v-dialog--fullscreen > .v-overlay__content) {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
 }
 </style>
