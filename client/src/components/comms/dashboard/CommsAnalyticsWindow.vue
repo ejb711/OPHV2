@@ -7,14 +7,14 @@
   >
     <v-card class="d-flex flex-column analytics-card">
       <!-- Fixed Toolbar -->
-      <v-toolbar color="primary" dark class="flex-grow-0">
-        <v-btn icon @click="close">
-          <v-icon>mdi-close</v-icon>
+      <v-toolbar color="primary" dark class="flex-grow-0" density="compact">
+        <v-btn icon size="small" @click="close">
+          <v-icon size="small">mdi-close</v-icon>
         </v-btn>
-        <v-toolbar-title>Communications Analytics Dashboard</v-toolbar-title>
+        <v-toolbar-title class="text-body-1">Communications Analytics Dashboard</v-toolbar-title>
         <v-spacer />
-        <v-btn icon @click="refresh">
-          <v-icon>mdi-refresh</v-icon>
+        <v-btn icon size="small" @click="refresh">
+          <v-icon size="small">mdi-refresh</v-icon>
         </v-btn>
       </v-toolbar>
 
@@ -23,26 +23,27 @@
         v-model="activeTab" 
         color="primary"
         class="flex-grow-0 border-b"
+        density="compact"
       >
         <v-tab value="overview">
-          <v-icon class="mr-2">mdi-view-dashboard</v-icon>
-          Overview
+          <v-icon size="small" class="mr-1">mdi-view-dashboard</v-icon>
+          <span class="text-caption">Overview</span>
         </v-tab>
         <v-tab value="statistics">
-          <v-icon class="mr-2">mdi-chart-box</v-icon>
-          Statistics
+          <v-icon size="small" class="mr-1">mdi-chart-box</v-icon>
+          <span class="text-caption">Statistics</span>
         </v-tab>
         <v-tab value="coordinators">
-          <v-icon class="mr-2">mdi-account-group</v-icon>
-          Coordinators
+          <v-icon size="small" class="mr-1">mdi-account-group</v-icon>
+          <span class="text-caption">Coordinators</span>
         </v-tab>
         <v-tab value="regional">
-          <v-icon class="mr-2">mdi-map-marker-radius</v-icon>
-          Regional
+          <v-icon size="small" class="mr-1">mdi-map-marker-radius</v-icon>
+          <span class="text-caption">Regional</span>
         </v-tab>
         <v-tab value="exports">
-          <v-icon class="mr-2">mdi-download</v-icon>
-          Exports
+          <v-icon size="small" class="mr-1">mdi-download</v-icon>
+          <span class="text-caption">Exports</span>
         </v-tab>
       </v-tabs>
 
@@ -52,16 +53,16 @@
           <!-- Overview Tab -->
           <v-window-item value="overview" class="h-100">
             <div class="tab-content">
-              <v-container fluid class="pa-4">
-                <h2 class="text-h5 mb-4">Analytics Overview</h2>
+              <v-container fluid class="pa-3">
+                <h2 class="text-h6 mb-2">Analytics Overview</h2>
                 
                 <!-- Date Range Filter -->
-                <v-card class="mb-4" elevation="2">
-                  <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2">mdi-calendar-range</v-icon>
+                <v-card class="mb-3" elevation="1" density="compact">
+                  <v-card-title class="text-subtitle-2 pa-2">
+                    <v-icon size="small" class="mr-1">mdi-calendar-range</v-icon>
                     Date Range Filter
                   </v-card-title>
-                  <v-card-text>
+                  <v-card-text class="pa-2">
                     <v-row>
                       <v-col cols="12" sm="6">
                         <v-text-field
@@ -99,26 +100,26 @@
           <!-- Statistics Tab -->
           <v-window-item value="statistics" class="h-100">
             <div class="tab-content">
-              <v-container fluid class="pa-4">
-                <h2 class="text-h5 mb-4">Detailed Statistics</h2>
+              <v-container fluid class="pa-3">
+                <h2 class="text-h6 mb-2">Detailed Statistics</h2>
                 
                 <!-- Full Stats Display -->
                 <CommsStats 
                   :analytics="analyticsData"
                   :show-distributions="true"
-                  class="mb-4"
+                  class="mb-3"
                 />
 
                 <!-- Additional Charts -->
                 <v-row>
                   <v-col cols="12">
-                    <v-card>
-                      <v-card-title>
-                        <v-icon class="mr-2">mdi-chart-timeline-variant</v-icon>
+                    <v-card density="compact">
+                      <v-card-title class="text-body-1 pa-3">
+                        <v-icon size="small" class="mr-1">mdi-chart-timeline-variant</v-icon>
                         Project Timeline Analysis
                       </v-card-title>
-                      <v-card-text style="min-height: 300px;">
-                        <p class="text-body-2 text-grey">
+                      <v-card-text style="min-height: 150px;" class="pa-3">
+                        <p class="text-caption text-grey">
                           Timeline visualization can be added here
                         </p>
                       </v-card-text>
@@ -132,8 +133,8 @@
           <!-- Coordinators Tab -->
           <v-window-item value="coordinators" class="h-100">
             <div class="tab-content">
-              <v-container fluid class="pa-4">
-                <h2 class="text-h5 mb-4">Coordinator Workload Analysis</h2>
+              <v-container fluid class="pa-3">
+                <h2 class="text-h6 mb-2">Coordinator Workload Analysis</h2>
                 <CoordinatorWorkload 
                   :projects="projects" 
                   class="coordinator-workload-card"
@@ -145,8 +146,8 @@
           <!-- Regional Tab -->
           <v-window-item value="regional" class="h-100">
             <div class="tab-content">
-              <v-container fluid class="pa-4">
-                <h2 class="text-h5 mb-4">Regional Distribution</h2>
+              <v-container fluid class="pa-3">
+                <h2 class="text-h6 mb-2">Regional Distribution</h2>
                 <CommsRegionalDistribution 
                   :regional-distribution="analyticsData.regionalDistribution"
                   class="regional-card"
@@ -158,27 +159,28 @@
           <!-- Exports Tab -->
           <v-window-item value="exports" class="h-100">
             <div class="tab-content">
-              <v-container fluid class="pa-4">
-                <h2 class="text-h5 mb-4">Export Analytics Data</h2>
+              <v-container fluid class="pa-3">
+                <h2 class="text-h6 mb-2">Export Analytics Data</h2>
                 
                 <v-row>
                   <v-col cols="12" md="6">
-                    <v-card>
-                      <v-card-title>
-                        <v-icon class="mr-2">mdi-file-excel</v-icon>
+                    <v-card density="compact">
+                      <v-card-title class="text-body-1 pa-3">
+                        <v-icon size="small" class="mr-1">mdi-file-excel</v-icon>
                         CSV Export
                       </v-card-title>
-                      <v-card-text>
-                        <p class="mb-4">Export analytics data to CSV format for use in Excel or other spreadsheet applications.</p>
+                      <v-card-text class="pa-3">
+                        <p class="text-caption mb-2">Export analytics data to CSV format.</p>
                         <v-btn
                           color="success"
                           variant="elevated"
                           block
+                          size="small"
                           :loading="exporting"
                           :disabled="visibleProjects.length === 0"
                           @click="handleExportCSV"
                         >
-                          <v-icon start>mdi-download</v-icon>
+                          <v-icon start size="small">mdi-download</v-icon>
                           Export to CSV
                         </v-btn>
                       </v-card-text>
@@ -186,22 +188,23 @@
                   </v-col>
 
                   <v-col cols="12" md="6">
-                    <v-card>
-                      <v-card-title>
-                        <v-icon class="mr-2">mdi-file-pdf-box</v-icon>
+                    <v-card density="compact">
+                      <v-card-title class="text-body-1 pa-3">
+                        <v-icon size="small" class="mr-1">mdi-file-pdf-box</v-icon>
                         PDF Report
                       </v-card-title>
-                      <v-card-text>
-                        <p class="mb-4">Generate a comprehensive PDF report with charts and detailed analytics.</p>
+                      <v-card-text class="pa-3">
+                        <p class="text-caption mb-2">Generate a comprehensive PDF report.</p>
                         <v-btn
                           color="error"
                           variant="elevated"
                           block
+                          size="small"
                           :loading="exporting"
                           :disabled="visibleProjects.length === 0"
                           @click="handleExportPDF"
                         >
-                          <v-icon start>mdi-download</v-icon>
+                          <v-icon start size="small">mdi-download</v-icon>
                           Export to PDF
                         </v-btn>
                       </v-card-text>
@@ -209,9 +212,9 @@
                   </v-col>
                 </v-row>
 
-                <v-alert type="info" variant="tonal" class="mt-4">
-                  <v-icon>mdi-information</v-icon>
-                  Exports include data from {{ visibleProjects.length }} projects based on current filters and date range.
+                <v-alert type="info" variant="tonal" class="mt-3" density="compact">
+                  <v-icon size="small">mdi-information</v-icon>
+                  <span class="text-caption">Exports include data from {{ visibleProjects.length }} projects based on current filters and date range.</span>
                 </v-alert>
               </v-container>
             </div>
@@ -320,14 +323,14 @@ function handleEndDateChange(value) {
 
 /* Responsive container */
 .v-container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 /* Card styling for better visibility */
 .coordinator-workload-card,
 .regional-card {
-  min-height: 400px;
+  min-height: 300px;
 }
 
 /* Responsive adjustments */
@@ -345,7 +348,9 @@ function handleEndDateChange(value) {
 :deep(.v-tab) {
   text-transform: none;
   letter-spacing: normal;
-  min-width: 120px;
+  min-width: 100px;
+  min-height: 40px;
+  padding: 0 12px;
 }
 
 /* Ensure proper card text flex */
