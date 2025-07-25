@@ -53,6 +53,32 @@ export function useProjectAnalytics(projects = ref([])) {
     })
   })
   
+  // Helper function to normalize status values
+  const normalizeStatus = (status) => {
+    if (!status) return 'unknown';
+    
+    // Convert to lowercase and replace spaces with underscores
+    const normalized = status.toString().toLowerCase().replace(/\s+/g, '_');
+    
+    // Handle specific variations
+    const statusMap = {
+      'draft': 'planning',
+      'pending': 'pending_approval',
+      'approved': 'review',
+      'under_review': 'review',
+      'not_started': 'not_started',
+      'planning': 'planning',
+      'in_progress': 'in_progress',
+      'review': 'review',
+      'pending_approval': 'pending_approval',
+      'completed': 'completed',
+      'on_hold': 'on_hold',
+      'cancelled': 'cancelled'
+    };
+    
+    return statusMap[normalized] || normalized;
+  }
+  
   // Basic metrics
   const metrics = computed(() => {
     const projectsArray = filteredProjects.value || []
@@ -60,11 +86,23 @@ export function useProjectAnalytics(projects = ref([])) {
       ? projectsArray.filter(p => p && p.region === selectedRegion.value)
       : projectsArray
       
+    // Only count non-deleted projects for the total
+    const nonDeletedProjects = filtered.filter(p => p && !p.deleted)
+    
     return {
-      total: filtered.length,
-      active: filtered.filter(p => p && ['planning', 'in_progress', 'review'].includes(p.status) && !p.deleted).length,
-      completed: filtered.filter(p => p && p.status === 'completed' && !p.deleted).length,
-      pending: filtered.filter(p => p && p.status === 'pending_approval' && !p.deleted).length,
+      total: nonDeletedProjects.length,
+      active: nonDeletedProjects.filter(p => {
+        const normalizedStatus = normalizeStatus(p.status);
+        return ['planning', 'in_progress', 'review'].includes(normalizedStatus);
+      }).length,
+      completed: nonDeletedProjects.filter(p => {
+        const normalizedStatus = normalizeStatus(p.status);
+        return normalizedStatus === 'completed';
+      }).length,
+      pending: nonDeletedProjects.filter(p => {
+        const normalizedStatus = normalizeStatus(p.status);
+        return normalizedStatus === 'pending_approval';
+      }).length,
       deleted: filtered.filter(p => p && p.deleted).length
     }
   })
@@ -79,8 +117,8 @@ export function useProjectAnalytics(projects = ref([])) {
       
     filtered.forEach(project => {
       if (project && !project.deleted && project.status) {
-        const status = project.status || 'unknown'
-        breakdown[status] = (breakdown[status] || 0) + 1
+        const normalizedStatus = normalizeStatus(project.status)
+        breakdown[normalizedStatus] = (breakdown[normalizedStatus] || 0) + 1
       }
     })
     
@@ -119,7 +157,15 @@ export function useProjectAnalytics(projects = ref([])) {
     
     projectsArray.forEach(project => {
       if (project && !project.deleted && project.region) {
-        distribution[project.region] = (distribution[project.region] || 0) + 1
+        // Normalize region to handle old formats like "Region 2 - Baton Rouge"
+        let normalizedRegion = project.region
+        if (project.region.includes('Region')) {
+          const match = project.region.match(/Region (\d)/)
+          if (match) {
+            normalizedRegion = match[1]
+          }
+        }
+        distribution[normalizedRegion] = (distribution[normalizedRegion] || 0) + 1
       }
     })
     
@@ -127,7 +173,7 @@ export function useProjectAnalytics(projects = ref([])) {
     
     return Object.entries(distribution).map(([regionId, count]) => ({
       regionId,
-      regionName: LOUISIANA_REGIONS[regionId]?.name || 'Unknown',
+      regionName: LOUISIANA_REGIONS[regionId]?.name || `Unknown Region (${regionId})`,
       count,
       percentage: Math.round((count / totalNonDeleted) * 100)
     })).sort((a, b) => b.count - a.count)
@@ -166,16 +212,22 @@ export function useProjectAnalytics(projects = ref([])) {
     const nonDeleted = filtered.filter(p => p && !p.deleted)
     if (nonDeleted.length === 0) return 0
     
-    const completed = nonDeleted.filter(p => p.status === 'completed').length
+    const completed = nonDeleted.filter(p => {
+      const normalizedStatus = normalizeStatus(p.status)
+      return normalizedStatus === 'completed'
+    }).length
+    
     return Math.round((completed / nonDeleted.length) * 100)
   })
   
   // Average completion time (in days)
   const avgCompletionTime = computed(() => {
     const projectsArray = filteredProjects.value || []
-    const completed = projectsArray.filter(p => 
-      p && p.status === 'completed' && p.createdAt && p.completedAt
-    )
+    const completed = projectsArray.filter(p => {
+      if (!p || p.deleted) return false
+      const normalizedStatus = normalizeStatus(p.status)
+      return normalizedStatus === 'completed' && p.createdAt && p.completedAt
+    })
     
     if (completed.length === 0) return 0
     
