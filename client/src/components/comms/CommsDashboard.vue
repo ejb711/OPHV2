@@ -10,34 +10,42 @@
       @create-project="showCreateDialog = true"
     />
 
-    <!-- Toolbar with Analytics Controls -->
-    <CommsDashboardToolbar
-      :analytics="analytics"
-      :exporting="exporting"
-      :visible-projects-count="visibleProjects.length"
-      @export-csv="handleExportCSV"
-      @export-pdf="handleExportPDF"
-      @update-date-range="updateDateRange"
+    <!-- Analytics Tab (only visible with permission) -->
+    <CommsAnalyticsTab 
+      @open-analytics="showAnalyticsWindow = true"
     />
 
-    <!-- Stats Cards -->
-    <CommsStats 
-      :analytics="analyticsData"
-      class="mb-6"
-    />
-
-    <!-- Workload and Distribution Grid -->
-    <v-row class="mb-6">
-      <v-col cols="12" lg="6">
-        <CoordinatorWorkload :projects="projects" />
-      </v-col>
-      
-      <v-col cols="12" lg="6">
-        <CommsRegionalDistribution 
-          :regional-distribution="analyticsData.regionalDistribution"
-        />
-      </v-col>
-    </v-row>
+    <!-- Export Menu (moved from toolbar) -->
+    <div class="d-flex justify-end mb-4">
+      <v-menu>
+        <template v-slot:activator="{ props }">
+          <v-btn
+            v-bind="props"
+            variant="outlined"
+            prepend-icon="mdi-export"
+            :disabled="visibleProjects.length === 0"
+            :loading="exporting"
+          >
+            Export Projects
+            <v-icon end>mdi-menu-down</v-icon>
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="handleExportCSV">
+            <v-list-item-title>
+              <v-icon start>mdi-file-excel</v-icon>
+              Export to CSV
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="handleExportPDF">
+            <v-list-item-title>
+              <v-icon start>mdi-file-pdf-box</v-icon>
+              Export to PDF
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
 
     <!-- Search and Filters -->
     <CommsFilters 
@@ -73,6 +81,11 @@
       :success-message="successMessage"
       :error-message="errorMessage"
     />
+
+    <!-- Analytics Window -->
+    <CommsAnalyticsWindow 
+      v-model="showAnalyticsWindow"
+    />
   </v-container>
 </template>
 
@@ -83,12 +96,10 @@ import { useCommsDashboard } from '@/composables/comms/useCommsDashboard'
 
 // Components
 import CommsDashboardHeader from './dashboard/CommsDashboardHeader.vue'
-import CommsDashboardToolbar from './dashboard/CommsDashboardToolbar.vue'
-import CommsStats from './CommsStats.vue'
+import CommsAnalyticsTab from './dashboard/CommsAnalyticsTab.vue'
+import CommsAnalyticsWindow from './dashboard/CommsAnalyticsWindow.vue'
 import CommsFilters from './CommsFilters.vue'
 import ProjectList from './projects/ProjectList.vue'
-import CoordinatorWorkload from './coordinators/CoordinatorWorkload.vue'
-import CommsRegionalDistribution from './dashboard/CommsRegionalDistribution.vue'
 import CommsDialogs from './dashboard/CommsDialogs.vue'
 import CommsNotifications from './dashboard/CommsNotifications.vue'
 
@@ -97,6 +108,7 @@ const { hasPermission } = usePermissions()
 
 // Refs
 const commsDialogsRef = ref(null)
+const showAnalyticsWindow = ref(false)
 
 // Use the dashboard composable for business logic
 const {
