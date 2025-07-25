@@ -36,7 +36,7 @@
     
     <!-- Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="500">
-      <v-card>
+      <v-card v-if="editingFile">
         <v-card-title>Edit File Details</v-card-title>
         
         <v-card-text>
@@ -138,7 +138,12 @@ const { sortedFiles, fileVersionGroups } = useFileDisplay(files)
 
 // State
 const editDialog = ref(false)
-const editingFile = ref(null)
+const editingFile = ref({
+  id: null,
+  displayName: '',
+  description: '',
+  tags: []
+})
 const saving = ref(false)
 const deleteDialog = ref(false)
 const deletingFile = ref(null)
@@ -156,7 +161,7 @@ function editFile(file) {
 }
 
 async function saveFileEdit() {
-  if (!editingFile.value) return
+  if (!editingFile.value?.id) return
   
   saving.value = true
   
@@ -168,7 +173,12 @@ async function saveFileEdit() {
     })
     
     editDialog.value = false
-    editingFile.value = null
+    editingFile.value = {
+      id: null,
+      displayName: '',
+      description: '',
+      tags: []
+    }
   } finally {
     saving.value = false
   }
