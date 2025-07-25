@@ -29,7 +29,9 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
       deadline: toDate(state.project.value.deadline),
       tags: [...(state.project.value.tags || [])],
       stages: [...(state.project.value.stages || [])],
-      currentStageIndex: state.project.value.currentStageIndex || 0
+      currentStageIndex: state.project.value.currentStageIndex || 0,
+      requiresApproval: state.project.value.requiresApproval ?? true,
+      status: state.project.value.status || ''
     }
   }
 
@@ -42,7 +44,11 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
   }
 
   async function handleDirectUpdate(updates) {
-    if (!state.project.value || !computed.canEdit.value) return
+    console.log('handleDirectUpdate called with:', updates)
+    if (!state.project.value || !computed.canEdit.value) {
+      console.log('Cannot update - no project or no edit permission')
+      return
+    }
     
     state.saving.value = true
     
@@ -58,10 +64,24 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
         projectUpdates.stages = stages
       }
       
+      // Handle direct stages array update
+      if (updates.stages !== undefined) {
+        projectUpdates.stages = updates.stages
+      }
+      
       if (updates.currentStageIndex !== undefined) {
         projectUpdates.currentStageIndex = updates.currentStageIndex
       }
       
+      if (updates.status !== undefined) {
+        projectUpdates.status = updates.status
+      }
+      
+      if (updates.isApproved !== undefined) {
+        projectUpdates.isApproved = updates.isApproved
+      }
+      
+      console.log('Updating project with:', projectUpdates)
       await updateProject(state.project.value.id, projectUpdates)
       
       await logEvent('stage_updated', {
@@ -88,7 +108,8 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
     try {
       const updates = {}
       const fields = ['title', 'description', 'region', 'coordinatorId', 
-                      'priority', 'deadline', 'tags', 'stages', 'currentStageIndex']
+                      'priority', 'deadline', 'tags', 'stages', 'currentStageIndex',
+                      'requiresApproval', 'status']
       
       fields.forEach(field => {
         const original = state.project.value[field]

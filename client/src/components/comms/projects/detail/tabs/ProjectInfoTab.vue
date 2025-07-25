@@ -38,6 +38,20 @@
           />
         </v-col>
         
+        <!-- Status Display (Read-only) -->
+        <v-col cols="12">
+          <div class="field-group">
+            <label class="field-label">Status</label>
+            <div class="mt-2">
+              <StatusBadge :status="calculatedStatus" />
+              <p class="text-caption text-grey mt-2">
+                Status is automatically calculated based on stage completion
+                <span v-if="project.requiresApproval"> and approval requirements</span>
+              </p>
+            </div>
+          </div>
+        </v-col>
+        
         <!-- Tags Section -->
         <v-col cols="12">
           <ProjectTags
@@ -72,14 +86,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, toRef } from 'vue'
 import ProjectBasicFields from './info/ProjectBasicFields.vue'
 import ProjectRegionCoordinator from './info/ProjectRegionCoordinator.vue'
 import ProjectScheduling from './info/ProjectScheduling.vue'
 import ProjectTags from './info/ProjectTags.vue'
 import ProjectStatistics from './info/ProjectStatistics.vue'
 import ProjectVisibility from '../../ProjectVisibility.vue'
+import StatusBadge from '@/components/comms/shared/StatusBadge.vue'
 import { useProjectInfoForm } from '@/composables/comms/useProjectInfoForm'
+import { useProjectStatus } from '@/composables/comms/useProjectStatus'
 
 // Props
 const props = defineProps({
@@ -110,6 +126,10 @@ const formValid = ref(false)
 
 // Use shared form logic
 const { rules, updateField, handleRegionChange, handleDeadlineChange } = useProjectInfoForm(props, emit)
+
+// Use project status composable
+const projectRef = toRef(props, props.editing ? 'editedProject' : 'project')
+const { calculatedStatus } = useProjectStatus(projectRef)
 </script>
 
 <style scoped>

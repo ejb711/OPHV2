@@ -10,7 +10,8 @@ export function createProjectDetailComputed(state, { canEditProject }) {
     if (!state.project.value || !state.editing.value) return false
     
     const fields = ['title', 'description', 'region', 'coordinatorId', 
-                    'priority', 'deadline', 'tags', 'stages', 'currentStageIndex']
+                    'priority', 'deadline', 'tags', 'stages', 'currentStageIndex',
+                    'requiresApproval', 'status']
     
     return fields.some(field => {
       const original = state.project.value[field]

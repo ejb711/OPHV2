@@ -173,7 +173,8 @@ const createInitialFormData = () => ({
   stages: [], 
   visibility: 'coordinator', 
   tags: [], 
-  enableForum: true, 
+  enableForum: true,
+  requiresApproval: true,
   templateId: null
 })
 

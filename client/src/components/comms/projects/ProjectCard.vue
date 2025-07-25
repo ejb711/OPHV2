@@ -1,13 +1,17 @@
 <!-- client/src/components/comms/projects/ProjectCard.vue -->
 <template>
   <v-card 
-    class="project-card h-100" 
-    :class="{ 'high-priority': project.priority === 'high' }"
+    class="project-card" 
+    :class="{ 
+      'urgent-priority': project.priority === 'urgent',
+      'high-priority': project.priority === 'high' 
+    }"
     hover
     @click="handleClick"
   >
     <!-- Priority Indicator -->
-    <div v-if="project.priority === 'high'" class="priority-indicator" />
+    <div v-if="project.priority === 'urgent'" class="priority-indicator urgent" />
+    <div v-else-if="project.priority === 'high'" class="priority-indicator high" />
     
     <v-card-item>
       <v-card-title class="d-flex align-center">
@@ -55,12 +59,14 @@
       
       <v-card-subtitle class="d-flex align-center ga-2 mt-1">
         <RegionBadge :region="project.region" size="small" />
-        <StatusBadge :status="project.status" size="small" />
+        <StatusBadge :status="displayStatus" size="small" />
       </v-card-subtitle>
     </v-card-item>
 
-    <v-card-text>
-      <p class="text-body-2 mb-3">{{ project.description || 'No description' }}</p>
+    <v-card-text class="project-card-content">
+      <div class="description-container mb-3">
+        <p class="text-body-2">{{ project.description || 'No description' }}</p>
+      </div>
       
       <!-- Progress Bar -->
       <div class="mb-3">
@@ -110,8 +116,9 @@
       </div>
     </v-card-text>
     
-    <v-card-actions v-if="project.deadline" class="pt-0">
+    <v-card-actions class="pt-0 mt-auto">
       <v-chip
+        v-if="project.deadline"
         :color="getDeadlineColor(project.deadline)"
         size="small"
         prepend-icon="mdi-clock-outline"
@@ -119,13 +126,15 @@
       >
         Due: {{ formatDeadline(project.deadline) }}
       </v-chip>
+      <v-spacer v-else />
     </v-card-actions>
   </v-card>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
+import { useProjectStatus } from '@/composables/comms/useProjectStatus'
 import StatusBadge from '../shared/StatusBadge.vue'
 import RegionBadge from '../shared/RegionBadge.vue'
 
@@ -142,42 +151,29 @@ const emit = defineEmits(['view', 'edit', 'delete'])
 
 // Composables
 const { canEditProject, canDeleteProject } = useCommsProjects()
+const projectRef = toRef(props, 'project')
+const { 
+  progressPercentage, 
+  calculatedStatus,
+  currentStage: currentStageData
+} = useProjectStatus(projectRef)
 
 // Computed
 const canEdit = computed(() => canEditProject(props.project))
 const canDelete = computed(() => canDeleteProject(props.project))
 
-// Calculate progress based on completed stages (matching ProjectStagesTab logic)
-const completedStages = computed(() => {
-  if (!props.project.stages || props.project.stages.length === 0) return 0
-  return props.project.stages.filter(stage => {
-    // Handle both object stages and simple string stages
-    if (typeof stage === 'object' && stage !== null) {
-      return stage.completed === true
-    }
-    return false
-  }).length
-})
-
-const progressPercentage = computed(() => {
-  if (!props.project.stages || props.project.stages.length === 0) return 0
-  const totalStages = props.project.stages.length
-  return (completedStages.value / totalStages) * 100
+// Status to display (use calculated status instead of stored status)
+const displayStatus = computed(() => {
+  // If manually set to pending_approval, keep that
+  if (props.project.status === 'pending_approval') {
+    return 'pending_approval'
+  }
+  return calculatedStatus.value
 })
 
 const currentStage = computed(() => {
-  if (!props.project.stages || props.project.stages.length === 0) return 'Not Started'
-  const currentIndex = props.project.currentStageIndex || 0
-  const stage = props.project.stages[currentIndex]
-  
-  // Handle both string stages and object stages
-  if (typeof stage === 'string') {
-    return stage
-  } else if (stage && typeof stage === 'object' && stage.name) {
-    return stage.name
-  }
-  
-  return 'Not Started'
+  if (!currentStageData.value) return 'Not Started'
+  return currentStageData.value.name || 'Not Started'
 })
 
 // Methods
@@ -227,14 +223,52 @@ function formatDeadline(deadline) {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  height: 420px;
+  display: flex;
+  flex-direction: column;
 }
 
 .project-card:hover {
   transform: translateY(-2px);
 }
 
-.high-priority {
+.project-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.description-container {
+  max-height: 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.description-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.description-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 2px;
+}
+
+.description-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.description-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.urgent-priority {
   border: 2px solid #FF5252;
+}
+
+.high-priority {
+  border: 2px solid #FFC107;
 }
 
 .priority-indicator {
@@ -245,7 +279,14 @@ function formatDeadline(deadline) {
   height: 0;
   border-style: solid;
   border-width: 0 40px 40px 0;
+}
+
+.priority-indicator.urgent {
   border-color: transparent #FF5252 transparent transparent;
+}
+
+.priority-indicator.high {
+  border-color: transparent #FFC107 transparent transparent;
 }
 
 .priority-indicator::after {
@@ -256,10 +297,5 @@ function formatDeadline(deadline) {
   color: white;
   font-weight: bold;
   font-size: 14px;
-}
-
-/* Ensure consistent card height */
-.v-card-text {
-  flex: 1;
 }
 </style>

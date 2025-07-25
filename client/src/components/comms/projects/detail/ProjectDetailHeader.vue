@@ -5,7 +5,7 @@
     <div class="flex-grow-1">
       <div class="d-flex align-center gap-2">
         <h3 class="text-h6">{{ project.title }}</h3>
-        <StatusBadge :status="project.status" size="small" />
+        <StatusBadge :status="calculatedStatus || 'not_started'" size="small" />
         <RegionBadge 
           :region="project.region" 
           size="x-small"
@@ -88,7 +88,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
+import { useProjectStatus } from '@/composables/comms/useProjectStatus'
 import StatusBadge from '@/components/comms/shared/StatusBadge.vue'
 import RegionBadge from '@/components/comms/shared/RegionBadge.vue'
 
@@ -118,6 +119,10 @@ const props = defineProps({
 
 // Emit
 defineEmits(['close', 'edit', 'save', 'cancel', 'delete'])
+
+// Use project status composable
+const projectRef = toRef(props, 'project')
+const { calculatedStatus } = useProjectStatus(projectRef)
 
 // Methods
 function formatDate(timestamp) {

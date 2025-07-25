@@ -74,7 +74,7 @@
             <template v-slot:title>
               <div class="d-flex align-center ga-2">
                 <span class="font-weight-medium">{{ project.title }}</span>
-                <StatusBadge :status="project.status" small />
+                <StatusBadge :status="project.status || 'not_started'" small />
                 <RegionBadge :region="project.region" small />
               </div>
             </template>

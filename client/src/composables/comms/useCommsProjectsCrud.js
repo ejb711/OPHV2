@@ -46,8 +46,10 @@ export function useCommsProjectsCrud(
       // Prepare project data
       const newProject = {
         ...projectData,
-        status: projectData.status || 'not_started',
+        // Status will be calculated based on stages, but set initial value
+        status: 'not_started',
         priority: projectData.priority || 'medium',
+        requiresApproval: projectData.requiresApproval !== false,
         currentStageIndex: 0,
         viewCount: 0,
         deleted: false,

@@ -56,6 +56,7 @@
           color="primary"
           hide-details
           density="comfortable"
+          class="mb-4"
           @update:model-value="emitUpdate"
         >
           <template v-slot:label>
@@ -63,6 +64,24 @@
               <div class="font-weight-medium">Enable Discussion Forum</div>
               <div class="text-caption text-grey-darken-1">
                 Allow team members to discuss and collaborate on this project
+              </div>
+            </div>
+          </template>
+        </v-switch>
+
+        <!-- Requires Approval -->
+        <v-switch
+          v-model="localRequiresApproval"
+          color="primary"
+          hide-details
+          density="comfortable"
+          @update:model-value="emitUpdate"
+        >
+          <template v-slot:label>
+            <div>
+              <div class="font-weight-medium">Requires Approval</div>
+              <div class="text-caption text-grey-darken-1">
+                Project must be approved before it can be marked as complete
               </div>
             </div>
           </template>
@@ -105,6 +124,7 @@ const isValid = computed({
 const localVisibility = ref('coordinator')
 const localTags = ref([])
 const localEnableForum = ref(true)
+const localRequiresApproval = ref(true)
 
 // Visibility options
 const visibilityOptions = [
@@ -148,6 +168,7 @@ function initializeFromProps() {
   localVisibility.value = props.formData.visibility || 'coordinator'
   localTags.value = cleanTags(props.formData.tags || [])
   localEnableForum.value = props.formData.enableForum !== false
+  localRequiresApproval.value = props.formData.requiresApproval !== false
 }
 
 // Emit update to parent
@@ -155,7 +176,8 @@ function emitUpdate() {
   emit('update:formData', {
     visibility: localVisibility.value,
     tags: cleanTags(localTags.value),
-    enableForum: localEnableForum.value
+    enableForum: localEnableForum.value,
+    requiresApproval: localRequiresApproval.value
   })
 }
 
