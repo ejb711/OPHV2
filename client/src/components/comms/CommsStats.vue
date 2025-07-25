@@ -1,135 +1,140 @@
 <!-- client/src/components/comms/CommsStats.vue -->
 <template>
   <div>
-    <!-- Main Stats Cards -->
-    <v-row class="mb-4">
+    <!-- Main Metrics -->
+    <v-row>
       <v-col cols="12" sm="6" md="3">
-        <v-card class="stat-card">
-          <v-card-text class="pb-2">
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <p class="text-caption text-medium-emphasis mb-1">
-                  Total Projects
-                </p>
-                <p class="text-h4 font-weight-bold">
-                  {{ analytics?.metrics?.total || 0 }}
-                </p>
-              </div>
-              <v-avatar :color="REGION_COLORS?.primary || 'primary'" variant="tonal">
-                <v-icon>mdi-folder-multiple</v-icon>
-              </v-avatar>
-            </div>
+        <v-card class="text-center">
+          <v-card-text>
+            <p class="text-overline text-medium-emphasis mb-1">
+              Total Projects
+            </p>
+            <p class="text-h4 font-weight-bold">
+              {{ analytics?.metrics?.total || 0 }}
+              <v-icon 
+                size="small"
+                color="primary"
+                class="ml-1"
+              >
+                mdi-folder-multiple
+              </v-icon>
+            </p>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="stat-card">
-          <v-card-text class="pb-2">
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <p class="text-caption text-medium-emphasis mb-1">
-                  Active Projects
-                </p>
-                <p class="text-h4 font-weight-bold">
-                  {{ analytics?.metrics?.active || 0 }}
-                </p>
-              </div>
-              <v-avatar color="amber" variant="tonal">
-                <v-icon>mdi-progress-clock</v-icon>
-              </v-avatar>
-            </div>
+        <v-card class="text-center">
+          <v-card-text>
+            <p class="text-overline text-medium-emphasis mb-1">
+              Active Projects
+            </p>
+            <p class="text-h4 font-weight-bold">
+              {{ analytics?.metrics?.active || 0 }}
+              <v-icon 
+                size="small"
+                color="warning"
+                class="ml-1"
+              >
+                mdi-clock-outline
+              </v-icon>
+            </p>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="stat-card">
-          <v-card-text class="pb-2">
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <p class="text-caption text-medium-emphasis mb-1">
-                  Completion Rate
-                </p>
-                <p class="text-h4 font-weight-bold">
-                  {{ analytics?.completionRate || 0 }}%
-                </p>
-              </div>
-              <v-avatar color="green" variant="tonal">
-                <v-icon>mdi-check-circle</v-icon>
-              </v-avatar>
-            </div>
+        <v-card class="text-center">
+          <v-card-text>
+            <p class="text-overline text-medium-emphasis mb-1">
+              Completion Rate
+            </p>
+            <p class="text-h4 font-weight-bold">
+              {{ analytics?.completionRate || 0 }}%
+              <v-icon 
+                size="small"
+                color="success"
+                class="ml-1"
+              >
+                mdi-check-circle
+              </v-icon>
+            </p>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" sm="6" md="3">
-        <v-card class="stat-card">
-          <v-card-text class="pb-2">
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <p class="text-caption text-medium-emphasis mb-1">
-                  Avg. Completion
-                </p>
-                <p class="text-h4 font-weight-bold">
-                  {{ analytics?.avgCompletionTime || 0 }}
-                  <span class="text-caption">days</span>
-                </p>
-              </div>
-              <v-avatar color="blue" variant="tonal">
-                <v-icon>mdi-timer-sand</v-icon>
-              </v-avatar>
-            </div>
+        <v-card class="text-center">
+          <v-card-text>
+            <p class="text-overline text-medium-emphasis mb-1">
+              Avg. Completion
+            </p>
+            <p class="text-h4 font-weight-bold">
+              {{ analytics?.avgCompletionTime || 0 }}
+              <span class="text-body-2 text-medium-emphasis">days</span>
+              <v-icon 
+                size="small"
+                :color="getCompletionTimeColor(analytics?.avgCompletionTime)"
+                class="ml-1"
+              >
+                mdi-timer-sand
+              </v-icon>
+            </p>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Secondary Stats -->
-    <v-row class="mb-4">
+    <!-- Status and Priority Distribution -->
+    <v-row class="mt-4" v-if="showDistributions">
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title class="text-subtitle-1">
+          <v-card-title class="text-h6">
             Projects by Status
           </v-card-title>
           <v-card-text>
-            <div v-if="!analytics?.statusBreakdown || analytics.statusBreakdown.length === 0" 
-                 class="text-center py-4 text-medium-emphasis">
-              No project data available
-            </div>
-            <div v-else>
-              <div v-for="item in analytics.statusBreakdown" 
-                   :key="item?.status || 'unknown'" 
-                   class="mb-3">
-                <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-body-2">{{ formatStatus(item?.status) }}</span>
-                  <span class="text-caption">{{ item?.count || 0 }}</span>
-                </div>
-                <v-progress-linear
-                  :model-value="item?.percentage || 0"
-                  :color="getStatusColor(item?.status)"
-                  height="6"
-                  rounded
-                />
-              </div>
-            </div>
+            <v-row no-gutters>
+              <v-col 
+                v-for="(count, status) in analytics?.statusBreakdown" 
+                :key="status"
+                cols="4"
+                class="text-center"
+              >
+                <v-avatar
+                  :color="getStatusColor(status)"
+                  size="56"
+                  class="mb-2"
+                >
+                  <span class="text-h6 font-weight-bold">{{ count }}</span>
+                </v-avatar>
+                <p class="text-caption text-medium-emphasis mt-2 mb-0">
+                  {{ formatStatus(status) }}
+                </p>
+              </v-col>
+            </v-row>
           </v-card-text>
         </v-card>
       </v-col>
 
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title class="text-subtitle-1">
+          <v-card-title class="text-h6">
             Priority Distribution
           </v-card-title>
           <v-card-text>
-            <v-row>
-              <v-col v-for="priority in ['high', 'medium', 'low']" 
-                     :key="priority" 
-                     cols="4" 
-                     class="text-center">
-                <v-avatar :color="getPriorityColor(priority)" size="64">
-                  <span class="text-h6 font-weight-bold">{{ analytics?.priorityDistribution?.[priority] || 0 }}</span>
+            <v-row no-gutters>
+              <v-col 
+                v-for="priority in ['high', 'medium', 'low']" 
+                :key="priority"
+                cols="4"
+                class="text-center"
+              >
+                <v-avatar
+                  :color="getPriorityColor(priority)"
+                  size="56"
+                  class="mb-2"
+                >
+                  <span class="text-h6 font-weight-bold">{{ analytics?.priorityBreakdown?.[priority] || 0 }}</span>
                 </v-avatar>
                 <p class="text-caption mt-2 mb-0">{{ priority.toUpperCase() }}</p>
               </v-col>
@@ -148,7 +153,7 @@
               mdi-account-group
             </v-icon>
             <p class="text-h5 font-weight-bold mb-1">
-              {{ analytics?.activeCoordinators?.size || 0 }}
+              {{ analytics?.totalCoordinators || 0 }}
             </p>
             <p class="text-caption text-medium-emphasis">
               Active Coordinators
@@ -209,59 +214,51 @@ const props = defineProps({
       },
       completionRate: 0,
       avgCompletionTime: 0,
-      statusBreakdown: [],
-      priorityDistribution: {
-        high: 0,
-        medium: 0,
-        low: 0
-      },
-      activeCoordinators: new Set(),
+      statusBreakdown: {},
+      priorityBreakdown: {},
+      totalCoordinators: 0,
       totalFiles: 0,
       totalMessages: 0
     })
+  },
+  showDistributions: {
+    type: Boolean,
+    default: true
   }
 })
 
-// Format status for display
-const formatStatus = (status) => {
-  if (!status) return 'Unknown'
-  return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-}
-
-// Get color for status
+// Methods
 const getStatusColor = (status) => {
-  if (!status) return 'grey'
   const colors = {
     not_started: 'grey',
     planning: 'blue',
     in_progress: 'amber',
     review: 'orange',
-    pending_approval: 'deep-orange',
-    completed: 'green'
+    completed: 'success'
   }
   return colors[status] || 'grey'
 }
 
-// Get color for priority
 const getPriorityColor = (priority) => {
-  if (!priority) return 'grey'
   const colors = {
     high: 'red',
-    medium: 'orange',
+    medium: 'amber',
     low: 'green'
   }
   return colors[priority] || 'grey'
 }
+
+const getCompletionTimeColor = (days) => {
+  if (!days) return 'grey'
+  if (days <= 7) return 'success'
+  if (days <= 14) return 'warning'
+  return 'error'
+}
+
+const formatStatus = (status) => {
+  return status
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
 </script>
-
-<style scoped>
-.stat-card {
-  transition: all 0.3s ease;
-  cursor: default;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-</style>

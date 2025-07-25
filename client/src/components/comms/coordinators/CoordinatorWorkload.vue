@@ -1,12 +1,13 @@
 <!-- client/src/components/comms/coordinators/CoordinatorWorkload.vue -->
 <template>
   <v-card>
-    <v-card-title class="d-flex align-center">
+    <v-card-title>
       <v-icon class="mr-2">mdi-account-group</v-icon>
       Coordinator Workload
       <v-spacer />
       <v-btn
         icon
+        variant="text"
         size="small"
         @click="refreshData"
         :loading="loading"
@@ -14,50 +15,48 @@
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
     </v-card-title>
-
+    
     <v-card-text>
-      <!-- Loading State -->
-      <div v-if="loading" class="text-center py-8">
+      <div v-if="loading && coordinators.length === 0" class="text-center py-8">
         <v-progress-circular indeterminate color="primary" />
-        <p class="text-caption mt-2">Loading coordinator data...</p>
+        <p class="text-caption mt-2">Loading coordinators...</p>
       </div>
-
-      <!-- Empty State -->
+      
       <div v-else-if="workloadData.length === 0" class="text-center py-8">
-        <v-icon size="64" color="grey-lighten-1">mdi-account-group-outline</v-icon>
-        <p class="text-h6 mt-2">No Coordinators Assigned</p>
-        <p class="text-caption text-medium-emphasis">
-          Coordinators will appear here once they are assigned to regions
-        </p>
+        <v-icon size="48" color="grey">mdi-account-group-outline</v-icon>
+        <p class="text-body-2 mt-2">No coordinators found</p>
       </div>
-
-      <!-- Workload List -->
+      
       <div v-else>
-        <v-list lines="two" class="pa-0">
+        <v-list lines="two">
           <template v-for="(coordinator, index) in workloadData" :key="coordinator.id">
-            <v-list-item @click="selectCoordinator(coordinator)">
+            <v-list-item
+              @click="selectCoordinator(coordinator)"
+              class="px-0"
+            >
               <template v-slot:prepend>
-                <v-avatar :color="getWorkloadColor(coordinator.workload)">
+                <v-avatar :color="getWorkloadColor(coordinator.workload)" size="40">
                   <span class="text-h6">{{ coordinator.workload }}</span>
                 </v-avatar>
               </template>
-
+              
               <v-list-item-title>
                 {{ coordinator.name }}
-              </v-list-item-title>
-              <v-list-item-subtitle>
-                <v-chip
-                  v-for="regionId in coordinator.regions"
+                <v-chip 
+                  v-for="regionId in coordinator.regions" 
                   :key="regionId"
-                  size="x-small"
-                  class="mr-1"
                   :color="LOUISIANA_REGIONS[regionId]?.color"
-                  variant="tonal"
+                  size="x-small"
+                  class="ml-2"
                 >
-                  {{ LOUISIANA_REGIONS[regionId]?.name || 'Region ' + regionId }}
+                  {{ LOUISIANA_REGIONS[regionId]?.abbreviation || `Region ${regionId}` }}
                 </v-chip>
+              </v-list-item-title>
+              
+              <v-list-item-subtitle>
+                {{ coordinator.email }}
               </v-list-item-subtitle>
-
+              
               <template v-slot:append>
                 <div class="text-right">
                   <p class="text-caption mb-0">
@@ -187,14 +186,16 @@ const workloadData = computed(() => {
     
     return {
       id: coord.userId,
-      name: coord.userName || 'Unknown Coordinator',
-      email: coord.userEmail || '',
+      name: coord.userName || coord.name || 'Unknown Coordinator',
+      email: coord.userEmail || coord.email || '',
       regions: coord.regions || [],
       workload: coordProjects.length,
       activeProjects: coordProjects.filter(p => 
         ['planning', 'in_progress', 'review'].includes(p.status)
       ).length,
-      completedProjects: coordProjects.filter(p => p.status === 'completed').length,
+      completedProjects: coordProjects.filter(p => 
+        p.status === 'completed'
+      ).length,
       statusBreakdown
     }
   }).sort((a, b) => b.workload - a.workload)
@@ -220,9 +221,7 @@ const coveredRegions = computed(() => {
 // Methods
 const refreshData = () => {
   loading.value = true
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  setupListener()
 }
 
 const selectCoordinator = (coordinator) => {
@@ -243,13 +242,23 @@ const formatStatus = (status) => {
 
 // Set up real-time listener
 const setupListener = () => {
+  if (coordinatorsUnsubscribe) {
+    coordinatorsUnsubscribe()
+  }
+  
   const q = query(collection(db, 'comms_coordinators'))
   
   coordinatorsUnsubscribe = onSnapshot(q, (snapshot) => {
-    coordinators.value = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    }))
+    coordinators.value = snapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        userId: data.userId || doc.id,
+        userName: data.userName || data.name || 'Unknown',
+        userEmail: data.userEmail || data.email || ''
+      }
+    })
     loading.value = false
   }, (error) => {
     console.error('Error fetching coordinators:', error)
