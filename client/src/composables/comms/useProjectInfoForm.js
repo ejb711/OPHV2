@@ -1,4 +1,7 @@
 // client/src/composables/comms/useProjectInfoForm.js
+// Fixed version with proper deadline type handling
+import { createDateFromInput } from '@/utils/dateUtils'
+
 export function useProjectInfoForm(props, emit) {
   // Validation rules
   const rules = {
@@ -27,12 +30,8 @@ export function useProjectInfoForm(props, emit) {
       return
     }
     
-    try {
-      const date = new Date(value)
-      updateField('deadline', date)
-    } catch (error) {
-      console.error('Invalid date:', error)
-    }
+    const date = createDateFromInput(value)
+    updateField('deadline', date)
   }
 
   return {

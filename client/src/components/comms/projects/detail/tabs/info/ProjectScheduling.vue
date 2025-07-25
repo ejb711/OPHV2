@@ -1,4 +1,5 @@
 <!-- client/src/components/comms/projects/detail/tabs/info/ProjectScheduling.vue -->
+<!-- Fixed version with robust deadline type handling -->
 <template>
   <v-row>
     <!-- Priority Field -->
@@ -61,6 +62,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatDateForInput } from '@/utils/dateUtils'
 
 // Props
 const props = defineProps({
@@ -69,7 +71,7 @@ const props = defineProps({
     default: ''
   },
   deadline: {
-    type: [Date, Object],
+    type: [Date, Object, String, Number],
     default: null
   },
   editing: {
@@ -97,17 +99,7 @@ const displayedPriority = computed(() => {
 })
 
 const formattedDeadline = computed(() => {
-  if (!props.deadline) return ''
-  
-  try {
-    const date = props.deadline.toDate 
-      ? props.deadline.toDate() 
-      : new Date(props.deadline)
-    
-    return date.toISOString().split('T')[0]
-  } catch (error) {
-    return ''
-  }
+  return formatDateForInput(props.deadline)
 })
 
 // Methods
