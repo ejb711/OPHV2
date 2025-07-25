@@ -16,7 +16,7 @@ export function useCommsDashboard() {
   
   // State
   const showCreateDialog = ref(false)
-  const projectDetailRef = ref(null)
+  const projectDetailRef = ref(null) // Will be set by parent component
   const projectListRef = ref(null)
   const deleteSnackbar = ref(false)
   const deleteHard = ref(false)
@@ -51,9 +51,10 @@ export function useCommsDashboard() {
       completionRate: analytics.completionRate?.value || 0,
       avgCompletionTime: analytics.avgCompletionTime?.value || 0,
       statusBreakdown: analytics.statusBreakdown?.value || [],
-      priorityDistribution: analytics.priorityDistribution?.value || { high: 0, medium: 0, low: 0 },
+      priorityBreakdown: analytics.priorityDistribution?.value || { high: 0, medium: 0, low: 0 }, // Fixed: was priorityDistribution
       regionalDistribution: analytics.regionalDistribution?.value || [],
       activeCoordinators: analytics.activeCoordinators?.value || new Set(),
+      totalCoordinators: analytics.activeCoordinators?.value?.size || 0, // Fixed: use Set size
       totalFiles: analytics.totalFiles?.value || 0,
       totalMessages: analytics.totalMessages?.value || 0
     }

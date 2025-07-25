@@ -1,7 +1,8 @@
-<!-- client/src/components/comms/dashboard/CommsDialogs.vue -->
+// client/src/components/comms/dashboard/CommsDialogs.vue
 <!-- Dialog management component (~100 lines) -->
-<!-- Props: create-dialog, project-detail-ref -->
+<!-- Props: create-dialog -->
 <!-- Events: project-created, project-updated, project-deleted -->
+<!-- Purpose: Manages project creation and detail dialogs -->
 <template>
   <div>
     <!-- Create Project Dialog -->
@@ -26,14 +27,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import ProjectForm from '../projects/ProjectForm.vue'
 import ProjectDetail from '../projects/ProjectDetail.vue'
-
-// Props
-const props = defineProps({
-  projectDetailRef: Object
-})
 
 // Model
 const createDialog = defineModel('createDialog', { 
@@ -51,13 +47,6 @@ const emit = defineEmits([
   'project-deleted'
 ])
 
-// Watch for external ref updates
-watch(() => props.projectDetailRef, (newRef) => {
-  if (newRef && projectDetailRef.value) {
-    Object.assign(newRef, projectDetailRef.value)
-  }
-}, { immediate: true })
-
 // Methods
 function handleProjectCreated(project) {
   createDialog.value = false
@@ -71,4 +60,9 @@ function handleProjectUpdated(project) {
 function handleProjectDeleted(project, hard) {
   emit('project-deleted', project, hard)
 }
+
+// Expose the projectDetailRef so parent can access it
+defineExpose({
+  projectDetailRef
+})
 </script>

@@ -1,4 +1,4 @@
-<!-- client/src/components/comms/CommsDashboard.vue -->
+// client/src/components/comms/CommsDashboard.vue
 <!-- Main orchestrator component - Modularized version (~150 lines) -->
 <!-- Dependencies: CommsDashboardHeader, CommsDashboardToolbar, CommsDialogs, CommsNotifications -->
 <!-- Composables: useCommsDashboard, usePermissions -->
@@ -50,15 +50,15 @@
     <ProjectList
       ref="projectListRef"
       :filters="filters"
-      @select="handleProjectSelect"
+      @select="handleProjectSelectCustom"
       @delete="handleProjectDelete"
       @stats-update="handleStatsUpdate"
     />
 
     <!-- Dialogs Component -->
     <CommsDialogs
+      ref="commsDialogsRef"
       v-model:create-dialog="showCreateDialog"
-      :project-detail-ref="projectDetailRef"
       @project-created="handleProjectCreated"
       @project-updated="handleProjectUpdated"
       @project-deleted="handleProjectDeleted"
@@ -77,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCommsDashboard } from '@/composables/comms/useCommsDashboard'
 
@@ -94,6 +94,9 @@ import CommsNotifications from './dashboard/CommsNotifications.vue'
 
 // Composables
 const { hasPermission } = usePermissions()
+
+// Refs
+const commsDialogsRef = ref(null)
 
 // Use the dashboard composable for business logic
 const {
@@ -133,12 +136,34 @@ const {
   showError
 } = useCommsDashboard()
 
+// Custom project select handler that uses the dialogs ref
+function handleProjectSelectCustom(project) {
+  console.log('Project selected:', project)
+  // Use nextTick to ensure the ref is available
+  nextTick(() => {
+    if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
+      commsDialogsRef.value.projectDetailRef.open(project.id)
+    } else {
+      console.error('ProjectDetail ref not available')
+    }
+  })
+}
+
 // Watch for project list changes
 watch(() => projectListRef.value?.projects, (newProjects) => {
   if (newProjects) {
     projects.value = newProjects
   }
 }, { immediate: true })
+
+// Set up the projectDetailRef after component is mounted
+onMounted(() => {
+  nextTick(() => {
+    if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
+      projectDetailRef.value = commsDialogsRef.value.projectDetailRef
+    }
+  })
+})
 </script>
 
 <style scoped>
