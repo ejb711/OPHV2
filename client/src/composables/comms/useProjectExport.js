@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf'
 import 'jspdf-autotable'
 import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
 import { useAudit } from '@/composables/useAudit'
+import { calculateProjectStatus } from './utils/calculateProjectStatus'
 
 export function useProjectExport() {
   const exporting = ref(false)
@@ -31,11 +32,11 @@ export function useProjectExport() {
       ]
       
       const rows = projects.map(project => [
-        `"${project.title.replace(/"/g, '""')}"`,
+        `"${(project.title || '').replace(/"/g, '""')}"`,
         `"${(project.description || '').replace(/"/g, '""')}"`,
         `"${LOUISIANA_REGIONS[project.region]?.name || 'Unknown'}"`,
-        `"${formatStatus(project.status)}"`,
-        `"${project.priority.toUpperCase()}"`,
+        `"${formatStatus(calculateProjectStatus(project))}"`,
+        `"${(project.priority || 'medium').toUpperCase()}"`,
         `"${project.coordinatorName || 'Unassigned'}"`,
         `"${project.deadline ? formatDate(project.deadline) : 'No deadline'}"`,
         `"${(project.tags || []).join(', ')}"`,
@@ -104,10 +105,10 @@ export function useProjectExport() {
       ]
       
       const tableData = projects.map(project => [
-        project.title.substring(0, 40) + (project.title.length > 40 ? '...' : ''),
+        (project.title || '').substring(0, 40) + ((project.title || '').length > 40 ? '...' : ''),
         LOUISIANA_REGIONS[project.region]?.name || 'Unknown',
-        formatStatus(project.status),
-        project.priority.toUpperCase(),
+        formatStatus(calculateProjectStatus(project)),
+        (project.priority || 'medium').toUpperCase(),
         project.coordinatorName || 'Unassigned',
         project.deadline ? formatDate(project.deadline) : 'None',
         formatDate(project.createdAt)
@@ -131,7 +132,8 @@ export function useProjectExport() {
       doc.setFontSize(10)
       
       const statusCounts = projects.reduce((acc, p) => {
-        acc[p.status] = (acc[p.status] || 0) + 1
+        const status = calculateProjectStatus(p)
+        acc[status] = (acc[status] || 0) + 1
         return acc
       }, {})
       
@@ -186,11 +188,11 @@ export function useProjectExport() {
           yPos += 8
         }
         
-        addDetail('Title', project.title)
-        addDetail('Description', project.description)
-        addDetail('Region', LOUISIANA_REGIONS[project.region]?.name)
-        addDetail('Status', formatStatus(project.status))
-        addDetail('Priority', project.priority.toUpperCase())
+        addDetail('Title', project.title || 'Untitled')
+        addDetail('Description', project.description || 'No description')
+        addDetail('Region', LOUISIANA_REGIONS[project.region]?.name || 'Unknown')
+        addDetail('Status', formatStatus(calculateProjectStatus(project)))
+        addDetail('Priority', (project.priority || 'medium').toUpperCase())
         addDetail('Coordinator', project.coordinatorName || 'Unassigned')
         addDetail('Deadline', project.deadline ? formatDate(project.deadline) : 'None')
         addDetail('Created', formatDate(project.createdAt))
@@ -229,6 +231,7 @@ export function useProjectExport() {
   }
   
   const formatStatus = (status) => {
+    if (!status) return 'Unknown'
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
   }
   
