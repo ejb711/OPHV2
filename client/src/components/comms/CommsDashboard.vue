@@ -214,8 +214,8 @@ import MobileFilterPanel from './MobileFilterPanel.vue'
 
 // Composables
 const { hasPermission } = usePermissions()
-import { useCommsCoordinators } from '@/composables/comms/useCommsCoordinators'
-const { coordinators } = useCommsCoordinators()
+import { useCoordinatorSelection } from '@/composables/comms/useCoordinatorSelection'
+const { coordinators } = useCoordinatorSelection()
 
 // Refs
 const commsDialogsRef = ref(null)

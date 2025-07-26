@@ -17,6 +17,7 @@
     "firebase": "^11.10.0",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
+    "lodash-es": "^4.17.21",
     "pinia": "^3.0.3",
     "sass": "^1.89.2",
     "vite-plugin-vuetify": "^2.1.1",

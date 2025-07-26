@@ -201,7 +201,7 @@
 import { ref, computed, toRef } from 'vue'
 import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import { useProjectStatus } from '@/composables/comms/useProjectStatus'
-import { REGIONS } from '@/config/louisiana-regions'
+import { LOUISIANA_REGIONS as REGIONS } from '@/config/louisiana-regions'
 
 // Props
 const props = defineProps({

@@ -212,8 +212,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { debounce } from 'lodash-es'
-import { REGIONS } from '@/config/louisiana-regions'
-import { useCommsCoordinators } from '@/composables/comms/useCommsCoordinators'
+import { LOUISIANA_REGIONS as REGIONS } from '@/config/louisiana-regions'
+import { useCoordinatorSelection } from '@/composables/comms/useCoordinatorSelection'
 
 // Props
 const props = defineProps({
@@ -247,7 +247,7 @@ const viewMode = computed({
 })
 
 // Composables
-const { coordinators } = useCommsCoordinators()
+const { coordinators } = useCoordinatorSelection()
 
 // Filter options
 const regionOptions = computed(() => 
