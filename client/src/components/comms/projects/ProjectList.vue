@@ -604,9 +604,13 @@ function getSortIcon(key) {
 watch(() => props.filters, (newFilters) => {
   console.log('Filters changed:', newFilters)
   
-  // Apply each filter
+  // Only apply filters that setFilter handles
+  const filterableKeys = ['region', 'status', 'priority', 'coordinator', 'search', 'deleted']
+  
   Object.entries(newFilters).forEach(([key, value]) => {
-    setFilter(key, value)
+    if (filterableKeys.includes(key)) {
+      setFilter(key, value)
+    }
   })
 }, { deep: true })
 
