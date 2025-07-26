@@ -174,7 +174,8 @@ function handleProjectSelectCustom(project) {
     if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
       commsDialogsRef.value.projectDetailRef.open(project.id)
     } else {
-      }
+      showError('Unable to open project details. Please refresh the page.')
+    }
   })
 }
 
@@ -185,7 +186,8 @@ function handleProjectEdit(project) {
     if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
       commsDialogsRef.value.projectDetailRef.open(project.id, true) // true for edit mode
     } else {
-      }
+      showError('Unable to open project editor. Please refresh the page.')
+    }
   })
 }
 

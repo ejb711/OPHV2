@@ -169,11 +169,11 @@ export function useSecuritySettings() {
 
       // If still no login events, log a message
       if (loginEvents.length === 0) {
-        }
+        // No login events found
+      }
     } catch (error) {
       // If permission denied, it might be because the user doesn't have any events yet
       if (error.code === 'permission-denied') {
-        ')
         loginHistory.value = []
         recentEvents.value = []
       }

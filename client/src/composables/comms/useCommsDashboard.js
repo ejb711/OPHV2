@@ -192,6 +192,7 @@ export function useCommsDashboard() {
   const initializeAnalytics = () => {
     if (!analytics.value && projects.value.length > 0) {
       analytics.value = useProjectAnalytics(projects)
+    }
   }
 
   // Watch for projects changes to initialize analytics

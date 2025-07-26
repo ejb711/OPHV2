@@ -32,8 +32,6 @@ export function useActivityTracker() {
     const now = Date.now()
     const inactiveMinutes = (now - lastActivityTime) / (1000 * 60)
 
-    } minutes (timeout: ${sessionTimeoutMinutes} minutes)`)
-
     if (inactiveMinutes >= sessionTimeoutMinutes) {
       try {
         // Log the timeout event before signing out
@@ -79,9 +77,6 @@ export function useActivityTracker() {
       lastActivityTime = now // Reset inactivity timer
       retryCount = 0 // Reset retry count on success
 
-      if (import.meta.env.DEV) {
-        .toLocaleTimeString())
-      }
     } catch (error) {
       retryCount++
 

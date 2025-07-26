@@ -401,8 +401,6 @@ const visibleProjects = computed(() => {
 
   // Debug: Log final sorted array when sorting by status
   if (sortBy === 'status') {
-    :`)
-
     // Use the shared status calculation utility
 
     // Show all status groups
@@ -422,15 +420,15 @@ const visibleProjects = computed(() => {
 
     Object.entries(statusGroups).forEach(([status, projects]) => {
       if (projects.length > 0) {
-        `)
+        // Process status groups
       }
     })
 
     // Show actual order in the sorted array
-    :')
     sorted.slice(0, 10).forEach((p, idx) => {
       const status = calculateProjectStatus(p)
-      })
+      // Process each project
+    })
   }
 
   return sorted
@@ -447,7 +445,7 @@ const paginatedProjects = computed(() => {
 
 const emptyStateText = computed(() => {
   if (props.filters?.search) {
-    return `No projects found matching "${props.filters.search}"`
+    return 'No projects found matching "' + props.filters.search + '"'
   }
   if (props.filters?.region || props.filters?.status || props.filters?.priority) {
     return 'No projects match the selected filters'
@@ -540,10 +538,10 @@ function formatDeadline(deadline) {
   const daysUntil = Math.ceil((dateObj - new Date()) / (1000 * 60 * 60 * 24))
 
   const formatted = formatDate(dateObj)
-  if (daysUntil < 0) return `Overdue (${formatted})`
+  if (daysUntil < 0) return 'Overdue (' + formatted + ')'
   if (daysUntil === 0) return 'Due Today'
   if (daysUntil === 1) return 'Due Tomorrow'
-  if (daysUntil <= 7) return `${daysUntil} days`
+  if (daysUntil <= 7) return daysUntil + ' days'
   return formatted
 }
 

@@ -60,7 +60,6 @@ export const usePermissionsStore = defineStore('permissions', () => {
         id: doc.id,
         ...doc.data()
       }))
-      ))
 
       // Load users
       const usersSnap = await getDocs(collection(db, 'users'))

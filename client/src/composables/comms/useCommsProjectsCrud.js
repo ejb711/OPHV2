@@ -38,7 +38,7 @@ export function useCommsProjectsCrud(
     setCreating(true)
     clearError()
 
-    // try {
+    try {
       // Validate required fields
       if (!projectData.title) throw new Error('Project title is required')
       if (!projectData.region) throw new Error('Region is required')
@@ -72,9 +72,11 @@ export function useCommsProjectsCrud(
             // } else {
             }
         } catch (err) {
-          }
-      } else {
+          // Coordinator lookup failed, continue without coordinator data
         }
+      } else {
+        // No coordinator assigned
+      }
 
       // Create in Firestore
       const docRef = await addDoc(collection(db, 'comms_projects'), newProject)
