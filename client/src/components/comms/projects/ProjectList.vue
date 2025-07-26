@@ -32,8 +32,8 @@
 
     <!-- Projects Grid/List -->
     <template v-else>
-      <!-- View Toggle -->
-      <div class="d-flex justify-end mb-4">
+      <!-- View Toggle (Desktop only) -->
+      <div v-if="!mobileView" class="d-flex justify-end mb-4">
         <v-btn-toggle
           v-model="viewMode"
           mandatory
@@ -45,8 +45,20 @@
         </v-btn-toggle>
       </div>
 
-      <!-- Grid View -->
-      <v-row v-if="viewMode === 'grid'">
+      <!-- Mobile View -->
+      <div v-if="mobileView" class="mobile-project-list">
+        <MobileProjectCard
+          v-for="project in paginatedProjects"
+          :key="project.id"
+          :project="project"
+          @view="selectProject"
+          @edit="handleEdit"
+          @delete="handleDelete"
+        />
+      </div>
+
+      <!-- Desktop Grid View -->
+      <v-row v-else-if="viewMode === 'grid'">
         <v-col
           v-for="project in paginatedProjects"
           :key="project.id"
@@ -231,9 +243,10 @@
         v-if="pageCount > 1"
         v-model="currentPage"
         :length="pageCount"
-        :total-visible="7"
+        :total-visible="mobileView ? 5 : 7"
         rounded="circle"
         class="mt-4"
+        :size="mobileView ? 'small' : 'default'"
       />
     </template>
   </div>
@@ -245,6 +258,7 @@ import { useCommsProjects } from '@/composables/comms/useCommsProjects'
 import { formatDistanceToNow } from 'date-fns'
 import { calculateProjectStatus, getStatusSortOrder } from '@/composables/comms/utils/calculateProjectStatus'
 import ProjectCard from './ProjectCard.vue'
+import MobileProjectCard from './MobileProjectCard.vue'
 import StatusBadge from '../shared/StatusBadge.vue'
 import RegionBadge from '../shared/RegionBadge.vue'
 
@@ -258,6 +272,10 @@ const props = defineProps({
       priority: null,
       search: ''
     })
+  },
+  mobileView: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -280,7 +298,10 @@ const {
 // State
 const viewMode = ref('grid')
 const currentPage = ref(1)
-const itemsPerPage = computed(() => viewMode.value === 'grid' ? 12 : 20)
+const itemsPerPage = computed(() => {
+  if (props.mobileView) return 20
+  return viewMode.value === 'grid' ? 12 : 20
+})
 let unsubscribe = null
 
 // Table headers for list view
@@ -730,6 +751,21 @@ defineExpose({
   .project-table :deep(th:nth-child(6)),
   .project-table :deep(td:nth-child(6)) {
     display: none;
+  }
+}
+
+/* Mobile project list */
+.mobile-project-list {
+  margin: 0 -16px;
+}
+
+@media (max-width: 600px) {
+  .project-list {
+    padding: 0;
+  }
+  
+  .v-empty-state {
+    padding: 48px 16px !important;
   }
 }
 </style>
