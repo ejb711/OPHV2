@@ -1,8 +1,8 @@
 // client/src/composables/comms/useCommsProjects.js
-import { 
-  collection, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  query,
+  orderBy,
   onSnapshot,
   Timestamp
 } from 'firebase/firestore'
@@ -24,7 +24,7 @@ export function useCommsProjects() {
   const { canManageComms } = usePermissions()
   const { canViewProject, canEditProject, canDeleteProject } = useCommsProjectPermissions()
   const { showError } = useSnackbar()
-  
+
   // Initialize state management
   const {
     projects,
@@ -49,7 +49,7 @@ export function useCommsProjects() {
     setFilter,
     clearFilters
   } = useCommsProjectsState()
-  
+
   // Initialize filters
   const {
     currentUserId,
@@ -71,7 +71,7 @@ export function useCommsProjects() {
     filterSearch,
     filterDeleted
   )
-  
+
   // Initialize CRUD operations
   const {
     createProject,
@@ -90,24 +90,22 @@ export function useCommsProjects() {
     setError,
     clearError
   )
-  
+
   // Initialize projects listener
   function initialize() {
     setLoading(true)
     clearError()
-    
+
     try {
       // Build query
       let q = query(
         collection(db, 'comms_projects'),
         orderBy('createdAt', 'desc')
       )
-      
+
       // Set up real-time listener
-      const unsubscribe = onSnapshot(q, 
+      const unsubscribe = onSnapshot(q,
         (snapshot) => {
-          console.log('Received projects update:', snapshot.size, 'projects')
-          
           const projectsData = snapshot.docs.map(doc => {
             const data = doc.data()
             return {
@@ -121,28 +119,26 @@ export function useCommsProjects() {
               deletedAt: safeConvertToDate(data.deletedAt)
             }
           })
-          
+
           setProjects(projectsData)
           setLoading(false)
         },
         (err) => {
-          console.error('Error fetching projects:', err)
           setError(err.message)
           setLoading(false)
           showError('Failed to load projects')
         }
       )
-      
+
       return unsubscribe
     } catch (err) {
-      console.error('Error initializing projects:', err)
       setError(err.message)
       setLoading(false)
       showError('Failed to initialize projects')
       return null
     }
   }
-  
+
   return {
     // State
     projects,
@@ -151,7 +147,7 @@ export function useCommsProjects() {
     updating,
     deleting,
     error,
-    
+
     // Computed
     filteredProjects,
     projectStats,
@@ -161,7 +157,7 @@ export function useCommsProjects() {
     myProjectsCount,
     highPriorityProjects,
     upcomingDeadlines,
-    
+
     // Methods
     initialize,
     setFilter,
@@ -172,7 +168,7 @@ export function useCommsProjects() {
     hardDeleteProject,
     getProject,
     restoreProject,
-    
+
     // Permission checks
     canViewProject,
     canEditProject,

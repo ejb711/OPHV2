@@ -56,11 +56,9 @@ export function useSecuritySettings() {
       // Get user document directly to ensure we have the latest data
       const userDocRef = doc(db, 'users', user.uid)
       const userDocSnap = await getDoc(userDocRef)
-      
+
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data()
-        console.log('Loading security settings from user doc:', userData?.securitySettings)
-        
         if (userData?.securitySettings) {
           const loadedTimeout = Number(userData.securitySettings.sessionTimeout) || 60
           securitySettings.value = {
@@ -68,21 +66,17 @@ export function useSecuritySettings() {
             allowMultipleSessions: userData.securitySettings.allowMultipleSessions ?? true,
             requirePasswordChange: userData.securitySettings.requirePasswordChange ?? false
           }
-          console.log('Session timeout loaded:', loadedTimeout, 'minutes')
-        }
+          }
       }
     } catch (error) {
-      console.error('Error loading security settings:', error)
-    }
+      }
   }
 
   const updateSecuritySettings = async () => {
     try {
       const user = auth.currentUser
       if (!user) return
-      
-      console.log('Updating security settings:', securitySettings.value)
-      
+
       const updates = {
         securitySettings: {
           sessionTimeout: Number(securitySettings.value.sessionTimeout),
@@ -91,20 +85,18 @@ export function useSecuritySettings() {
         },
         updatedAt: serverTimestamp()
       }
-      
+
       await updateDoc(doc(db, 'users', user.uid), updates)
-      
+
       await logEvent('security_settings_updated', {
         settings: updates.securitySettings
       })
-      
-      console.log('Session timeout updated to:', updates.securitySettings.sessionTimeout, 'minutes')
+
       showSnackbar(`Session timeout updated to ${updates.securitySettings.sessionTimeout} minute${updates.securitySettings.sessionTimeout === 1 ? '' : 's'}`, 'success')
-      
+
       // Reload the auth store to pick up the new settings
       await authStore.refreshCurrentUser()
     } catch (error) {
-      console.error('Error updating security settings:', error)
       showSnackbar('Failed to update security settings', 'error')
     }
   }
@@ -114,8 +106,6 @@ export function useSecuritySettings() {
     try {
       const user = auth.currentUser
       if (!user) return
-
-      console.log('Loading security events for user:', user.uid)
 
       // Simplified query - just get all audit logs for the user first
       // This avoids the composite index requirement
@@ -127,15 +117,12 @@ export function useSecuritySettings() {
       )
 
       const snapshot = await getDocs(q)
-      console.log('Found', snapshot.size, 'total audit logs for user')
-      
       if (snapshot.size === 0) {
-        console.log('No audit logs found for user')
         loginHistory.value = []
         recentEvents.value = []
         return
       }
-      
+
       // Filter events client-side to avoid composite index
       const securityActions = new Set([
         'user_login',
@@ -148,7 +135,7 @@ export function useSecuritySettings() {
         'failed_login_attempt',
         'sessions_revoked'
       ])
-      
+
       const events = snapshot.docs
         .map(doc => {
           const data = doc.data()
@@ -160,39 +147,33 @@ export function useSecuritySettings() {
           }
         })
         .filter(event => securityActions.has(event.action))
-      
-      console.log('Filtered to', events.length, 'security-related events')
-      
+
       // Separate login events for login history
       const loginEvents = events
         .filter(e => e.action === 'user_login' || e.action === 'failed_login_attempt')
         .slice(0, 5)
-        .map(e => ({ 
-          ...e, 
+        .map(e => ({
+          ...e,
           success: e.action === 'user_login',
           details: {
             ...e.details,
             browser: e.details?.browser || extractBrowserInfo(e.details?.userAgent || '')
           }
         }))
-      
+
       loginHistory.value = loginEvents
-      console.log('Login history:', loginEvents.length, 'events')
-      
       // All events for recent activity (excluding login events to avoid duplication)
       recentEvents.value = events
         .filter(e => !['user_login', 'failed_login_attempt'].includes(e.action))
         .slice(0, 10)
-        
+
       // If still no login events, log a message
       if (loginEvents.length === 0) {
-        console.log('No login events found. Events will appear after your next login.')
-      }
+        }
     } catch (error) {
-      console.error('Error loading security events:', error)
       // If permission denied, it might be because the user doesn't have any events yet
       if (error.code === 'permission-denied') {
-        console.log('No security events found (permission denied - likely no events exist)')
+        ')
         loginHistory.value = []
         recentEvents.value = []
       }
@@ -204,20 +185,20 @@ export function useSecuritySettings() {
   // Helper function to extract browser info from user agent
   function extractBrowserInfo(userAgent) {
     if (!userAgent) return 'Unknown browser'
-    
+
     // Simple browser detection
     if (userAgent.includes('Chrome')) return 'Chrome'
     if (userAgent.includes('Firefox')) return 'Firefox'
     if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari'
     if (userAgent.includes('Edge')) return 'Edge'
     if (userAgent.includes('Opera')) return 'Opera'
-    
+
     return 'Unknown browser'
   }
 
   const revokeAllSessions = async () => {
     if (!confirm('This will log you out from all other devices. Continue?')) return
-    
+
     loading.value = true
     try {
       // In a real implementation, this would revoke all refresh tokens
@@ -225,10 +206,9 @@ export function useSecuritySettings() {
       await logEvent('sessions_revoked', {
         email: auth.currentUser?.email
       })
-      
+
       showSnackbar('All other sessions have been revoked', 'success')
     } catch (error) {
-      console.error('Error revoking sessions:', error)
       showSnackbar('Failed to revoke sessions', 'error')
     } finally {
       loading.value = false
@@ -248,7 +228,7 @@ export function useSecuritySettings() {
         },
         exportedAt: new Date().toISOString()
       }
-      
+
       const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -256,11 +236,10 @@ export function useSecuritySettings() {
       a.download = `account-data-${new Date().toISOString().split('T')[0]}.json`
       a.click()
       URL.revokeObjectURL(url)
-      
+
       await logEvent('account_data_exported', {})
       showSnackbar('Account data downloaded', 'success')
     } catch (error) {
-      console.error('Error downloading account data:', error)
       showSnackbar('Failed to download account data', 'error')
     } finally {
       loading.value = false
@@ -277,7 +256,7 @@ export function useSecuritySettings() {
     loginHistory,
     snackbar,
     currentUser,
-    
+
     // Methods
     showSnackbar,
     loadSecuritySettings,

@@ -47,7 +47,7 @@
                 <span class="font-weight-medium">
                   {{ coordinator.displayName || coordinator.name || coordinator.email }}
                 </span>
-                
+
                 <!-- Default badge -->
                 <v-chip
                   v-if="isDefaultForRegion(coordinator)"
@@ -151,7 +151,7 @@ const selectedCoordinator = computed({
 // Sort coordinators: default for region first, then by region assignment, then alphabetically
 const sortedCoordinators = computed(() => {
   if (!coordinators.value.length) return []
-  
+
   return [...coordinators.value].sort((a, b) => {
     // Default for current region comes first
     if (props.region) {
@@ -159,14 +159,14 @@ const sortedCoordinators = computed(() => {
       const bIsDefault = b.primaryRegion === props.region
       if (aIsDefault && !bIsDefault) return -1
       if (!aIsDefault && bIsDefault) return 1
-      
+
       // Then those assigned to current region
       const aInRegion = a.regions?.includes(props.region)
       const bInRegion = b.regions?.includes(props.region)
       if (aInRegion && !bInRegion) return -1
       if (!aInRegion && bInRegion) return 1
     }
-    
+
     // Finally alphabetically by name
     const aName = (a.displayName || a.name || a.email || '').toLowerCase()
     const bName = (b.displayName || b.name || b.email || '').toLowerCase()
@@ -197,34 +197,26 @@ function getRegionNames(regionIds) {
 async function fetchCoordinators() {
   loading.value = true
   try {
-    console.log('🔄 Fetching coordinators for radio list...')
-    
     const snapshot = await getDocs(collection(db, 'comms_coordinators'))
-    console.log(`📊 Found ${snapshot.size} coordinators`)
-    
     coordinators.value = snapshot.docs.map(doc => {
       const data = doc.data()
       const displayName = data.displayName || data.name || data.userName || data.email
-      
-      console.log(`👤 Coordinator: ${doc.id} - ${displayName}`)
-      
+
       return {
         id: doc.id,
         ...data,
         displayName: displayName
       }
     })
-    
+
     // Auto-select default coordinator for region if none selected
     if (props.region && !props.modelValue) {
       const defaultCoord = coordinators.value.find(c => c.primaryRegion === props.region)
       if (defaultCoord) {
-        console.log(`🎯 Auto-selecting default coordinator: ${defaultCoord.displayName}`)
         selectedCoordinator.value = defaultCoord.id
       }
     }
   } catch (error) {
-    console.error('❌ Error fetching coordinators:', error)
     coordinators.value = []
   } finally {
     loading.value = false
@@ -237,7 +229,6 @@ watch(() => props.region, async (newRegion, oldRegion) => {
     // Find and auto-select default coordinator for new region
     const defaultCoord = coordinators.value.find(c => c.primaryRegion === newRegion)
     if (defaultCoord) {
-      console.log(`🎯 Region changed - auto-selecting: ${defaultCoord.displayName}`)
       selectedCoordinator.value = defaultCoord.id
     }
   }

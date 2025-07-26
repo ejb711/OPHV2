@@ -54,9 +54,7 @@ const formattedPhone = computed({
     return form.value.phone
   },
   set(value) {
-    console.log('Phone setter called with:', value, typeof value)
     const formatted = formatPhoneNumber(value)
-    console.log('Setting formatted phone:', formatted)
     form.value.phone = formatted
     markFormDirty()
   }
@@ -87,7 +85,7 @@ const loadUserData = async () => {
       // Load from Firebase Auth
       form.value.displayName = user.displayName || ''
       form.value.email = user.email || ''
-      
+
       // Load from Firestore user document
       const userDoc = await authStore.getUserDocument()
       if (userDoc) {
@@ -109,7 +107,6 @@ const loadUserData = async () => {
       }
     }
   } catch (error) {
-    console.error('Error loading user data:', error)
     showSnackbar('Failed to load profile data', 'error')
   } finally {
     loading.value = false
@@ -161,12 +158,11 @@ const saveProfile = async () => {
 
     // Refresh auth store
     await authStore.refreshCurrentUser()
-    
+
     isFormDirty.value = false
     showSnackbar('Profile updated successfully')
 
   } catch (error) {
-    console.error('Error saving profile:', error)
     if (error.code === 'auth/requires-recent-login') {
       showSnackbar('Please log in again to change your email', 'warning')
     } else {
@@ -180,10 +176,10 @@ const saveProfile = async () => {
 // Phone formatting function
 const formatPhoneNumber = (value) => {
   if (!value) return ''
-  
+
   // Convert to string and remove all non-numeric characters
   const numericOnly = String(value).replace(/\D/g, '')
-  
+
   // Apply progressive formatting
   if (numericOnly.length === 0) return ''
   if (numericOnly.length <= 3) return numericOnly

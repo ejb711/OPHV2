@@ -21,7 +21,7 @@
         <h1 class="platform-title">BRCO</h1>
         <p class="platform-subtitle">Public Health Platform</p>
       </div>
-      
+
       <!-- Loading Content -->
       <div class="loading-content">
         <!-- Animated Loading Indicator -->
@@ -47,7 +47,6 @@
 
 <script setup>
 // Simple static loading screen - no dynamic content needed
-console.log('[LoadingScreen] Mounted')
 </script>
 
 <style scoped>
@@ -58,7 +57,7 @@ console.log('[LoadingScreen] Mounted')
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, 
+  background: linear-gradient(135deg,
     #003057 0%,     /* LDH Dark Blue */
     #426DA9 50%,    /* LDH Medium Blue */
     #63B1BC 80%,    /* LDH Light Blue/Teal */
@@ -234,11 +233,11 @@ console.log('[LoadingScreen] Mounted')
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(99, 177, 188, 0.1) 30%, 
-    rgba(139, 163, 199, 0.08) 50%, 
-    rgba(99, 177, 188, 0.1) 70%, 
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(99, 177, 188, 0.1) 30%,
+    rgba(139, 163, 199, 0.08) 50%,
+    rgba(99, 177, 188, 0.1) 70%,
     transparent 100%
   );
   border-radius: 50px 50px 0 0;
@@ -297,20 +296,20 @@ console.log('[LoadingScreen] Mounted')
     padding: 1rem;
     max-width: 320px;
   }
-  
+
   .platform-title {
     font-size: 2rem;
   }
-  
+
   .logo-section {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .logo-placeholder {
     margin-right: 0;
   }
-  
+
   .logo-text {
     text-align: center;
   }
@@ -320,7 +319,7 @@ console.log('[LoadingScreen] Mounted')
   .loading-container {
     padding: 1.5rem 1rem;
   }
-  
+
   .platform-title {
     font-size: 1.75rem;
   }
@@ -331,7 +330,7 @@ console.log('[LoadingScreen] Mounted')
   .logo-placeholder {
     border: 2px solid white;
   }
-  
+
   .loading-dots .dot {
     background: white;
   }
@@ -345,7 +344,7 @@ console.log('[LoadingScreen] Mounted')
     animation: none;
     opacity: 1;
   }
-  
+
   .dot,
   .wave {
     animation: none;

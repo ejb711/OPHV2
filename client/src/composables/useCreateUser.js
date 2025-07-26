@@ -63,21 +63,21 @@ export function useCreateUser() {
     const length = 12
     const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
     let password = ''
-    
+
     // Ensure at least one of each required character type
     password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
     password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
     password += '0123456789'[Math.floor(Math.random() * 10)]
     password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
-    
+
     // Fill the rest randomly
     for (let i = 4; i < length; i++) {
       password += charset.charAt(Math.floor(Math.random() * charset.length))
     }
-    
+
     // Shuffle the password
     password = password.split('').sort(() => Math.random() - 0.5).join('')
-    
+
     form.value.password = password
     form.value.confirmPassword = password
     showPassword.value = true
@@ -87,7 +87,7 @@ export function useCreateUser() {
   // Create user
   const createUser = async () => {
     creating.value = true
-    
+
     try {
       const userPayload = {
         email: form.value.email.toLowerCase().trim(),
@@ -127,7 +127,7 @@ export function useCreateUser() {
           const savedFields = Object.values(result.data.profileFieldsSaved).filter(v => v !== 'none').length
           message += ` Profile data saved: ${savedFields} fields.`
         }
-        
+
         await permissionsStore.loadAllData()
 
         const userData = {
@@ -154,10 +154,8 @@ export function useCreateUser() {
       }
 
     } catch (error) {
-      console.error('Error creating user:', error)
-      
       let errorMessage = 'Failed to create user'
-      
+
       if (error.code === 'functions/already-exists') {
         errorMessage = 'A user with this email already exists'
       } else if (error.code === 'functions/invalid-argument') {
@@ -167,7 +165,7 @@ export function useCreateUser() {
       } else if (error.message) {
         errorMessage = error.message
       }
-      
+
       return { success: false, message: errorMessage }
     } finally {
       creating.value = false

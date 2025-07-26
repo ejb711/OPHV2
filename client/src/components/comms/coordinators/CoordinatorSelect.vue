@@ -21,9 +21,9 @@
       <span v-if="loading">Loading...</span>
       <span v-else>{{ getSelectionDisplay(item) }}</span>
     </template>
-    
+
     <template v-slot:item="{ item, props: itemProps }">
-      <v-list-item 
+      <v-list-item
         v-bind="itemProps"
         class="coordinator-item"
       >
@@ -34,13 +34,13 @@
             </span>
           </v-avatar>
         </template>
-        
+
         <template v-slot:subtitle>
           <div class="d-flex align-center gap-2 mt-1">
             <span class="text-body-2">{{ item.raw.email }}</span>
-            
+
             <!-- Default coordinator indicator -->
-            <v-chip 
+            <v-chip
               v-if="item.raw.isPrimary"
               size="x-small"
               color="primary"
@@ -48,9 +48,9 @@
             >
               Default
             </v-chip>
-            
+
             <!-- Warning for non-region coordinators -->
-            <v-tooltip 
+            <v-tooltip
               v-if="!item.raw.isForCurrentRegion && props.region"
               location="top"
             >
@@ -66,14 +66,14 @@
               <span>Not assigned to selected region</span>
             </v-tooltip>
           </div>
-          
+
           <!-- Region coverage -->
           <div v-if="item.raw.regions.length > 0" class="text-caption mt-1">
             <span class="text-grey-darken-1">Regions: </span>
             <span class="text-grey-darken-2">{{ item.raw.regionNames }}</span>
           </div>
         </template>
-        
+
         <!-- Additional regions indicator -->
         <template v-slot:append v-if="item.raw.additionalRegions">
           <v-tooltip location="top">
@@ -92,7 +92,7 @@
         </template>
       </v-list-item>
     </template>
-    
+
     <template v-slot:no-data>
       <v-list-item>
         <v-list-item-title class="text-center text-body-2 text-grey-darken-1">
@@ -111,7 +111,7 @@
         </v-list-item-title>
       </v-list-item>
     </template>
-    
+
     <!-- Non-default selection warning -->
     <template v-slot:append-item v-if="showNonDefaultWarning">
       <v-divider v-if="!autoSelected" class="mt-2"></v-divider>
@@ -180,13 +180,12 @@ const selectedCoordinator = computed({
   get: () => props.modelValue,
   set: (value) => {
     const previousValue = props.modelValue
-    
+
     // Check if user is selecting a coordinator
     if (value && props.region) {
       const selectedCoord = coordinators.value.find(c => c.id === value)
       const defaultCoord = getDefaultCoordinatorForRegion(props.region)
-      
-      
+
       if (selectedCoord && defaultCoord) {
         if (selectedCoord.id !== defaultCoord.id) {
           // User selected a non-default coordinator
@@ -204,8 +203,7 @@ const selectedCoordinator = computed({
         }
       }
     }
-    
-    
+
     emit('update:modelValue', value)
   }
 })
@@ -214,7 +212,7 @@ const coordinatorItems = computed(() => {
   const items = coordinators.value.map(coord => {
     const isForCurrentRegion = props.region && coord.regions && coord.regions.includes(props.region)
     const isPrimary = props.region && coord.primaryRegion === props.region
-    
+
     // Get region names
     const regionNames = (coord.regions || [])
       .map(regionId => {
@@ -222,7 +220,7 @@ const coordinatorItems = computed(() => {
         return region ? region.name : regionId
       })
       .join(', ')
-    
+
     // Get additional regions (regions other than the selected one)
     const otherRegions = props.region
       ? coord.regions
@@ -233,10 +231,10 @@ const coordinatorItems = computed(() => {
           })
           .join(', ')
       : ''
-    
+
     // Ensure we use displayName as the primary display field
     const displayName = coord.displayName || coord.name || coord.userName || coord.email
-    
+
     const item = {
       id: coord.id,
       displayName: displayName,
@@ -252,10 +250,10 @@ const coordinatorItems = computed(() => {
         displayName: displayName // Ensure raw always has displayName
       }
     }
-    
+
     return item
   })
-  
+
   // Sort: primary first, then by region assignment, then alphabetically
   const sorted = items.sort((a, b) => {
     if (a.isPrimary && !b.isPrimary) return -1
@@ -264,7 +262,7 @@ const coordinatorItems = computed(() => {
     if (!a.isForCurrentRegion && b.isForCurrentRegion) return 1
     return a.displayName.localeCompare(b.displayName)
   })
-  
+
   return sorted
 })
 
@@ -276,13 +274,12 @@ const noDataText = computed(() => {
 
 const showNonDefaultWarning = computed(() => {
   if (!selectedCoordinator.value || !props.region || autoSelected.value) return false
-  
+
   const selected = coordinators.value.find(c => c.id === selectedCoordinator.value)
   const defaultCoord = getDefaultCoordinatorForRegion(props.region)
-  
+
   return selected && defaultCoord && selected.id !== defaultCoord.id
 })
-
 
 // Methods
 function getSelectionDisplay(item) {
@@ -290,12 +287,12 @@ function getSelectionDisplay(item) {
   if (item && item.raw && item.raw.displayName) {
     return item.raw.displayName
   }
-  
+
   // If we have an item with title
   if (item && item.title) {
     return item.title
   }
-  
+
   // If no item but we have a selected value, look it up
   if (selectedCoordinator.value && coordinators.value.length > 0) {
     const found = coordinators.value.find(c => c.id === selectedCoordinator.value)
@@ -303,31 +300,28 @@ function getSelectionDisplay(item) {
       return found.name || found.displayName || found.email
     }
   }
-  
+
   // Final fallback - return the ID if we have one
   return selectedCoordinator.value || ''
 }
-
 
 function getCoordinatorDisplayName(coordinatorId) {
   if (!coordinatorId) return ''
   const coordinator = coordinators.value.find(c => c.id === coordinatorId)
   if (!coordinator) {
-    console.warn(`⚠️ Coordinator not found for ID: ${coordinatorId}`)
     return coordinatorId
   }
   const displayName = coordinator.displayName || coordinator.name || coordinator.userName || coordinator.email || coordinatorId
-  console.log(`📋 Getting display name for ${coordinatorId}: ${displayName}`)
   return displayName
 }
 
 function getDefaultCoordinatorForRegion(regionId) {
   if (!regionId) return null
-  
+
   // Find primary coordinator for the region
   const primaryCoord = coordinators.value.find(c => c.primaryRegion === regionId)
   if (primaryCoord) return primaryCoord
-  
+
   // If no primary, find first coordinator assigned to the region
   return coordinators.value.find(c => c.regions && c.regions.includes(regionId))
 }
@@ -335,22 +329,17 @@ function getDefaultCoordinatorForRegion(regionId) {
 async function fetchCoordinators() {
   loading.value = true
   try {
-    console.log('🔄 Fetching coordinators...')
     const coordinatorsQuery = query(
       collection(db, 'comms_coordinators'),
       orderBy('displayName')
     )
-    
+
     const snapshot = await getDocs(coordinatorsQuery)
-    console.log(`📊 Found ${snapshot.size} coordinators`)
-    
     coordinators.value = snapshot.docs.map(doc => {
       const data = doc.data()
       // Ensure we have a displayName field
       const displayName = data.displayName || data.name || data.userName || data.email || doc.id
-      
-      console.log(`👤 Coordinator: ${doc.id} - displayName: ${displayName}`)
-      
+
       return {
         id: doc.id,
         ...data,
@@ -360,19 +349,16 @@ async function fetchCoordinators() {
       }
     })
   } catch (error) {
-    console.error('❌ Error fetching coordinators:', error)
     // Try without orderBy if index doesn't exist
     try {
       const snapshot = await getDocs(collection(db, 'comms_coordinators'))
-      console.log(`📊 Found ${snapshot.size} coordinators (fallback query)`)
-      
+      `)
+
       coordinators.value = snapshot.docs
         .map(doc => {
           const data = doc.data()
           const displayName = data.displayName || data.name || data.userName || data.email || doc.id
-          
-          console.log(`👤 Coordinator: ${doc.id} - displayName: ${displayName}`)
-          
+
           return {
             id: doc.id,
             ...data,
@@ -383,7 +369,6 @@ async function fetchCoordinators() {
         })
         .sort((a, b) => a.displayName.localeCompare(b.displayName))
     } catch (fallbackError) {
-      console.error('❌ Fallback query also failed:', fallbackError)
       coordinators.value = []
     }
   } finally {
@@ -401,11 +386,9 @@ async function autoSelectCoordinator() {
   // Auto-select the default coordinator for the region
   const defaultCoordinator = getDefaultCoordinatorForRegion(props.region)
   if (defaultCoordinator && selectedCoordinator.value !== defaultCoordinator.id) {
-    console.log(`Auto-selecting coordinator: ${defaultCoordinator.name || defaultCoordinator.email} for region ${props.region}`)
-    
     emit('update:modelValue', defaultCoordinator.id)
     autoSelected.value = true
-    
+
     // Emit event to notify parent component
     emit('coordinator-auto-selected', {
       coordinatorId: defaultCoordinator.id,
@@ -428,7 +411,7 @@ watch(() => props.region, async (newRegion, oldRegion) => {
     // Region changed - clear current selection and auto-select new default
     emit('update:modelValue', '')
     autoSelected.value = false
-    
+
     // Wait for the clear to process, then auto-select
     await nextTick()
     await autoSelectCoordinator()
@@ -442,10 +425,8 @@ watch(coordinators, () => {
   }
 }, { immediate: false })
 
-
 // Force refresh coordinators
 async function refreshCoordinators() {
-  console.log('🔄 Force refreshing coordinators...')
   coordinators.value = []
   await fetchCoordinators()
 }
@@ -453,10 +434,10 @@ async function refreshCoordinators() {
 // Lifecycle
 onMounted(async () => {
   await fetchCoordinators()
-  
+
   // Wait for coordinators to be processed
   await nextTick()
-  
+
   // Auto-select coordinator if region is already set and no coordinator selected
   if (props.region && !selectedCoordinator.value) {
     await autoSelectCoordinator()

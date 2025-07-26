@@ -27,7 +27,7 @@ const filteredActivities = computed(() => {
 
   // Filter by activity type
   if (selectedFilter.value !== 'all') {
-    filtered = filtered.filter(activity => 
+    filtered = filtered.filter(activity =>
       getActivityCategory(activity.action) === selectedFilter.value
     )
   }
@@ -37,7 +37,7 @@ const filteredActivities = computed(() => {
     const days = parseInt(selectedTimeRange.value)
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - days)
-    
+
     filtered = filtered.filter(activity => {
       const activityDate = activity.timestamp?.toDate()
       return activityDate && activityDate > cutoff
@@ -114,7 +114,7 @@ const getActivityIcon = (action) => {
     admin: 'mdi-shield-crown',
     security: 'mdi-lock'
   }
-  
+
   // Specific action icons
   if (action.includes('login')) return 'mdi-login'
   if (action.includes('logout')) return 'mdi-logout'
@@ -122,7 +122,7 @@ const getActivityIcon = (action) => {
   if (action.includes('create')) return 'mdi-plus'
   if (action.includes('edit') || action.includes('update')) return 'mdi-pencil'
   if (action.includes('view')) return 'mdi-eye'
-  
+
   return icons[category] || 'mdi-information'
 }
 
@@ -156,7 +156,7 @@ const formatActivityText = (activity) => {
   }
 
   let text = actionMap[activity.action] || activity.action.replace(/_/g, ' ')
-  
+
   // Add details if available
   if (activity.details?.targetName) {
     text += ` (${activity.details.targetName})`
@@ -171,7 +171,7 @@ const formatActivityText = (activity) => {
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'Unknown time'
-  
+
   const date = timestamp.toDate()
   const now = new Date()
   const diffMs = now - date
@@ -183,7 +183,7 @@ const formatDate = (timestamp) => {
   if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
   if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
   if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
-  
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -224,7 +224,7 @@ const loadActivities = async (loadMore = false) => {
     }
 
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       hasMore.value = false
       return
@@ -245,8 +245,7 @@ const loadActivities = async (loadMore = false) => {
     hasMore.value = snapshot.docs.length === pageSize
 
   } catch (error) {
-    console.error('Error loading activities:', error)
-  } finally {
+    } finally {
     loading.value = false
     loadingMore.value = false
   }
@@ -383,8 +382,8 @@ onMounted(() => {
       <v-icon size="64" color="grey">mdi-history</v-icon>
       <h3 class="text-h6 mt-4">No Activity Found</h3>
       <p class="text-body-1 text-medium-emphasis">
-        {{ selectedFilter !== 'all' || selectedTimeRange !== 'all' 
-           ? 'Try adjusting your filters to see more activities.' 
+        {{ selectedFilter !== 'all' || selectedTimeRange !== 'all'
+           ? 'Try adjusting your filters to see more activities.'
            : 'Your activity history will appear here as you use the system.' }}
       </p>
     </div>
@@ -409,7 +408,7 @@ onMounted(() => {
                   <div class="text-body-1 font-weight-medium">
                     {{ formatActivityText(activity) }}
                   </div>
-                  
+
                   <!-- Activity Details -->
                   <div v-if="activity.details && Object.keys(activity.details).length > 0" class="mt-2">
                     <v-chip
@@ -421,7 +420,7 @@ onMounted(() => {
                       <v-icon left size="12">mdi-web</v-icon>
                       {{ activity.details.ip }}
                     </v-chip>
-                    
+
                     <v-chip
                       v-if="activity.details.userAgent"
                       size="x-small"
@@ -443,7 +442,7 @@ onMounted(() => {
                     </v-chip>
                   </div>
                 </div>
-                
+
                 <div class="text-caption text-medium-emphasis ml-4">
                   {{ formatDate(activity.timestamp) }}
                 </div>

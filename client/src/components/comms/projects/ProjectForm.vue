@@ -78,9 +78,9 @@
         >
           Cancel
         </v-btn>
-        
+
         <v-spacer />
-        
+
         <div class="d-flex ga-3">
           <v-btn
             v-if="currentStep > 1"
@@ -91,7 +91,7 @@
           >
             Back
           </v-btn>
-          
+
           <v-btn
             v-if="currentStep < 3"
             color="primary"
@@ -103,7 +103,7 @@
           >
             Next
           </v-btn>
-          
+
           <v-btn
             v-if="currentStep === 3"
             color="primary"
@@ -163,15 +163,15 @@ const step3Valid = ref(true)
 
 // Form data - Use a function to create initial state
 const createInitialFormData = () => ({
-  title: '', 
-  description: '', 
-  region: '', 
-  coordinatorId: '', 
+  title: '',
+  description: '',
+  region: '',
+  coordinatorId: '',
   priority: 'normal',
-  deadline: null, 
-  stages: [], 
-  visibility: 'coordinator', 
-  tags: [], 
+  deadline: null,
+  stages: [],
+  visibility: 'coordinator',
+  tags: [],
   enableForum: true,
   requiresApproval: true,
   templateId: null
@@ -204,8 +204,7 @@ function updateFormData(newData) {
 }
 
 function onCoordinatorAutoSelected(event) {
-  console.log('Coordinator auto-selected:', event)
-}
+  }
 
 function handleCancel() {
   if (!saving.value) {
@@ -249,9 +248,9 @@ async function handleSave() {
       ...formData.value,
       deadline: formData.value.deadline ? new Date(formData.value.deadline).toISOString() : null
     }
-    
+
     const newProject = await createProject(projectData)
-    
+
     // Log audit event
     await logEvent('project_created', {
       projectId: newProject.id,
@@ -259,20 +258,19 @@ async function handleSave() {
       region: newProject.region,
       coordinatorId: newProject.coordinatorId
     })
-    
+
     showSuccess('Project created successfully')
     emit('created', newProject)
-    
+
     // Reset and close
     resetForm()
     dialogOpen.value = false
-    
+
     // Navigate to the new project (if route exists)
     if (router.hasRoute('project-detail')) {
       router.push({ name: 'project-detail', params: { id: newProject.id } })
     }
   } catch (error) {
-    console.error('Error creating project:', error)
     showError(error.message || 'Failed to create project')
   } finally {
     saving.value = false
@@ -282,12 +280,12 @@ async function handleSave() {
 function resetForm() {
   // Reset step
   currentStep.value = 1
-  
+
   // Reset validation states
   step1Valid.value = false
   step2Valid.value = true
   step3Valid.value = true
-  
+
   // Reset form data by creating new object
   formData.value = createInitialFormData()
 }
@@ -369,11 +367,11 @@ watch(dialogOpen, (isOpen) => {
   .v-card-title {
     padding: 16px !important;
   }
-  
+
   .v-card-title h2 {
     font-size: 1.125rem !important;
   }
-  
+
   .form-container {
     max-height: 70vh;
   }

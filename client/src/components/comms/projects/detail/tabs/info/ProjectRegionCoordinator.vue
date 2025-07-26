@@ -30,10 +30,10 @@
           />
         </div>
       </v-col>
-      
+
       <v-col cols="12" sm="6">
         <div class="field-group">
-          <label>Coordinator 
+          <label>Coordinator
             <span v-if="editing && autoSelected" class="text-caption text-grey">(Auto-assigned)</span>
           </label>
           <!-- Show text in view mode -->
@@ -60,7 +60,7 @@
         </div>
       </v-col>
     </v-row>
-    
+
     <!-- Non-default coordinator alert - moved outside of v-row for better display -->
     <v-row v-if="editing && showNonDefaultAlert" class="mt-0">
       <v-col cols="12">
@@ -74,7 +74,7 @@
         >
           <strong>Non-default coordinator selected</strong>
           <div class="mt-1">
-            You've selected <strong>{{ nonDefaultCoordinatorName }}</strong> instead of the default coordinator for this region. 
+            You've selected <strong>{{ nonDefaultCoordinatorName }}</strong> instead of the default coordinator for this region.
             This is allowed but may require additional coordination.
           </div>
         </v-alert>
@@ -134,12 +134,6 @@ const showNonDefaultAlert = ref(false)
 const nonDefaultCoordinatorName = ref('')
 
 // Debug logging
-console.log('ProjectRegionCoordinator props:', {
-  region: props.region,
-  coordinatorId: props.coordinatorId,
-  editing: props.editing
-})
-
 // Region options with proper formatting
 const regionOptions = computed(() => {
   const options = formatRegionOptions(LOUISIANA_REGIONS)
@@ -159,19 +153,17 @@ const displayedRegion = computed(() => {
 })
 
 const displayedCoordinator = computed(() => {
-  console.log('Computing displayed coordinator for ID:', localCoordinatorId.value)
   if (!localCoordinatorId.value) return 'Not assigned'
-  
+
   // Use the composable's function to get the display name
   const displayName = getCoordinatorDisplayName(localCoordinatorId.value)
-  console.log('Display name:', displayName)
   return displayName
 })
 
 // Format coordinators for v-select with all coordinators visible
 const coordinatorOptions = computed(() => {
   if (!allCoordinators.value.length) return []
-  
+
   return formatCoordinatorsForSelect(localRegion.value)
 })
 
@@ -212,7 +204,7 @@ function handleNonDefaultSelected(selectedItem) {
 watch(localRegion, async (newRegion, oldRegion) => {
   if (newRegion !== oldRegion) {
     emit('update:region', newRegion)
-    
+
     if (!newRegion) {
       // Clear coordinator when region is cleared
       localCoordinatorId.value = ''
@@ -222,17 +214,17 @@ watch(localRegion, async (newRegion, oldRegion) => {
       emit('update:coordinator', '')
       return
     }
-    
+
     // Clear existing coordinator and state when region changes
     localCoordinatorId.value = ''
     autoSelected.value = false
     showNonDefaultAlert.value = false
     nonDefaultCoordinatorName.value = ''
     emit('update:coordinator', '')
-    
+
     // Wait for the clear to propagate
     await nextTick()
-    
+
     // Then auto-select the new region's default coordinator
     await autoSelectCoordinator()
   }
@@ -251,7 +243,6 @@ watch(() => props.region, (newValue) => {
 })
 
 watch(() => props.coordinatorId, (newValue) => {
-  console.log('Coordinator prop changed:', newValue, 'current:', localCoordinatorId.value)
   if (newValue !== localCoordinatorId.value) {
     localCoordinatorId.value = newValue
   }
@@ -268,10 +259,10 @@ onMounted(async () => {
   // Set initial local values from props
   localRegion.value = props.region || ''
   localCoordinatorId.value = props.coordinatorId || ''
-  
+
   // Load all coordinators
   await loadAllCoordinators()
-  
+
   // If editing mode and region is set but no coordinator, auto-select
   if (props.editing && localRegion.value && !props.coordinatorId) {
     await autoSelectCoordinator()

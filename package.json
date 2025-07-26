@@ -3,5 +3,8 @@
     "firebase-admin": "^13.4.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.31"
+  },
+  "dependencies": {
+    "glob": "^11.0.3"
   }
 }

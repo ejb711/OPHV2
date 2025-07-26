@@ -56,6 +56,8 @@
 </template>
 
 <script setup>
+import { watch } from 'vue'
+
 // Props
 const props = defineProps({
   totalCoordinators: {
@@ -71,4 +73,8 @@ const props = defineProps({
     default: 0
   }
 })
+
+// Debug props
+watch(() => props, (newProps) => {
+  }, { immediate: true, deep: true })
 </script>

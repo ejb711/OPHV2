@@ -39,15 +39,15 @@
         <pre v-if="rawProjects.length" class="text-caption">{{ JSON.stringify(rawProjects.slice(0, 2), null, 2) }}</pre>
         <p v-else class="text-caption text-red">No projects fetched from Firestore</p>
 
-        <v-btn 
-          class="mt-3" 
-          size="small" 
+        <v-btn
+          class="mt-3"
+          size="small"
           color="orange"
           @click="testDirectQuery"
         >
           Test Direct Firestore Query
         </v-btn>
-        
+
         <div v-if="directQueryResult" class="mt-2">
           <strong>Direct Query Result:</strong>
           <pre class="text-caption">{{ directQueryResult }}</pre>
@@ -99,10 +99,10 @@ const filteredProjects = computed(() => props.projects || [])
 async function testDirectQuery() {
   try {
     directQueryResult.value = 'Querying...'
-    
+
     const q = query(collection(db, 'comms_projects'), limit(5))
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       directQueryResult.value = 'No documents found in comms_projects collection'
     } else {
@@ -115,17 +115,12 @@ async function testDirectQuery() {
     }
   } catch (error) {
     directQueryResult.value = `Error: ${error.message}`
-    console.error('Direct query error:', error)
-  }
+    }
 }
 
 // Lifecycle
 onMounted(() => {
-  console.log('Debug Component Mounted')
-  console.log('Auth Store:', authStore)
-  console.log('Current User:', authStore.currentUser)
-  console.log('User Permissions:', authStore.userPermissions)
-})
+  })
 </script>
 
 <style scoped>

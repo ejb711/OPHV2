@@ -93,8 +93,7 @@ async function loadUsers() {
       displayName: doc.data().displayName || doc.data().email
     }))
   } catch (error) {
-    console.error('Error loading users:', error)
-  } finally {
+    } finally {
     loading.value = false
   }
 }

@@ -6,13 +6,13 @@
 <template>
   <div>
     <!-- Main Metrics Component -->
-    <CommsStatsMetrics 
+    <CommsStatsMetrics
       :analytics="analytics"
       class="mb-4"
     />
 
     <!-- Status and Priority Distribution Component -->
-    <CommsStatsDistributions 
+    <CommsStatsDistributions
       v-if="showDistributions"
       :status-breakdown="analytics?.statusBreakdown"
       :priority-breakdown="analytics?.priorityBreakdown"
@@ -29,12 +29,13 @@
 </template>
 
 <script setup>
+import { watch } from 'vue'
 // Child Components
 import CommsStatsMetrics from './stats/CommsStatsMetrics.vue'
 import CommsStatsDistributions from './stats/CommsStatsDistributions.vue'
 import CommsStatsAdditional from './stats/CommsStatsAdditional.vue'
 
-// Props
+// Debug incoming analytics
 const props = defineProps({
   analytics: {
     type: Object,
@@ -59,4 +60,8 @@ const props = defineProps({
     default: true
   }
 })
+
+// Debug analytics prop
+watch(() => props.analytics, (newAnalytics) => {
+  }, { immediate: true, deep: true })
 </script>

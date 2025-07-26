@@ -12,16 +12,16 @@
     </div>
 
     <!-- Loading State -->
-    <v-progress-linear 
-      v-if="loading" 
-      indeterminate 
+    <v-progress-linear
+      v-if="loading"
+      indeterminate
       color="primary"
       class="mb-4"
     />
 
     <!-- Error State - Simple and Direct -->
-    <div 
-      v-if="error" 
+    <div
+      v-if="error"
       class="mb-4 pa-3 rounded d-flex align-center justify-space-between"
       style="background-color: #ffebee; color: #c62828; border: 1px solid #ef5350;"
     >
@@ -39,14 +39,14 @@
     </div>
 
     <!-- Messages Container -->
-    <div 
+    <div
       ref="messagesContainer"
       class="messages-container"
       :class="{ 'messages-empty': !visibleMessages.length && !loading }"
       @scroll.passive="updateScrollPosition"
     >
       <!-- Empty State -->
-      <div 
+      <div
         v-if="!visibleMessages.length && !loading"
         class="text-center py-8"
       >
@@ -144,13 +144,12 @@ const messageCountRef = ref(0)
 const doScrollToBottom = () => {
   const container = messagesContainer.value
   if (!container) {
-    console.warn('No messages container found')
     return
   }
-  
+
   // Direct DOM manipulation - most reliable
   container.scrollTop = container.scrollHeight
-  
+
   // Update button visibility
   showScrollButton.value = false
   isNearBottom.value = true
@@ -160,29 +159,28 @@ const doScrollToBottom = () => {
 const updateScrollPosition = () => {
   const container = messagesContainer.value
   if (!container) return
-  
+
   const { scrollTop, scrollHeight, clientHeight } = container
   const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-  
+
   // Track if near bottom (within 100px)
   isNearBottom.value = distanceFromBottom < 100
   showScrollButton.value = distanceFromBottom > 100
-  
+
   lastScrollTop.value = scrollTop
 }
 
 // Handle sending a message
 const handleSend = async (content) => {
   handleClearError()
-  
+
   const success = await sendMessage(content)
   if (success) {
     showSnackbar('Message sent', 'success')
     // Always scroll to bottom for own messages
     setTimeout(doScrollToBottom, 150)
   } else {
-    console.error('Failed to send message:', error.value)
-  }
+    }
 }
 
 // Handle editing a message
@@ -198,10 +196,10 @@ const handleEdit = async ({ messageId, content }) => {
 // Handle deleting a message
 const handleDelete = async (messageId) => {
   const isAdmin = authStore.hasPermission('manage_comms')
-  const success = isAdmin 
+  const success = isAdmin
     ? await hardDeleteMessage(messageId)
     : await deleteMessage(messageId)
-    
+
   if (success) {
     showSnackbar('Message deleted', 'success')
   } else {
@@ -222,10 +220,10 @@ const handleClearError = () => {
 watch(() => visibleMessages.value.length, (newCount, oldCount) => {
   // Store the count
   messageCountRef.value = newCount
-  
+
   // Skip if no messages
   if (newCount === 0) return
-  
+
   // Initial load or new message
   if (oldCount === 0 || (newCount > oldCount && isNearBottom.value)) {
     // Use RAF to ensure DOM is updated
@@ -248,7 +246,7 @@ watch(loading, (isLoading, wasLoading) => {
 // Lifecycle
 onMounted(() => {
   watchMessages()
-  
+
   // Initial scroll after mount
   setTimeout(() => {
     if (visibleMessages.value.length > 0) {

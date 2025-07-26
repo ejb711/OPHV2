@@ -1,34 +1,34 @@
 import { onSnapshot, doc } from 'firebase/firestore'
 import { db } from '@/firebase'
 
-export function createProjectOperations(state, computed, editOperations, { 
-  getProject, 
-  softDeleteProject, 
-  hardDeleteProject, 
-  logEvent, 
-  showError 
+export function createProjectOperations(state, computed, editOperations, {
+  getProject,
+  softDeleteProject,
+  hardDeleteProject,
+  logEvent,
+  showError
 }) {
   async function open(projectId, startInEditMode = false) {
     if (!projectId) return
-    
+
     state.loading.value = true
     state.error.value = null
     state.dialogOpen.value = true
-    
+
     try {
       const projectData = await getProject(projectId)
       state.project.value = projectData
       editOperations.resetEditedProject()
-      
+
       // Start in edit mode if requested
       if (startInEditMode && computed.canEdit?.value) {
         editOperations.startEdit()
       }
-      
+
       state.unsubscribe = onSnapshot(doc(db, 'comms_projects', projectId), (doc) => {
         if (doc.exists()) {
           state.project.value = { id: doc.id, ...doc.data() }
-          
+
           if (!state.editing.value) {
             editOperations.resetEditedProject()
           }
@@ -37,9 +37,8 @@ export function createProjectOperations(state, computed, editOperations, {
           state.project.value = null
         }
       })
-      
+
     } catch (err) {
-      console.error('Error loading project:', err)
       state.error.value = err.message || 'Failed to load project'
     } finally {
       state.loading.value = false
@@ -52,9 +51,9 @@ export function createProjectOperations(state, computed, editOperations, {
 
   async function confirmDelete(hardDelete = false) {
     if (!state.project.value) return
-    
+
     state.deleting.value = true
-    
+
     try {
       if (hardDelete) {
         await hardDeleteProject(state.project.value.id)
@@ -69,11 +68,10 @@ export function createProjectOperations(state, computed, editOperations, {
           projectTitle: state.project.value.title
         })
       }
-      
+
       close()
-      
+
     } catch (err) {
-      console.error('Error deleting project:', err)
       showError(err.message || 'Failed to delete project')
     } finally {
       state.deleting.value = false
@@ -87,12 +85,12 @@ export function createProjectOperations(state, computed, editOperations, {
         return
       }
     }
-    
+
     if (state.unsubscribe) {
       state.unsubscribe()
       state.unsubscribe = null
     }
-    
+
     state.dialogOpen.value = false
     state.project.value = null
     state.editedProject.value = {}

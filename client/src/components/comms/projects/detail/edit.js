@@ -12,14 +12,14 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
         return
       }
     }
-    
+
     state.editing.value = false
     resetEditedProject()
   }
 
   function resetEditedProject() {
     if (!state.project.value) return
-    
+
     state.editedProject.value = {
       title: state.project.value.title,
       description: state.project.value.description || '',
@@ -44,17 +44,15 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
   }
 
   async function handleDirectUpdate(updates) {
-    console.log('handleDirectUpdate called with:', updates)
     if (!state.project.value || !computed.canEdit.value) {
-      console.log('Cannot update - no project or no edit permission')
       return
     }
-    
+
     state.saving.value = true
-    
+
     try {
       const projectUpdates = {}
-      
+
       if (updates.stageIndex !== undefined && updates.stageUpdate) {
         const stages = [...state.project.value.stages]
         stages[updates.stageIndex] = {
@@ -63,37 +61,35 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
         }
         projectUpdates.stages = stages
       }
-      
+
       // Handle direct stages array update
       if (updates.stages !== undefined) {
         projectUpdates.stages = updates.stages
       }
-      
+
       if (updates.currentStageIndex !== undefined) {
         projectUpdates.currentStageIndex = updates.currentStageIndex
       }
-      
+
       if (updates.status !== undefined) {
         projectUpdates.status = updates.status
       }
-      
+
       if (updates.isApproved !== undefined) {
         projectUpdates.isApproved = updates.isApproved
       }
-      
-      console.log('Updating project with:', projectUpdates)
+
       await updateProject(state.project.value.id, projectUpdates)
-      
+
       await logEvent('stage_updated', {
         projectId: state.project.value.id,
         projectTitle: state.project.value.title,
         updates: projectUpdates
       })
-      
+
       showSuccess('Stage updated successfully')
-      
+
     } catch (err) {
-      console.error('Error updating stage:', err)
       showError(err.message || 'Failed to update stage')
     } finally {
       state.saving.value = false
@@ -102,19 +98,19 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
 
   async function saveChanges() {
     if (!computed.hasChanges.value || !state.project.value) return
-    
+
     state.saving.value = true
-    
+
     try {
       const updates = {}
-      const fields = ['title', 'description', 'region', 'coordinatorId', 
+      const fields = ['title', 'description', 'region', 'coordinatorId',
                       'priority', 'deadline', 'tags', 'stages', 'currentStageIndex',
                       'requiresApproval', 'status']
-      
+
       fields.forEach(field => {
         const original = state.project.value[field]
         const edited = state.editedProject.value[field]
-        
+
         if (field === 'deadline') {
           const origDate = toDate(original)
           const editDate = toDate(edited)
@@ -131,25 +127,24 @@ export function createEditOperations(state, computed, { updateProject, logEvent,
           updates[field] = edited
         }
       })
-      
+
       if (Object.keys(updates).length === 0) {
         state.editing.value = false
         return
       }
-      
+
       await updateProject(state.project.value.id, updates)
-      
+
       await logEvent('project_updated', {
         projectId: state.project.value.id,
         projectTitle: state.project.value.title,
         fieldsUpdated: Object.keys(updates)
       })
-      
+
       state.editing.value = false
       showSuccess('Project updated successfully')
-      
+
     } catch (err) {
-      console.error('Error saving changes:', err)
       showError(err.message || 'Failed to save changes')
     } finally {
       state.saving.value = false

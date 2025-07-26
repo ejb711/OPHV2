@@ -66,7 +66,7 @@ const permissionToDelete = ref(null)
 // Check if permission is a system permission
 const isSystemPermission = (permissionId) => {
   const systemPermissions = [
-    'access_admin', 'manage_users', 'view_users', 'manage_roles', 
+    'access_admin', 'manage_users', 'view_users', 'manage_roles',
     'manage_permissions', 'manage_settings', 'view_audit_logs',
     'view_calendar', 'create_events', 'edit_events', 'delete_events',
     'view_forums', 'create_posts', 'edit_posts', 'delete_posts', 'moderate_posts',
@@ -79,38 +79,38 @@ const isSystemPermission = (permissionId) => {
 // Delete permission
 async function deletePermission(permission) {
   if (!permission) return
-  
+
   // Don't allow deleting system permissions
   if (isSystemPermission(permission.id)) {
     showSnackbar('Cannot delete system permissions', 'error')
     return
   }
-  
+
   permissionToDelete.value = permission
   showDeletePermissionDialog.value = true
 }
 
 async function confirmDeletePermission() {
   if (!permissionToDelete.value) return
-  
+
   saving.value = true
-  
+
   try {
     // Find all documents with this permission ID (there should only be one)
     const permissionQuery = query(collection(db, 'permissions'), where('id', '==', permissionToDelete.value.id))
     const permissionDocs = await getDocs(permissionQuery)
-    
+
     if (permissionDocs.empty) {
       showSnackbar('Permission not found', 'error')
       saving.value = false
       return
     }
-    
+
     // Delete the permission document
     for (const doc of permissionDocs.docs) {
       await deleteDoc(doc.ref)
     }
-    
+
     // Remove from all roles that have this permission
     for (const role of permissionsStore.allRoles) {
       if (role.permissions?.includes(permissionToDelete.value.id)) {
@@ -118,25 +118,24 @@ async function confirmDeletePermission() {
         await permissionsStore.updateRolePermissions(role.id, newPermissions)
       }
     }
-    
+
     // Log activity before clearing the reference
     emit('activity', {
       type: 'permission_deleted',
       permissionId: permissionToDelete.value.id,
       permissionName: permissionToDelete.value.name
     })
-    
+
     showSnackbar('Permission deleted successfully', 'success')
     showDeletePermissionDialog.value = false
     permissionToDelete.value = null
-    
+
     // Reload data
     await permissionsStore.loadAllData()
   } catch (error) {
-    console.error('Error deleting permission:', error)
     showSnackbar('Failed to delete permission', 'error')
   }
-  
+
   saving.value = false
 }
 
@@ -206,7 +205,7 @@ const filteredRoles = computed(() => {
 // Permission categories to display
 const permissionCategories = computed(() => {
   const categories = Object.keys(permissionsStore.permissionsByCategory)
-  return categories.filter(cat => 
+  return categories.filter(cat =>
     permissionsStore.permissionsByCategory[cat]?.length > 0
   )
 })
@@ -237,7 +236,7 @@ const isInheritedPermission = (roleId, permissionId) => {
 const getRoleCategoryCount = (roleId, category) => {
   const role = permissionsStore.allRoles.find(r => r.id === roleId)
   if (!role) return 0
-  
+
   const categoryPerms = permissionsStore.permissionsByCategory[category] || []
   return categoryPerms.filter(p => role.permissions?.includes(p.id)).length
 }
@@ -246,7 +245,7 @@ const getRoleCategoryCount = (roleId, category) => {
 const roleHasAllInCategory = (roleId, category) => {
   const role = permissionsStore.allRoles.find(r => r.id === roleId)
   if (!role) return false
-  
+
   const categoryPerms = permissionsStore.permissionsByCategory[category] || []
   return categoryPerms.every(p => role.permissions?.includes(p.id))
 }
@@ -261,16 +260,14 @@ const roleHasSomeInCategory = (roleId, category) => {
 /* ---------- lifecycle ---------- */
 onMounted(async () => {
   loading.value = true
-  
+
   // Load initial data
   await permissionsStore.loadAllData()
-  
+
   // DEBUG: Check role data
-  console.log('All roles:', permissionsStore.allRoles)
   permissionsStore.allRoles.forEach(role => {
-    console.log(`Role: ${role.name}, isSystemRole: ${role.isSystemRole}, id: ${role.id}`)
-  })
-  
+    })
+
   // Set up real-time listeners for roles
   unsubscribeRoles = onSnapshot(
     collection(db, 'roles'),
@@ -282,7 +279,6 @@ onMounted(async () => {
       permissionsStore.allRoles = roles
     },
     (error) => {
-      console.error('Error listening to roles:', error)
       showSnackbar('Error loading roles', 'error')
     }
   )
@@ -298,7 +294,6 @@ onMounted(async () => {
       permissionsStore.allPermissions = permissions
     },
     (error) => {
-      console.error('Error listening to permissions:', error)
       showSnackbar('Error loading permissions', 'error')
     }
   )
@@ -342,7 +337,7 @@ async function togglePermission(roleId, permissionId, skipWarning = false) {
   }
 
   const result = await permissionsStore.updateRolePermissions(roleId, newPermissions)
-  
+
   if (result.success) {
     emit('activity', {
       type: 'permission_toggle',
@@ -354,7 +349,7 @@ async function togglePermission(roleId, permissionId, skipWarning = false) {
   } else {
     showSnackbar(result.error || 'Failed to update permission', 'error')
   }
-  
+
   saving.value = false
 }
 
@@ -372,7 +367,7 @@ function confirmSystemRoleEdit() {
 async function toggleCategoryForRole(roleId, category) {
   const role = permissionsStore.allRoles.find(r => r.id === roleId)
   if (!role) return
-  
+
   // Show warning for system roles
   if (isSystemRole(role)) {
     showSnackbar('Editing system role - use with caution!', 'warning')
@@ -382,7 +377,7 @@ async function toggleCategoryForRole(roleId, category) {
   const categoryPerms = permissionsStore.permissionsByCategory[category] || []
   const categoryPermIds = categoryPerms.map(p => p.id)
   const currentPermissions = role.permissions || []
-  
+
   let newPermissions
   if (roleHasAllInCategory(roleId, category)) {
     // Remove all category permissions
@@ -394,7 +389,7 @@ async function toggleCategoryForRole(roleId, category) {
   }
 
   const result = await permissionsStore.updateRolePermissions(roleId, newPermissions)
-  
+
   if (result.success) {
     emit('activity', {
       type: 'category_toggle',
@@ -406,7 +401,7 @@ async function toggleCategoryForRole(roleId, category) {
   } else {
     showSnackbar(result.error || 'Failed to update permissions', 'error')
   }
-  
+
   saving.value = false
 }
 
@@ -423,7 +418,7 @@ async function bulkGrantPermission(permissionId) {
   for (const roleId of selectedRoles.value) {
     const role = permissionsStore.allRoles.find(r => r.id === roleId)
     if (!role) continue
-    
+
     // Show warning for system roles
     if (isSystemRole(role)) {
       showSnackbar('Including system roles in bulk operation', 'warning')
@@ -442,7 +437,7 @@ async function bulkGrantPermission(permissionId) {
     permissionId,
     roleCount: successCount
   })
-  
+
   showSnackbar(`Granted permission to ${successCount} roles`, 'success')
   saving.value = false
 }
@@ -460,7 +455,7 @@ async function bulkRevokePermission(permissionId) {
   for (const roleId of selectedRoles.value) {
     const role = permissionsStore.allRoles.find(r => r.id === roleId)
     if (!role) continue
-    
+
     // Show warning for system roles
     if (isSystemRole(role)) {
       showSnackbar('Including system roles in bulk operation', 'warning')
@@ -479,7 +474,7 @@ async function bulkRevokePermission(permissionId) {
     permissionId,
     roleCount: successCount
   })
-  
+
   showSnackbar(`Revoked permission from ${successCount} roles`, 'success')
   saving.value = false
 }
@@ -487,7 +482,7 @@ async function bulkRevokePermission(permissionId) {
 // Export matrix data
 function exportMatrix(format = 'csv') {
   const data = []
-  
+
   // Headers
   const headers = ['Role']
   permissionCategories.value.forEach(category => {
@@ -495,7 +490,7 @@ function exportMatrix(format = 'csv') {
     perms.forEach(p => headers.push(p.name))
   })
   data.push(headers)
-  
+
   // Rows
   filteredRoles.value.forEach(role => {
     const row = [role.name]
@@ -541,14 +536,14 @@ async function createPermission() {
   permissionFormTouched.value.name = true
   permissionFormTouched.value.id = true
   permissionFormTouched.value.category = true
-  
+
   if (!newPermissionForm.value.id || !newPermissionForm.value.name || !newPermissionForm.value.category) {
     showSnackbar('Please fill in all required fields', 'warning')
     return
   }
 
   saving.value = true
-  
+
   try {
     // Check if permission ID already exists
     const exists = permissionsStore.allPermissions.some(p => p.id === newPermissionForm.value.id)
@@ -570,13 +565,13 @@ async function createPermission() {
 
     showSnackbar('Permission created successfully', 'success')
     showCreatePermissionDialog.value = false
-    
+
     // Log activity
     emit('activity', {
       type: 'permission_created',
       permissionId: newPermissionForm.value.id
     })
-    
+
     // Reset form
     newPermissionForm.value = {
       id: '',
@@ -590,10 +585,9 @@ async function createPermission() {
       category: false
     }
   } catch (error) {
-    console.error('Error creating permission:', error)
     showSnackbar('Failed to create permission', 'error')
   }
-  
+
   saving.value = false
 }
 
@@ -619,11 +613,11 @@ watch(showCreateCategoryDialog, (newVal) => {
 watch(showCreatePermissionDialog, (newVal) => {
   if (newVal && !newPermissionForm.value.category) {
     // Reset form when opening (unless category is pre-selected)
-    newPermissionForm.value = { 
-      id: '', 
-      name: '', 
-      description: '', 
-      category: newPermissionForm.value.category || '' 
+    newPermissionForm.value = {
+      id: '',
+      name: '',
+      description: '',
+      category: newPermissionForm.value.category || ''
     }
     permissionFormTouched.value = {
       name: false,
@@ -659,7 +653,7 @@ async function createCategory() {
   // Mark all fields as touched
   categoryFormTouched.value.name = true
   categoryFormTouched.value.id = true
-  
+
   if (!newCategoryForm.value.id || !newCategoryForm.value.name) {
     showSnackbar('Please fill in all required fields', 'warning')
     return
@@ -679,7 +673,7 @@ async function createCategory() {
 
   showSnackbar(`Category "${newCategoryForm.value.name}" created. Add permissions to populate it.`, 'success')
   showCreateCategoryDialog.value = false
-  
+
   // Reset form and touched state
   newCategoryForm.value = {
     id: '',
@@ -689,7 +683,7 @@ async function createCategory() {
     name: false,
     id: false
   }
-  
+
   // Open create permission dialog with new category pre-selected
   newPermissionForm.value.category = categoryId
   showCreatePermissionDialog.value = true
@@ -817,10 +811,10 @@ function getRoleColor(role) {
               </template>
               <v-list-item-title>New Permission</v-list-item-title>
             </v-list-item>
-            <v-list-item @click="() => { 
-              newCategoryForm.value = { id: '', name: '' }; 
+            <v-list-item @click="() => {
+              newCategoryForm.value = { id: '', name: '' };
               categoryFormTouched.value = { name: false, id: false };
-              showCreateCategoryDialog = true 
+              showCreateCategoryDialog = true
             }">
               <template v-slot:prepend>
                 <v-icon size="small">mdi-folder-plus</v-icon>
@@ -972,10 +966,10 @@ function getRoleColor(role) {
                   ></v-checkbox>
                   Roles
                 </th>
-                
+
                 <!-- Permission Category Headers -->
-                <th 
-                  v-for="category in permissionCategories" 
+                <th
+                  v-for="category in permissionCategories"
                   :key="`cat-${category}`"
                   :colspan="isCategoryCollapsed(category) ? 1 : (permissionsStore.permissionsByCategory[category] || []).length"
                   class="category-header"
@@ -994,12 +988,12 @@ function getRoleColor(role) {
                   </div>
                 </th>
               </tr>
-              
+
               <!-- Individual Permission Headers -->
               <tr>
                 <th class="sticky-column"></th>
                 <template v-for="category in permissionCategories" :key="`perms-${category}`">
-                  <th 
+                  <th
                     v-if="isCategoryCollapsed(category)"
                     class="permission-header collapsed-category"
                     @mouseenter="hoveredCategory = category"
@@ -1009,18 +1003,18 @@ function getRoleColor(role) {
                       <v-icon size="small" :title="`${(permissionsStore.permissionsByCategory[category] || []).length} permissions`">
                         mdi-dots-horizontal
                       </v-icon>
-                      
+
                       <!-- Hover Popup -->
-                      <div 
-                        v-if="hoveredCategory === category" 
+                      <div
+                        v-if="hoveredCategory === category"
                         class="permission-hover-popup"
                       >
                         <div class="popup-header">
                           {{ formatCategoryName(category) }}
                         </div>
                         <div class="popup-permissions">
-                          <div 
-                            v-for="perm in (permissionsStore.permissionsByCategory[category] || [])" 
+                          <div
+                            v-for="perm in (permissionsStore.permissionsByCategory[category] || [])"
                             :key="perm.id"
                             class="popup-permission"
                           >
@@ -1030,19 +1024,19 @@ function getRoleColor(role) {
                       </div>
                     </div>
                   </th>
-                  <th 
+                  <th
                     v-else
-                    v-for="permission in (permissionsStore.permissionsByCategory[category] || [])" 
+                    v-for="permission in (permissionsStore.permissionsByCategory[category] || [])"
                     :key="permission.id"
                     class="permission-header"
                     :title="permission.description"
                   >
                     <div class="permission-name d-flex align-center">
                       <span>{{ permission.name }}</span>
-                      <v-icon 
-                        v-if="!isSystemPermission(permission.id)" 
-                        size="x-small" 
-                        color="info" 
+                      <v-icon
+                        v-if="!isSystemPermission(permission.id)"
+                        size="x-small"
+                        color="info"
                         class="ml-1"
                         title="Custom permission (can be deleted)"
                       >
@@ -1067,7 +1061,7 @@ function getRoleColor(role) {
                       density="compact"
                       class="mr-2"
                     ></v-checkbox>
-                    
+
                     <v-chip
                       :color="getRoleColor(role)"
                       :variant="isSystemRole(role) ? 'flat' : 'outlined'"
@@ -1076,7 +1070,7 @@ function getRoleColor(role) {
                     >
                       {{ role.name }}
                     </v-chip>
-                    
+
                     <v-icon v-if="isSystemRole(role)" size="x-small" class="text-medium-emphasis" title="System Role">
                       mdi-shield-check
                     </v-icon>
@@ -1085,17 +1079,17 @@ function getRoleColor(role) {
 
                 <!-- Permission Cells -->
                 <template v-for="category in permissionCategories" :key="`${role.id}-${category}`">
-                  <td 
+                  <td
                     v-if="isCategoryCollapsed(category)"
                     class="permission-cell collapsed text-center"
                     :title="`${getRoleCategoryCount(role.id, category)}/${(permissionsStore.permissionsByCategory[category] || []).length} permissions`"
                     @click="toggleCategoryForRole(role.id, category)"
                     style="cursor: pointer;"
                   >
-                    <v-chip 
-                      size="x-small" 
-                      :color="roleHasAllInCategory(role.id, category) ? 'success' : 
-                              roleHasSomeInCategory(role.id, category) ? 'warning' : 
+                    <v-chip
+                      size="x-small"
+                      :color="roleHasAllInCategory(role.id, category) ? 'success' :
+                              roleHasSomeInCategory(role.id, category) ? 'warning' :
                               'default'"
                       variant="tonal"
                     >
@@ -1103,8 +1097,8 @@ function getRoleColor(role) {
                     </v-chip>
                   </td>
                   <template v-else>
-                    <td 
-                      v-for="permission in (permissionsStore.permissionsByCategory[category] || [])" 
+                    <td
+                      v-for="permission in (permissionsStore.permissionsByCategory[category] || [])"
                       :key="`${role.id}-${permission.id}`"
                       class="permission-cell"
                       :class="{
@@ -1151,7 +1145,7 @@ function getRoleColor(role) {
                   <v-icon size="small" class="mr-2">{{ getCategoryIcon(category) }}</v-icon>
                   <span class="text-h6">{{ formatCategoryName(category) }}</span>
                   <v-spacer></v-spacer>
-                  
+
                   <!-- Category Summary -->
                   <div class="text-caption text-medium-emphasis mr-4">
                     {{ (permissionsStore.permissionsByCategory[category] || []).length }} permissions
@@ -1172,7 +1166,7 @@ function getRoleColor(role) {
                         >
                           {{ role.name }}
                         </v-chip>
-                        
+
                         <!-- Category Toggle -->
                         <div class="mt-2">
                           <v-btn
@@ -1182,14 +1176,14 @@ function getRoleColor(role) {
                             @click="toggleCategoryForRole(role.id, category)"
                           >
                             <v-icon size="x-small">
-                              {{ roleHasAllInCategory(role.id, category) ? 'mdi-checkbox-marked' : 
-                                 roleHasSomeInCategory(role.id, category) ? 'mdi-checkbox-intermediate' : 
+                              {{ roleHasAllInCategory(role.id, category) ? 'mdi-checkbox-marked' :
+                                 roleHasSomeInCategory(role.id, category) ? 'mdi-checkbox-intermediate' :
                                  'mdi-checkbox-blank-outline' }}
                             </v-icon>
                             All
                           </v-btn>
                         </div>
-                        
+
                         <!-- Permission Count -->
                         <div class="text-caption text-medium-emphasis">
                           {{ getRoleCategoryCount(role.id, category) }}/{{ (permissionsStore.permissionsByCategory[category] || []).length }}
@@ -1197,7 +1191,7 @@ function getRoleColor(role) {
                       </th>
                     </tr>
                   </thead>
-                  
+
                   <tbody>
                     <tr v-for="permission in (permissionsStore.permissionsByCategory[category] || [])" :key="permission.id">
                       <td>
@@ -1223,9 +1217,9 @@ function getRoleColor(role) {
                           </PermissionGuard>
                         </div>
                       </td>
-                      
+
                       <td v-for="role in filteredRoles" :key="`${role.id}-${permission.id}`" class="text-center">
-                        <v-tooltip 
+                        <v-tooltip
                           v-if="isSystemRole(role)"
                           bottom
                         >
@@ -1254,7 +1248,7 @@ function getRoleColor(role) {
                         ></v-checkbox>
                       </td>
                     </tr>
-                    
+
                     <tr v-if="selectedRoles.length > 0" class="bulk-actions-row">
                       <td colspan="100%">
                         <div class="text-center">
@@ -1311,9 +1305,9 @@ function getRoleColor(role) {
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-alert 
-            type="warning" 
-            variant="tonal" 
+          <v-alert
+            type="warning"
+            variant="tonal"
             class="mb-4"
             density="compact"
           >
@@ -1362,8 +1356,8 @@ function getRoleColor(role) {
             required
             @blur="permissionFormTouched.id = true"
             :error-messages="
-              permissionFormTouched.id && !newPermissionForm.id ? 'ID is required' : 
-              permissionFormTouched.id && newPermissionForm.id && !/^[a-z0-9_]+$/.test(newPermissionForm.id) ? 'ID must be lowercase letters, numbers, and underscores only' : 
+              permissionFormTouched.id && !newPermissionForm.id ? 'ID is required' :
+              permissionFormTouched.id && newPermissionForm.id && !/^[a-z0-9_]+$/.test(newPermissionForm.id) ? 'ID must be lowercase letters, numbers, and underscores only' :
               ''
             "
             class="mb-4"
@@ -1456,9 +1450,9 @@ function getRoleColor(role) {
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-alert 
-            type="info" 
-            variant="tonal" 
+          <v-alert
+            type="info"
+            variant="tonal"
             class="mb-4"
             density="compact"
           >
@@ -1489,8 +1483,8 @@ function getRoleColor(role) {
             required
             @blur="categoryFormTouched.id = true"
             :error-messages="
-              categoryFormTouched.id && !newCategoryForm.id ? 'ID is required' : 
-              categoryFormTouched.id && newCategoryForm.id && !/^[a-z0-9_]+$/.test(newCategoryForm.id) ? 'ID must be lowercase letters, numbers, and underscores only' : 
+              categoryFormTouched.id && !newCategoryForm.id ? 'ID is required' :
+              categoryFormTouched.id && newCategoryForm.id && !/^[a-z0-9_]+$/.test(newCategoryForm.id) ? 'ID must be lowercase letters, numbers, and underscores only' :
               ''
             "
           ></v-text-field>
@@ -1529,24 +1523,24 @@ function getRoleColor(role) {
           <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
           Modify System Role?
         </v-card-title>
-        
+
         <v-card-text>
           <v-alert type="warning" variant="tonal" density="compact">
             You are about to modify a system role. This could affect core application functionality.
           </v-alert>
-          
+
           <p class="mt-4">
-            System roles have predefined permissions that ensure proper application operation. 
+            System roles have predefined permissions that ensure proper application operation.
             Modifying these permissions may cause unexpected behavior or security issues.
           </p>
-          
+
           <p class="font-weight-medium mt-3">
             Are you sure you want to continue?
           </p>
         </v-card-text>
-        
+
         <v-divider></v-divider>
-        
+
         <v-card-actions class="pa-4">
           <v-spacer></v-spacer>
           <v-btn
@@ -1573,24 +1567,24 @@ function getRoleColor(role) {
           <v-icon color="error" class="mr-2">mdi-delete-alert</v-icon>
           Delete Permission?
         </v-card-title>
-        
+
         <v-card-text>
           <p>
-            Are you sure you want to delete the permission 
+            Are you sure you want to delete the permission
             <strong>"{{ permissionToDelete?.name }}"</strong>?
           </p>
-          
+
           <v-alert type="warning" variant="tonal" density="compact" class="mt-3">
             This will remove the permission from all roles that currently have it assigned.
           </v-alert>
-          
+
           <p class="text-caption text-medium-emphasis mt-3">
             This action cannot be undone.
           </p>
         </v-card-text>
-        
+
         <v-divider></v-divider>
-        
+
         <v-card-actions class="pa-4">
           <v-spacer></v-spacer>
           <v-btn
@@ -1800,51 +1794,51 @@ function getRoleColor(role) {
   .sticky-column {
     background: #121212;
   }
-  
+
   .role-header,
   .permission-header {
     background: #1e1e1e;
   }
-  
+
   .category-header {
     background: #1e3a5f;
   }
-  
+
   .role-cell,
   .permission-cell {
     background: #121212;
   }
-  
+
   .permission-cell:hover:not(.read-only) {
     background: #2e2e2e;
   }
-  
+
   .permission-cell.hovered {
     background: #1e3a5f !important;
   }
-  
+
   .permission-cell.system-role {
     background: #3e2723;
   }
-  
+
   .bulk-actions-row {
     background: #3e2723;
   }
-  
+
   .permission-hover-popup {
     background: #1e1e1e;
     border-color: rgba(255, 255, 255, 0.12);
   }
-  
+
   .permission-hover-popup::before {
     border-bottom-color: #1e1e1e;
   }
-  
+
   .popup-header {
     background: #2e2e2e;
     border-bottom-color: rgba(255, 255, 255, 0.12);
   }
-  
+
   .popup-permission:hover {
     background: #2e2e2e;
   }
@@ -1859,17 +1853,17 @@ function getRoleColor(role) {
     font-size: 0.75rem;
     flex-direction: row;
   }
-  
+
   .permission-name span {
     writing-mode: horizontal-tb;
     text-orientation: unset;
   }
-  
+
   .permission-name .v-icon {
     margin-top: 0;
     margin-left: 4px;
   }
-  
+
   .permission-header {
     max-width: unset;
   }
@@ -1892,17 +1886,17 @@ function getRoleColor(role) {
     max-height: unset;
     overflow: visible;
   }
-  
+
   .sticky-column {
     position: static;
   }
-  
+
   .v-toolbar,
   .v-btn,
   .v-checkbox__input {
     display: none !important;
   }
-  
+
   .permission-cell {
     content: attr(data-checked);
   }

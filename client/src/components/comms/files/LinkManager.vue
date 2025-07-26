@@ -5,7 +5,7 @@
       <v-icon class="mr-2">mdi-link</v-icon>
       External Links
     </v-card-title>
-    
+
     <v-card-text>
       <!-- Add link form -->
       <div v-if="showForm">
@@ -20,7 +20,7 @@
             hide-details="auto"
           />
         </div>
-        
+
         <div class="mb-3">
           <div class="text-subtitle-2 mb-2">URL <span class="text-error">*</span></div>
           <v-text-field
@@ -32,7 +32,7 @@
             hide-details="auto"
           />
         </div>
-        
+
         <div class="mb-3">
           <div class="text-subtitle-2 mb-2">Description (optional)</div>
           <v-textarea
@@ -44,7 +44,7 @@
             hide-details
           />
         </div>
-        
+
         <div class="d-flex justify-end ga-2">
           <v-btn
             variant="text"
@@ -63,7 +63,7 @@
           </v-btn>
         </div>
       </div>
-      
+
       <!-- Add button -->
       <v-btn
         v-else
@@ -75,15 +75,15 @@
       >
         Add External Link
       </v-btn>
-      
+
       <!-- Links list -->
       <div v-if="links.length > 0" class="mt-4">
         <v-divider class="mb-3" />
-        
+
         <div class="text-subtitle-2 mb-2">
           {{ links.length }} External {{ links.length === 1 ? 'Link' : 'Links' }}
         </div>
-        
+
         <v-list density="compact" class="pa-0">
           <v-list-item
             v-for="link in links"
@@ -95,15 +95,15 @@
             <template #prepend>
               <v-icon size="20" class="mr-3">mdi-link-variant</v-icon>
             </template>
-            
+
             <v-list-item-title>
               {{ link.title || link.displayName || 'Untitled Link' }}
             </v-list-item-title>
-            
+
             <v-list-item-subtitle>
               {{ formatUrl(link.url) }}
             </v-list-item-subtitle>
-            
+
             <template v-if="canEdit" #append>
               <v-btn
                 icon="mdi-pencil"
@@ -123,7 +123,7 @@
         </v-list>
       </div>
     </v-card-text>
-    
+
     <!-- Delete confirmation dialog -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
@@ -137,8 +137,8 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn 
-            color="error" 
+          <v-btn
+            color="error"
             variant="elevated"
             @click="deleteLink"
           >
@@ -147,7 +147,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    
+
     <!-- Edit dialog -->
     <v-dialog v-model="editDialog" max-width="500">
       <v-card>
@@ -164,7 +164,7 @@
               hide-details="auto"
             />
           </div>
-          
+
           <div class="mb-3">
             <div class="text-subtitle-2 mb-2">URL <span class="text-error">*</span></div>
             <v-text-field
@@ -176,7 +176,7 @@
               hide-details="auto"
             />
           </div>
-          
+
           <div>
             <div class="text-subtitle-2 mb-2">Description (optional)</div>
             <v-textarea
@@ -192,8 +192,8 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
-          <v-btn 
-            color="primary" 
+          <v-btn
+            color="primary"
             variant="elevated"
             :disabled="!isEditFormValid"
             @click="saveEdit"
@@ -241,10 +241,10 @@ const newLink = ref({
 // Helper function to normalize URLs
 function normalizeUrl(url) {
   if (!url) return ''
-  
+
   // Trim whitespace
   url = url.trim()
-  
+
   // If URL doesn't start with http:// or https://, add http://
   if (!url.match(/^https?:\/\//i)) {
     // Check if it starts with // (protocol-relative URL)
@@ -253,7 +253,7 @@ function normalizeUrl(url) {
     }
     return 'http://' + url
   }
-  
+
   return url
 }
 
@@ -262,7 +262,7 @@ const rules = {
   required: value => !!value || 'Required',
   url: value => {
     if (!value) return 'URL is required'
-    
+
     try {
       // Normalize the URL before validation
       const normalizedUrl = normalizeUrl(value)
@@ -286,7 +286,7 @@ const isEditFormValid = computed(() => {
 // Methods
 async function addLink() {
   if (!isFormValid.value) return
-  
+
   adding.value = true
   try {
     // Normalize the URL before saving
@@ -295,7 +295,7 @@ async function addLink() {
       url: normalizeUrl(newLink.value.url),
       description: newLink.value.description
     })
-    
+
     // Reset form
     newLink.value = {
       title: '',
@@ -304,8 +304,7 @@ async function addLink() {
     }
     showForm.value = false
   } catch (error) {
-    console.error('Error adding link:', error)
-  } finally {
+    } finally {
     adding.value = false
   }
 }
@@ -326,14 +325,13 @@ function confirmDelete(link) {
 
 async function deleteLink() {
   if (!linkToDelete.value) return
-  
+
   try {
     await emit('delete', linkToDelete.value.id)
     deleteDialog.value = false
     linkToDelete.value = null
   } catch (error) {
-    console.error('Error deleting link:', error)
-  }
+    }
 }
 
 function startEdit(link) {
@@ -353,7 +351,7 @@ function cancelEdit() {
 
 async function saveEdit() {
   if (!isEditFormValid.value) return
-  
+
   try {
     // Normalize the URL before saving
     await emit('edit', editingLink.value.id, {
@@ -364,8 +362,7 @@ async function saveEdit() {
     editDialog.value = false
     editingLink.value = {}
   } catch (error) {
-    console.error('Error updating link:', error)
-  }
+    }
 }
 
 function formatUrl(url) {

@@ -62,8 +62,8 @@
     />
 
     <!-- Snackbar for notifications -->
-    <v-snackbar 
-      v-model="snackbar.show" 
+    <v-snackbar
+      v-model="snackbar.show"
       :color="snackbar.color"
       :timeout="4000"
       location="bottom"
@@ -149,7 +149,7 @@ const filteredUsers = computed(() => {
   // Search filter
   if (search.value) {
     const searchLower = search.value.toLowerCase()
-    filtered = filtered.filter(user => 
+    filtered = filtered.filter(user =>
       user.email?.toLowerCase().includes(searchLower) ||
       user.displayName?.toLowerCase().includes(searchLower) ||
       user.department?.toLowerCase().includes(searchLower)
@@ -161,7 +161,7 @@ const filteredUsers = computed(() => {
     filtered = filtered.filter(user => user.role === roleFilter.value)
   }
 
-  // Status filter  
+  // Status filter
   if (statusFilter.value !== 'all') {
     filtered = filtered.filter(user => user.status === statusFilter.value)
   }
@@ -172,7 +172,7 @@ const filteredUsers = computed(() => {
 // Methods
 const loadUsers = () => {
   loading.value = true
-  
+
   // Subscribe to users collection
   unsubscribeUsers = onSnapshot(
     collection(db, 'users'),
@@ -184,7 +184,6 @@ const loadUsers = () => {
       loading.value = false
     },
     (error) => {
-      console.error('Error loading users:', error)
       loading.value = false
       showSnackbar('Failed to load users', 'error')
     }
@@ -217,7 +216,7 @@ const handleDelete = async () => {
   deleting.value = true
   try {
     const deleteUser = httpsCallable(functions, 'deleteUser')
-    await deleteUser({ 
+    await deleteUser({
       userId: userToDelete.value.uid,
       reason: 'Deleted by admin'
     })
@@ -226,7 +225,6 @@ const handleDelete = async () => {
     deleteDialog.value = false
     userToDelete.value = null
   } catch (error) {
-    console.error('Error deleting user:', error)
     showSnackbar(error.message || 'Failed to delete user', 'error')
   } finally {
     deleting.value = false
@@ -257,13 +255,13 @@ const updateUserRole = async (user, newRole) => {
       role: newRole,
       updatedAt: new Date()
     })
-    
+
     await logEvent('user_role_updated', {
       targetUserId: user.uid,
       oldRole: user.role,
       newRole: newRole
     })
-    
+
     showSnackbar(`Updated role for ${user.email}`)
   } catch (error) {
     showSnackbar('Failed to update role', 'error')
@@ -277,13 +275,13 @@ const toggleUserStatus = async (user) => {
       status: newStatus,
       updatedAt: new Date()
     })
-    
+
     await logEvent('user_status_updated', {
       targetUserId: user.uid,
       oldStatus: user.status,
       newStatus: newStatus
     })
-    
+
     showSnackbar(`User ${user.email} ${newStatus}`)
   } catch (error) {
     showSnackbar('Failed to update status', 'error')

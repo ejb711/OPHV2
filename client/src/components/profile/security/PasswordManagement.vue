@@ -5,7 +5,7 @@
       <v-icon color="primary">mdi-key-change</v-icon>
       Change Password
     </v-card-title>
-    
+
     <v-card-text>
       <v-form ref="passwordFormRef" @submit.prevent="changePassword">
         <div class="field-group">
@@ -85,7 +85,7 @@
             <v-icon left>mdi-check</v-icon>
             Change Password
           </v-btn>
-          
+
           <v-btn
             variant="outlined"
             color="primary"
@@ -103,9 +103,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { 
-  updatePassword, 
-  reauthenticateWithCredential, 
+import {
+  updatePassword,
+  reauthenticateWithCredential,
   EmailAuthProvider,
   sendPasswordResetEmail
 } from 'firebase/auth'
@@ -153,7 +153,7 @@ const isPasswordFormValid = computed(() => {
 const passwordStrength = computed(() => {
   const pwd = passwordForm.value.newPassword
   if (!pwd) return { score: 0, text: '', color: 'grey' }
-  
+
   let score = 0
   if (pwd.length >= 8) score += 20
   if (pwd.length >= 12) score += 20
@@ -161,7 +161,7 @@ const passwordStrength = computed(() => {
   if (/[A-Z]/.test(pwd)) score += 20
   if (/\d/.test(pwd)) score += 10
   if (/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) score += 10
-  
+
   if (score <= 40) return { score, text: 'Weak', color: 'error' }
   if (score <= 70) return { score, text: 'Fair', color: 'warning' }
   if (score <= 90) return { score, text: 'Good', color: 'info' }
@@ -171,37 +171,36 @@ const passwordStrength = computed(() => {
 // Methods
 const changePassword = async () => {
   if (!passwordFormRef.value || !(await passwordFormRef.value.validate()).valid) return
-  
+
   loading.value = true
   try {
     const user = auth.currentUser
     if (!user) throw new Error('No authenticated user')
-    
+
     // Re-authenticate user
     const credential = EmailAuthProvider.credential(
       user.email,
       passwordForm.value.currentPassword
     )
     await reauthenticateWithCredential(user, credential)
-    
+
     // Update password
     await updatePassword(user, passwordForm.value.newPassword)
-    
+
     // Log the event
     await logEvent('password_changed', {
       email: user.email
     })
-    
+
     // Reset form
     passwordForm.value = {
       currentPassword: '',
       newPassword: '',
       confirmPassword: ''
     }
-    
+
     emit('show-snackbar', 'Password changed successfully', 'success')
   } catch (error) {
-    console.error('Error changing password:', error)
     if (error.code === 'auth/wrong-password') {
       emit('show-snackbar', 'Current password is incorrect', 'error')
     } else {
@@ -217,16 +216,15 @@ const sendPasswordReset = async () => {
   try {
     const user = auth.currentUser
     if (!user?.email) throw new Error('No email address found')
-    
+
     await sendPasswordResetEmail(auth, user.email)
-    
+
     await logEvent('password_reset_requested', {
       email: user.email
     })
-    
+
     emit('show-snackbar', 'Password reset email sent', 'success')
   } catch (error) {
-    console.error('Error sending password reset:', error)
     emit('show-snackbar', 'Failed to send password reset email', 'error')
   } finally {
     loading.value = false

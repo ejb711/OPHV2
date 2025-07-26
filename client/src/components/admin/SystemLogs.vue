@@ -45,7 +45,7 @@ const paginatedLogs = computed(() => {
   return filteredLogs.value.slice(start, end)
 })
 
-const totalPages = computed(() => 
+const totalPages = computed(() =>
   Math.ceil(filteredLogs.value.length / pagination.value.itemsPerPage)
 )
 
@@ -93,11 +93,11 @@ function setupRealtimeListener() {
     orderBy('timestamp', 'desc'),
     limit(1000)
   )
-  
+
   unsubscribe = onSnapshot(q, (snapshot) => {
     logs.value = snapshot.docs.map(doc => {
       const data = doc.data()
-      
+
       // Ensure required fields exist and are valid
       return {
         id: doc.id,
@@ -108,12 +108,11 @@ function setupRealtimeListener() {
         timestamp: data.timestamp?.toDate() || new Date()
       }
     }).filter(log => log.action && log.timestamp) // Filter out invalid entries
-    
+
     // Apply current filters
     applyFilters()
     loading.value = false
   }, (error) => {
-    console.error('Error in audit logs listener:', error)
     loading.value = false
   })
 }
@@ -121,32 +120,32 @@ function setupRealtimeListener() {
 /* ---------- filtering ---------- */
 function applyFilters() {
   searching.value = true
-  
+
   let filtered = [...logs.value]
-  
+
   // Date range filter
   if (filters.value.dateRange.start) {
     const startDate = new Date(filters.value.dateRange.start)
     startDate.setHours(0, 0, 0, 0)
     filtered = filtered.filter(log => log.timestamp && log.timestamp >= startDate)
   }
-  
+
   if (filters.value.dateRange.end) {
     const endDate = new Date(filters.value.dateRange.end)
     endDate.setHours(23, 59, 59, 999)
     filtered = filtered.filter(log => log.timestamp && log.timestamp <= endDate)
   }
-  
+
   // Action filter
   if (filters.value.action) {
     filtered = filtered.filter(log => log.action === filters.value.action)
   }
-  
+
   // User filter
   if (filters.value.user) {
     filtered = filtered.filter(log => log.userEmail === filters.value.user)
   }
-  
+
   // Search filter (searches action, user email, and details)
   if (filters.value.search) {
     const searchTerm = filters.value.search.toLowerCase()
@@ -154,13 +153,13 @@ function applyFilters() {
       const action = (log.action || '').toLowerCase()
       const email = (log.userEmail || '').toLowerCase()
       const details = JSON.stringify(log.details || {}).toLowerCase()
-      
-      return action.includes(searchTerm) || 
-             email.includes(searchTerm) || 
+
+      return action.includes(searchTerm) ||
+             email.includes(searchTerm) ||
              details.includes(searchTerm)
     })
   }
-  
+
   filteredLogs.value = filtered
   pagination.value.total = filtered.length
   searching.value = false
@@ -179,7 +178,7 @@ function setQuickDateFilter(days) {
   const end = new Date()
   const start = new Date()
   start.setDate(start.getDate() - days)
-  
+
   filters.value.dateRange = {
     start: start.toISOString().split('T')[0],
     end: end.toISOString().split('T')[0]
@@ -189,7 +188,7 @@ function setQuickDateFilter(days) {
 /* ---------- export ---------- */
 async function exportToCSV() {
   exporting.value = true
-  
+
   try {
     // Use filtered logs for export
     const dataToExport = filteredLogs.value.map(log => ({
@@ -199,7 +198,7 @@ async function exportToCSV() {
       user_id: log.userId || 'unknown',
       details: JSON.stringify(log.details || {})
     }))
-    
+
     // Create CSV content
     const headers = ['Timestamp', 'Action', 'User Email', 'User ID', 'Details']
     const csvContent = [
@@ -212,7 +211,7 @@ async function exportToCSV() {
         `"${row.details.replace(/"/g, '""')}"` // Escape quotes in JSON
       ].join(','))
     ].join('\n')
-    
+
     // Download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
@@ -224,9 +223,8 @@ async function exportToCSV() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url) // Clean up memory
-    
+
   } catch (error) {
-    console.error('Export failed:', error)
     // You might want to show a snackbar or alert here
   } finally {
     exporting.value = false
@@ -260,7 +258,7 @@ function formatDetails(details) {
   if (!details || typeof details !== 'object' || Object.keys(details).length === 0) {
     return 'No details'
   }
-  
+
   try {
     // Create a more readable format for details
     const formatted = Object.entries(details)
@@ -271,7 +269,7 @@ function formatDetails(details) {
         return `${key}: ${value || 'N/A'}`
       })
       .join(', ')
-    
+
     return formatted.length > 100 ? formatted.substring(0, 100) + '...' : formatted
   } catch (error) {
     return 'Invalid details format'
@@ -305,7 +303,7 @@ function getActionColor(action) {
   if (!action || typeof action !== 'string') {
     return 'grey'
   }
-  
+
   const colorMap = {
     user_deleted: 'error',
     security_alert: 'error',
@@ -352,7 +350,7 @@ function getActionColor(action) {
         <v-icon class="me-2">mdi-filter</v-icon>
         Filters
       </v-card-title>
-      
+
       <v-card-text>
         <v-row>
           <!-- Search -->
@@ -537,24 +535,24 @@ function getActionColor(action) {
             </div>
             <div class="text-caption">Total Events</div>
           </v-col>
-          
+
           <v-col cols="6" md="3" class="text-center">
             <div class="text-h5 font-weight-bold text-success">
               {{ [...new Set(filteredLogs.map(l => l.userEmail))].length }}
             </div>
             <div class="text-caption">Unique Users</div>
           </v-col>
-          
+
           <v-col cols="6" md="3" class="text-center">
             <div class="text-h5 font-weight-bold text-warning">
               {{ [...new Set(filteredLogs.map(l => l.action))].length }}
             </div>
             <div class="text-caption">Action Types</div>
           </v-col>
-          
+
           <v-col cols="6" md="3" class="text-center">
             <div class="text-h5 font-weight-bold text-info">
-              {{ filteredLogs.filter(l => 
+              {{ filteredLogs.filter(l =>
                 new Date(l.timestamp) > new Date(Date.now() - 24*60*60*1000)
               ).length }}
             </div>

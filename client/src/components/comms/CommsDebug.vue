@@ -79,10 +79,10 @@ const permissionInfo = computed(() => JSON.stringify({
 async function testDirectQuery() {
   try {
     directQueryResult.value = 'Querying...'
-    
+
     const q = query(collection(db, 'comms_projects'), limit(5))
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       directQueryResult.value = 'No documents found'
     } else {
@@ -99,9 +99,5 @@ async function testDirectQuery() {
 
 // Lifecycle
 onMounted(() => {
-  console.log('CommsDebug mounted')
-  console.log('Auth store:', authStore)
-  console.log('Projects:', projects.value)
-  console.log('Visible projects:', visibleProjects.value)
-})
+  })
 </script>

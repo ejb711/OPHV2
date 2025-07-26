@@ -170,8 +170,7 @@ function handleAdvancedFilter(filterParams) {
 
 function saveCurrentFilters() {
   // Implementation would use saveFilterSet from useProjectFilters
-  console.log('Save current filters')
-}
+  }
 
 function loadSavedFilter(filterSet) {
   if (filterSet.filters) {

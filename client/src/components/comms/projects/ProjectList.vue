@@ -105,7 +105,7 @@
           <!-- Title column -->
           <template v-slot:item.title="{ item }">
             <div class="d-flex align-center ga-2 py-2">
-              <v-icon 
+              <v-icon
                 :color="getPriorityColor(item.priority)"
                 size="small"
               >
@@ -200,7 +200,7 @@
                     </template>
                     <v-list-item-title>View</v-list-item-title>
                   </v-list-item>
-                  <v-list-item 
+                  <v-list-item
                     v-if="canEditProject(item)"
                     @click="$emit('edit', item)"
                   >
@@ -209,7 +209,7 @@
                     </template>
                     <v-list-item-title>Edit</v-list-item-title>
                   </v-list-item>
-                  <v-list-item 
+                  <v-list-item
                     v-if="canDeleteProject(item)"
                     @click="handleDelete(item)"
                     class="text-error"
@@ -301,92 +301,92 @@ const tableHeaders = computed(() => {
 // Computed properties for fixing the undefined error
 const visibleProjects = computed(() => {
   // Return filtered projects that aren't deleted (unless specifically showing deleted)
-  let projects = props.filters?.showDeleted 
+  let projects = props.filters?.showDeleted
     ? filteredProjects.value || []
     : (filteredProjects.value || []).filter(p => !p.deleted)
-  
+
   // Apply sorting
   const sortBy = props.filters?.sortBy || 'updatedAt'
   const sortDirection = props.filters?.sortDirection || 'desc'
-  
+
   const sorted = [...projects].sort((a, b) => {
     let result = 0
-    
+
     switch (sortBy) {
       case 'title':
         result = (a.title || '').localeCompare(b.title || '')
         break
-      
+
       case 'region':
         // Sort regions numerically (Region 1, Region 2, etc.)
         const aRegion = parseInt(a.region?.replace('Region ', '') || '99')
         const bRegion = parseInt(b.region?.replace('Region ', '') || '99')
         result = aRegion - bRegion
         break
-      
+
       case 'priority':
         // For priority, we need to handle the semantic meaning:
         // - Ascending: low importance first (low → medium → high → urgent)
         // - Descending: high importance first (urgent → high → medium → low)
         // Since urgent=0 and low=3 in our mapping, we need to invert for descending
         const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 }
-        
+
         // Debug logging removed - priority sorting is working correctly
-        
+
         // Get priority values with fallback
         const aPriority = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 99
         const bPriority = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 99
-        
+
         // For descending (default), we want urgent first, so normal comparison works
         // For ascending, we want low first, so we need to reverse
         if (sortDirection === 'asc') {
           // Ascending: low (3) should come before urgent (0)
           result = bPriority - aPriority
         } else {
-          // Descending: urgent (0) should come before low (3)  
+          // Descending: urgent (0) should come before low (3)
           result = aPriority - bPriority
         }
-        
+
         return result // Return early to skip the general sort direction logic
-      
+
       case 'deadline':
         const aDate = a.deadline?.toDate ? a.deadline.toDate() : new Date(a.deadline || 0)
         const bDate = b.deadline?.toDate ? b.deadline.toDate() : new Date(b.deadline || 0)
         result = aDate - bDate
         break
-      
+
       case 'progress':
         const aProgress = calculateProgress(a)
         const bProgress = calculateProgress(b)
         result = aProgress - bProgress
         break
-      
+
       case 'coordinatorName':
         result = (a.coordinatorName || '').localeCompare(b.coordinatorName || '')
         break
-      
+
       case 'status':
         // Use the shared status calculation and sort order
         const statusOrder = getStatusSortOrder()
-        
+
         const aStatus = calculateProjectStatus(a)
         const bStatus = calculateProjectStatus(b)
-        
+
         const aOrder = statusOrder[aStatus] !== undefined ? statusOrder[aStatus] : 99
         const bOrder = statusOrder[bStatus] !== undefined ? statusOrder[bStatus] : 99
         result = aOrder - bOrder
-        
+
         // For status, return early to handle sort direction properly
         // When ascending, we want not_started first (active work)
         // When descending, we want cancelled/on_hold first (inactive work)
         return sortDirection === 'asc' ? result : -result
-      
+
       case 'createdAt':
         const aCreated = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0)
         const bCreated = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0)
         result = aCreated - bCreated
         break
-      
+
       case 'updatedAt':
       default:
         const aUpdated = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt || 0)
@@ -394,17 +394,17 @@ const visibleProjects = computed(() => {
         result = aUpdated - bUpdated
         break
     }
-    
+
     // Apply sort direction
     return sortDirection === 'asc' ? result : -result
   })
-  
+
   // Debug: Log final sorted array when sorting by status
   if (sortBy === 'status') {
-    console.log(`Final sorted order by status (${sortDirection}):`)
-    
+    :`)
+
     // Use the shared status calculation utility
-    
+
     // Show all status groups
     const statusGroups = {
       not_started: [],
@@ -412,29 +412,27 @@ const visibleProjects = computed(() => {
       pending_approval: [],
       completed: []
     }
-    
+
     sorted.forEach(p => {
       const status = calculateProjectStatus(p)
       if (statusGroups[status]) {
         statusGroups[status].push(p.title)
       }
     })
-    
-    console.log('Status distribution:')
+
     Object.entries(statusGroups).forEach(([status, projects]) => {
       if (projects.length > 0) {
-        console.log(`  ${status}: ${projects.length} projects (first: ${projects[0]})`)
+        `)
       }
     })
-    
+
     // Show actual order in the sorted array
-    console.log('\nActual sorted order (first 10):')
+    :')
     sorted.slice(0, 10).forEach((p, idx) => {
       const status = calculateProjectStatus(p)
-      console.log(`  ${idx + 1}. ${p.title}: ${status}`)
-    })
+      })
   }
-  
+
   return sorted
 })
 
@@ -478,7 +476,7 @@ function handleEdit(project) {
 
 function formatRelativeTime(date) {
   if (!date) return 'never'
-  
+
   try {
     const dateObj = date instanceof Date ? date : date.toDate()
     return formatDistanceToNow(dateObj, { addSuffix: true })
@@ -509,9 +507,9 @@ function getPriorityColor(priority) {
 
 function getDeadlineColor(deadline) {
   if (!deadline) return 'grey'
-  
+
   const daysUntil = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
-  
+
   if (daysUntil < 0) return 'error'
   if (daysUntil <= 7) return 'warning'
   if (daysUntil <= 30) return 'info'
@@ -520,7 +518,7 @@ function getDeadlineColor(deadline) {
 
 function getDeadlineIcon(deadline) {
   const daysUntil = Math.ceil((new Date(deadline) - new Date()) / (1000 * 60 * 60 * 24))
-  
+
   if (daysUntil < 0) return 'mdi-clock-alert-outline'
   if (daysUntil <= 7) return 'mdi-clock-fast'
   if (daysUntil <= 30) return 'mdi-clock-outline'
@@ -540,7 +538,7 @@ function formatDeadline(deadline) {
   if (!deadline) return ''
   const dateObj = deadline.toDate ? deadline.toDate() : new Date(deadline)
   const daysUntil = Math.ceil((dateObj - new Date()) / (1000 * 60 * 60 * 24))
-  
+
   const formatted = formatDate(dateObj)
   if (daysUntil < 0) return `Overdue (${formatted})`
   if (daysUntil === 0) return 'Due Today'
@@ -554,12 +552,12 @@ function getCalculatedStatus(project) {
   if (project.status === 'pending_approval') {
     return 'pending_approval'
   }
-  
+
   // Calculate based on stages
   if (!project.stages || project.stages.length === 0) {
     return 'not_started'
   }
-  
+
   const completedCount = project.stages.filter(s => s.completed).length
   if (completedCount === project.stages.length) {
     return 'completed'
@@ -572,16 +570,14 @@ function getCalculatedStatus(project) {
 
 // Sorting functions
 function handleHeaderClick(key) {
-  console.log('Header clicked:', key)
   const currentSortBy = props.filters?.sortBy || 'updatedAt'
   const currentDirection = props.filters?.sortDirection || 'desc'
-  
+
   let newDirection = 'desc'
   if (currentSortBy === key) {
     newDirection = currentDirection === 'desc' ? 'asc' : 'desc'
   }
-  
-  console.log('Emitting update:filters with:', { sortBy: key, sortDirection: newDirection })
+
   emit('update:filters', {
     ...props.filters,
     sortBy: key,
@@ -592,21 +588,19 @@ function handleHeaderClick(key) {
 function getSortIcon(key) {
   const sortBy = props.filters?.sortBy || 'updatedAt'
   const sortDirection = props.filters?.sortDirection || 'desc'
-  
+
   if (sortBy !== key) {
     return 'mdi-unfold-more-horizontal'
   }
-  
+
   return sortDirection === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down'
 }
 
 // Watch for filter changes
 watch(() => props.filters, (newFilters) => {
-  console.log('Filters changed:', newFilters)
-  
   // Only apply filters that setFilter handles
   const filterableKeys = ['region', 'status', 'priority', 'coordinator', 'search', 'deleted']
-  
+
   Object.entries(newFilters).forEach(([key, value]) => {
     if (filterableKeys.includes(key)) {
       setFilter(key, value)
@@ -618,7 +612,6 @@ watch(() => props.filters, (newFilters) => {
 watch(() => projects.value, (newProjects) => {
   // Use nextTick to ensure stats are calculated after projects update
   nextTick(() => {
-    console.log('Projects updated, emitting stats:', projectStats.value)
     emit('stats-update', projectStats.value)
   })
 }, { immediate: true })
@@ -630,12 +623,10 @@ watch(filteredProjects, () => {
 
 // Lifecycle
 onMounted(async () => {
-  console.log('ProjectList mounted, initializing...')
   unsubscribe = await initialize()
 })
 
 onUnmounted(() => {
-  console.log('ProjectList unmounting, cleaning up...')
   if (unsubscribe) {
     unsubscribe()
   }
@@ -724,11 +715,11 @@ defineExpose({
   .list-view {
     margin: -8px;
   }
-  
+
   .project-table :deep(.v-data-table-header__content) {
     font-size: 0.75rem !important;
   }
-  
+
   .project-table :deep(td) {
     font-size: 0.875rem !important;
   }

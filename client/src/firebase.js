@@ -26,8 +26,6 @@ export const storage = getStorage(firebaseApp);
 // Set session persistence - users will be logged out when browser/tab closes
 setPersistence(auth, browserSessionPersistence)
   .then(() => {
-    console.log('[firebase] Session persistence configured - users will be logged out on browser close')
-  })
+    })
   .catch((error) => {
-    console.error('[firebase] Error setting session persistence:', error)
-  });
+    });

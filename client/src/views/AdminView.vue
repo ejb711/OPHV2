@@ -29,7 +29,7 @@
               Manage users, roles, permissions, and system settings
             </p>
           </div>
-          
+
           <!-- Quick Stats -->
           <v-row class="flex-grow-0" dense>
             <v-col>
@@ -70,7 +70,7 @@
           <v-tabs-window v-model="selectedTab">
             <!-- User Management Tab -->
             <v-tabs-window-item value="users">
-              <UserManagement 
+              <UserManagement
                 @activity="handleActivity"
                 @create-user="handleCreateUser"
               />
@@ -230,7 +230,6 @@ onMounted(async () => {
     await loadStats()
 
   } catch (err) {
-    console.error('Error initializing admin panel:', err)
     error.value = 'Failed to initialize admin panel. Please refresh and try again.'
   } finally {
     loading.value = false
@@ -250,16 +249,15 @@ async function setupStatsListeners() {
       collection(db, 'users'),
       (snapshot) => {
         stats.value.totalUsers = snapshot.size
-        stats.value.pendingUsers = snapshot.docs.filter(doc => 
+        stats.value.pendingUsers = snapshot.docs.filter(doc =>
           doc.data().role === 'pending'
         ).length
-        stats.value.activeUsers = snapshot.docs.filter(doc => 
+        stats.value.activeUsers = snapshot.docs.filter(doc =>
           doc.data().role !== 'pending'
         ).length
       },
       (error) => {
-        console.error('Error listening to users:', error)
-      }
+        }
     )
 
     // Roles collection listener
@@ -269,8 +267,7 @@ async function setupStatsListeners() {
         stats.value.totalRoles = snapshot.size
       },
       (error) => {
-        console.error('Error listening to roles:', error)
-      }
+        }
     )
 
     // Permissions collection listener
@@ -280,15 +277,13 @@ async function setupStatsListeners() {
         stats.value.totalPermissions = snapshot.size
       },
       (error) => {
-        console.error('Error listening to permissions:', error)
-      }
+        }
     )
 
     unsubscribers = [usersUnsubscribe, rolesUnsubscribe, permissionsUnsubscribe]
 
   } catch (error) {
-    console.error('Error setting up listeners:', error)
-  }
+    }
 }
 
 async function loadStats() {
@@ -297,8 +292,7 @@ async function loadStats() {
     // This method can be used for one-time stats calculations if needed
     stats.value.recentActivity = 0 // This could be calculated from audit logs
   } catch (error) {
-    console.error('Error loading stats:', error)
-  }
+    }
 }
 
 /* ---------- event handlers ---------- */
@@ -308,11 +302,9 @@ function handleCreateUser() {
 
 function handleUserCreated(userData) {
   // User was successfully created
-  console.log('User created:', userData)
-  
   // Update recent activity counter
   stats.value.recentActivity += 1
-  
+
   // You could trigger a refresh of user data here if needed
   // or the real-time listeners will handle it automatically
 }
@@ -321,12 +313,11 @@ async function handleActivity(action, details) {
   try {
     // Use logEvent for custom actions passed from child components
     await logEvent(action, details)
-    
+
     // Update recent activity counter
     stats.value.recentActivity += 1
   } catch (e) {
-    console.error('Error logging activity:', e)
-  }
+    }
 }
 
 /* ---------- utilities ---------- */

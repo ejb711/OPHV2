@@ -6,13 +6,13 @@
 <template>
   <v-container fluid>
     <!-- Header Component -->
-    <CommsDashboardHeader 
+    <CommsDashboardHeader
       @create-project="showCreateDialog = true"
       @manage-coordinators="showCoordinatorManagement = true"
     />
 
     <!-- Analytics Tab (only visible with permission) -->
-    <CommsAnalyticsTab 
+    <CommsAnalyticsTab
       @open-analytics="showAnalyticsWindow = true"
     />
 
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Search and Filters -->
-    <CommsFilters 
+    <CommsFilters
       :filters="filters"
       @update="handleFilterUpdate"
       class="mb-4"
@@ -86,12 +86,20 @@
     />
 
     <!-- Analytics Window -->
-    <CommsAnalyticsWindow 
+    <CommsAnalyticsWindow
       v-model="showAnalyticsWindow"
+      :projects="projects"
+      :analytics="analytics"
+      :analytics-data="analyticsData"
+      :visible-projects="visibleProjects"
+      :exporting="exporting"
+      @export-csv="handleExportCSV"
+      @export-pdf="handleExportPDF"
+      @update-date-range="updateDateRange"
     />
 
     <!-- Coordinator Management Dialog -->
-    <CoordinatorManagement 
+    <CoordinatorManagement
       v-model="showCoordinatorManagement"
       @coordinator-updated="handleCoordinatorUpdated"
     />
@@ -135,15 +143,15 @@ const {
   successMessage,
   errorSnackbar,
   errorMessage,
-  
+
   // Analytics
   analytics,
   analyticsData,
   visibleProjects,
-  
+
   // Export
   exporting,
-  
+
   // Methods
   handleFilterUpdate,
   handleProjectSelect,
@@ -161,27 +169,23 @@ const {
 
 // Custom project select handler that uses the dialogs ref
 function handleProjectSelectCustom(project) {
-  console.log('Project selected:', project)
   // Use nextTick to ensure the ref is available
   nextTick(() => {
     if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
       commsDialogsRef.value.projectDetailRef.open(project.id)
     } else {
-      console.error('ProjectDetail ref not available')
-    }
+      }
   })
 }
 
 // Handle project edit
 function handleProjectEdit(project) {
-  console.log('Edit project:', project)
   // Open project detail in edit mode
   nextTick(() => {
     if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
       commsDialogsRef.value.projectDetailRef.open(project.id, true) // true for edit mode
     } else {
-      console.error('ProjectDetail ref not available')
-    }
+      }
   })
 }
 
@@ -190,7 +194,7 @@ function handleCoordinatorUpdated() {
   // The project list will automatically refresh due to Firestore listeners
   // Just show success message
   showSuccess('Coordinator updated successfully')
-  
+
   // Don't close the dialog - let user close it manually
 }
 
@@ -199,7 +203,7 @@ watch(() => projectListRef.value?.projects, (newProjects) => {
   if (newProjects) {
     projects.value = newProjects
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 // Set up the projectDetailRef after component is mounted
 onMounted(() => {
@@ -223,7 +227,7 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch !important;
   }
-  
+
   .d-flex.ga-3 {
     gap: 8px !important;
   }

@@ -19,7 +19,7 @@
     </AppBar>
 
     <!-- Smart Navigation (Desktop) -->
-    <SmartNavigation 
+    <SmartNavigation
       v-if="showNavigation && !mobile"
       v-model:drawer="navigationDrawerVisible"
     />
@@ -30,12 +30,12 @@
       <v-fade-transition mode="out-in">
         <div :key="$route.path" class="page-content">
           <!-- Loading Overlay Component -->
-          <LoadingOverlay 
+          <LoadingOverlay
             :loading="loading"
             :message="loadingMessage"
             :color="loadingColor"
           />
-          
+
           <!-- Page Content -->
           <div class="pa-4">
             <slot />
@@ -45,12 +45,12 @@
     </v-main>
 
     <!-- Smart Navigation (Mobile) -->
-    <SmartNavigation 
+    <SmartNavigation
       v-if="showNavigation && mobile"
       v-model:drawer="navigationDrawerVisible"
       :mobile="true"
     />
-    
+
     <!-- Global Snackbar Component -->
     <GlobalSnackbar v-model="snackbar" />
   </v-app>
@@ -106,12 +106,12 @@ const authStore = useAuthStore()
 const { mobile } = useDisplay()
 const { canAccessAdmin } = usePermissions()
 const { isGlobalLoading } = useGlobalLoading()
-const { 
-  navigationDrawerVisible, 
-  snackbar, 
-  toggleNavigation, 
-  showSnackbar, 
-  handleRouteChange 
+const {
+  navigationDrawerVisible,
+  snackbar,
+  toggleNavigation,
+  showSnackbar,
+  handleRouteChange
 } = useAppLayout()
 
 // Computed
@@ -123,16 +123,15 @@ const showNavIcon = computed(() => {
 async function handleLogout() {
   try {
     const result = await authStore.logout()
-    
+
     if (result && result.success === false) {
       showSnackbar('Error logging out: ' + (result.error || 'Unknown error'), 'error')
       return
     }
-    
+
     router.push('/')
     showSnackbar('Logged out successfully')
   } catch (error) {
-    console.error('Logout error:', error)
     showSnackbar('Error logging out', 'error')
   }
 }
@@ -164,7 +163,7 @@ watch(() => route.path, handleRouteChange)
   .v-bottom-navigation {
     display: none !important;
   }
-  
+
   .page-content {
     padding: 0 !important;
   }

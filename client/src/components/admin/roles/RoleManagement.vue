@@ -46,11 +46,11 @@ let unsubscribe = null
 // Lifecycle
 onMounted(async () => {
   loading.value = true
-  
+
   try {
     // Load initial data
     await permissionsStore.loadAllData()
-    
+
     // Set up real-time listener for roles
     const rolesQuery = query(collection(db, 'roles'), orderBy('hierarchy', 'desc'))
     unsubscribe = onSnapshot(rolesQuery, (snapshot) => {
@@ -60,7 +60,6 @@ onMounted(async () => {
         ...doc.data()
       }))
     }, (error) => {
-      console.error('Error listening to roles:', error)
       snackbar.value = {
         show: true,
         message: 'Error loading roles',
@@ -68,7 +67,6 @@ onMounted(async () => {
       }
     })
   } catch (error) {
-    console.error('Error loading data:', error)
     snackbar.value = {
       show: true,
       message: 'Error loading role data',
@@ -119,10 +117,10 @@ const confirmDeleteRole = (role) => {
 
 const handleCreate = async (roleData) => {
   const result = await createRole(roleData)
-  
+
   if (result.success) {
     showCreateDialog.value = false
-    
+
     // Log activity
     await logEvent('role_created', {
       roleId: result.id,
@@ -130,11 +128,11 @@ const handleCreate = async (roleData) => {
       permissions: roleData.permissions?.length || 0,
       hierarchy: roleData.hierarchy
     })
-    
+
     emit('activity', {
       type: 'role_created',
       message: `Created role: ${roleData.name}`,
-      details: { 
+      details: {
         roleId: result.id,
         name: roleData.name,
         permissions: roleData.permissions?.length || 0,
@@ -146,10 +144,10 @@ const handleCreate = async (roleData) => {
 
 const handleUpdate = async (roleData) => {
   const result = await updateRole(currentRole.value.id, roleData)
-  
+
   if (result.success) {
     showEditDialog.value = false
-    
+
     // Log activity
     await logEvent('role_updated', {
       roleId: currentRole.value.id,
@@ -157,11 +155,11 @@ const handleUpdate = async (roleData) => {
       permissions: roleData.permissions?.length || 0,
       hierarchy: roleData.hierarchy
     })
-    
+
     emit('activity', {
       type: 'role_updated',
       message: `Updated role: ${currentRole.value.name}`,
-      details: { 
+      details: {
         roleId: currentRole.value.id,
         name: roleData.name,
         permissions: roleData.permissions?.length || 0,
@@ -173,16 +171,16 @@ const handleUpdate = async (roleData) => {
 
 const handleDelete = async () => {
   const result = await deleteRole(currentRole.value.id)
-  
+
   if (result.success) {
     showDeleteDialog.value = false
-    
+
     // Log activity
     await logEvent('role_deleted', {
       roleId: currentRole.value.id,
       roleName: currentRole.value.name
     })
-    
+
     emit('activity', {
       type: 'role_deleted',
       message: `Deleted role: ${currentRole.value.name}`,

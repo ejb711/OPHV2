@@ -1,6 +1,6 @@
 // client/src/composables/comms/useCommsProjectsCrud.js
-import { 
-  collection, 
+import {
+  collection,
   doc,
   getDoc,
   addDoc,
@@ -32,19 +32,17 @@ export function useCommsProjectsCrud(
   const { showError, showSuccess } = useSnackbar()
   const { logEvent } = useAudit()
   const { canViewProject, canEditProject, canDeleteProject } = useCommsProjectPermissions()
-  
+
   // Create a new project
   async function createProject(projectData) {
     setCreating(true)
     clearError()
-    
-    // console.log('Creating project with data:', projectData)
-    
-    try {
+
+    // try {
       // Validate required fields
       if (!projectData.title) throw new Error('Project title is required')
       if (!projectData.region) throw new Error('Region is required')
-      
+
       // Prepare project data
       const newProject = {
         ...projectData,
@@ -60,11 +58,10 @@ export function useCommsProjectsCrud(
         createdByEmail: currentUserEmail.value,
         updatedAt: serverTimestamp()
       }
-      
+
       // Handle coordinator data
       if (projectData.coordinatorId) {
-        // console.log('Fetching coordinator details for ID:', projectData.coordinatorId)
-        newProject.coordinatorId = projectData.coordinatorId
+        // newProject.coordinatorId = projectData.coordinatorId
         // We'll need to fetch coordinator name from the coordinators collection
         try {
           const coordDoc = await getDoc(doc(db, 'comms_coordinators', projectData.coordinatorId))
@@ -72,29 +69,23 @@ export function useCommsProjectsCrud(
             const coordData = coordDoc.data()
             newProject.coordinatorName = coordData.name || coordData.displayName || coordData.email
             newProject.coordinatorEmail = coordData.email
-            // console.log('Coordinator data found:', { name: newProject.coordinatorName, email: newProject.coordinatorEmail })
-          } else {
-            console.warn('Coordinator document not found for ID:', projectData.coordinatorId)
-          }
+            // } else {
+            }
         } catch (err) {
-          console.warn('Could not fetch coordinator details:', err)
-        }
+          }
       } else {
-        console.warn('No coordinatorId provided in project data')
-      }
-      
+        }
+
       // Create in Firestore
       const docRef = await addDoc(collection(db, 'comms_projects'), newProject)
-      
-      // console.log('Project data being saved to Firestore:', newProject)
-      
-      // Log the action
+
+      // // Log the action
       await logEvent('create_comms_project', {
         projectId: docRef.id,
         projectTitle: newProject.title,
         region: newProject.region
       })
-      
+
       // Fetch the created project to get the actual timestamp values
       const createdDoc = await getDoc(docRef)
       const createdData = createdDoc.data()
@@ -105,14 +96,12 @@ export function useCommsProjectsCrud(
         updatedAt: safeConvertToDate(createdData.updatedAt),
         deadline: safeConvertToDate(createdData.deadline)
       }
-      
-      // console.log('Returning created project:', returnedProject)
-      showSuccess('Project created successfully')
-      
+
+      // showSuccess('Project created successfully')
+
       return returnedProject
-      
+
     } catch (error) {
-      console.error('Error creating project:', error)
       setError(error.message)
       showError(error.message || 'Failed to create project')
       throw error
@@ -120,12 +109,12 @@ export function useCommsProjectsCrud(
       setCreating(false)
     }
   }
-  
+
   // Update an existing project
   async function updateProject(projectId, updates) {
     setUpdating(true)
     clearError()
-    
+
     try {
       // Clean up undefined values
       const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
@@ -134,7 +123,7 @@ export function useCommsProjectsCrud(
         }
         return acc
       }, {})
-      
+
       // Add metadata
       const updateData = {
         ...cleanUpdates,
@@ -142,26 +131,25 @@ export function useCommsProjectsCrud(
         updatedBy: currentUserId.value,
         updatedByEmail: currentUserEmail.value
       }
-      
+
       // Special handling for deadline to ensure it's a Timestamp
       if (updates.deadline !== undefined) {
         const deadlineDate = updates.deadline ? new Date(updates.deadline) : null
         updateData.deadline = deadlineDate ? Timestamp.fromDate(deadlineDate) : null
       }
-      
+
       // Update in Firestore
       await updateDoc(doc(db, 'comms_projects', projectId), updateData)
-      
+
       // Log the action
       await logEvent('update_comms_project', {
         projectId,
         updatedFields: Object.keys(updates)
       })
-      
+
       showSuccess('Project updated successfully')
-      
+
     } catch (error) {
-      console.error('Error updating project:', error)
       setError(error.message)
       showError(error.message || 'Failed to update project')
       throw error
@@ -169,41 +157,40 @@ export function useCommsProjectsCrud(
       setUpdating(false)
     }
   }
-  
+
   // Soft delete project (move to trash)
   async function softDeleteProject(projectId) {
     setDeleting(true)
     clearError()
-    
+
     try {
       const projectDoc = await getDoc(doc(db, 'comms_projects', projectId))
-      
+
       if (!projectDoc.exists()) {
         throw new Error('Project not found')
       }
-      
+
       const project = { id: projectDoc.id, ...projectDoc.data() }
-      
+
       if (!canDeleteProject(project)) {
         throw new Error('You do not have permission to delete this project')
       }
-      
+
       await updateDoc(doc(db, 'comms_projects', projectId), {
         deleted: true,
         deletedAt: serverTimestamp(),
         deletedBy: currentUserId.value
       })
-      
+
       await logEvent('soft_delete_comms_project', {
         projectId,
         projectTitle: project.title
       })
-      
+
       showSuccess('Project moved to trash')
       return true
-      
+
     } catch (err) {
-      console.error('Error soft deleting project:', err)
       setError(err.message)
       showError(err.message || 'Failed to delete project')
       throw err
@@ -211,37 +198,36 @@ export function useCommsProjectsCrud(
       setDeleting(false)
     }
   }
-  
+
   // Hard delete project (permanent)
   async function hardDeleteProject(projectId) {
     setDeleting(true)
     clearError()
-    
+
     try {
       const projectDoc = await getDoc(doc(db, 'comms_projects', projectId))
-      
+
       if (!projectDoc.exists()) {
         throw new Error('Project not found')
       }
-      
+
       const project = { id: projectDoc.id, ...projectDoc.data() }
-      
+
       if (!canManageComms.value) {
         throw new Error('Only administrators can permanently delete projects')
       }
-      
+
       await deleteDoc(doc(db, 'comms_projects', projectId))
-      
+
       await logEvent('hard_delete_comms_project', {
         projectId,
         projectTitle: project.title
       })
-      
+
       showSuccess('Project permanently deleted')
       return true
-      
+
     } catch (err) {
-      console.error('Error hard deleting project:', err)
       setError(err.message)
       showError(err.message || 'Failed to permanently delete project')
       throw err
@@ -249,16 +235,16 @@ export function useCommsProjectsCrud(
       setDeleting(false)
     }
   }
-  
+
   // Get a single project by ID
   async function getProject(projectId) {
     try {
       const docSnap = await getDoc(doc(db, 'comms_projects', projectId))
-      
+
       if (!docSnap.exists()) {
         throw new Error('Project not found')
       }
-      
+
       const data = docSnap.data()
       const project = {
         id: docSnap.id,
@@ -269,25 +255,24 @@ export function useCommsProjectsCrud(
         completedAt: safeConvertToDate(data.completedAt),
         deletedAt: safeConvertToDate(data.deletedAt)
       }
-      
+
       if (!canViewProject(project)) {
         throw new Error('You do not have permission to view this project')
       }
-      
+
       await updateDoc(doc(db, 'comms_projects', projectId), {
         viewCount: (project.viewCount || 0) + 1,
         lastViewedAt: serverTimestamp(),
         lastViewedBy: currentUserId.value
       })
-      
+
       return project
     } catch (error) {
-      console.error('Error fetching project:', error)
       showError(error.message || 'Failed to load project')
       throw error
     }
   }
-  
+
   // Restore soft-deleted project
   async function restoreProject(projectId) {
     try {
@@ -298,17 +283,16 @@ export function useCommsProjectsCrud(
         restoredAt: serverTimestamp(),
         restoredBy: currentUserId.value
       })
-      
+
       await logEvent('restore_comms_project', { projectId })
       showSuccess('Project restored successfully')
-      
+
     } catch (error) {
-      console.error('Error restoring project:', error)
       showError('Failed to restore project')
       throw error
     }
   }
-  
+
   return {
     createProject,
     updateProject,

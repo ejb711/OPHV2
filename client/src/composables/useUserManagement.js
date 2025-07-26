@@ -46,11 +46,11 @@ export function useUserManagement() {
 
   const filteredUsers = computed(() => {
     let users = permissionsStore.allUsers || []
-    
+
     if (roleFilter.value) {
       users = users.filter(user => user.role === roleFilter.value)
     }
-    
+
     return users
   })
 
@@ -64,7 +64,6 @@ export function useUserManagement() {
     try {
       await permissionsStore.loadAllData()
     } catch (error) {
-      console.error('Error refreshing data:', error)
       showSnackbar.value('Error refreshing user data', 'error')
     } finally {
       loading.value = false
@@ -83,32 +82,31 @@ export function useUserManagement() {
 
   const deleteUser = async () => {
     if (!userToDelete.value) return
-    
+
     deleting.value = true
     try {
       // Call the Firebase Cloud Function
       const deleteUserFunction = httpsCallable(functions, 'deleteUser')
-      const result = await deleteUserFunction({ 
+      const result = await deleteUserFunction({
         userId: userToDelete.value.id,
         reason: 'Deleted by admin from user management panel'
       })
-      
+
       // Log the deletion
       await logEvent('user_deleted', {
         targetUserId: userToDelete.value.id,
         targetUserEmail: userToDelete.value.email,
         performedBy: authStore.currentUser?.email
       })
-      
+
       showSnackbar.value(`User ${userToDelete.value.email} has been deleted successfully`, 'success')
-      
+
       // Close dialog and refresh
       showDeleteDialog.value = false
       userToDelete.value = null
       await refresh()
-      
+
     } catch (error) {
-      console.error('Error deleting user:', error)
       showSnackbar.value(error.message || 'Failed to delete user. Please try again.', 'error')
     } finally {
       deleting.value = false
@@ -122,29 +120,29 @@ export function useUserManagement() {
 
   const saveUserEdit = async (formData) => {
     if (!formData) return
-    
+
     try {
       saving.value = true
-      
+
       // Update role if changed
       if (formData.role !== editingUser.value.role) {
         const result = await permissionsStore.updateUserRole(
           formData.id,
           formData.role
         )
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to update role')
         }
       }
-      
+
       // Update custom permissions
       const result = await permissionsStore.updateUserCustomPermissions(
         formData.id,
         formData.customPermissions,
         formData.deniedPermissions
       )
-      
+
       if (result.success) {
         await logEvent('user_permissions_updated', {
           targetUserId: formData.id,
@@ -155,7 +153,7 @@ export function useUserManagement() {
             deniedPermissions: formData.deniedPermissions
           }
         })
-        
+
         showSnackbar.value('User permissions updated successfully', 'success')
         cancelEdit()
         await refresh()
@@ -163,7 +161,6 @@ export function useUserManagement() {
         throw new Error(result.error || 'Failed to update user')
       }
     } catch (error) {
-      console.error('Error updating user:', error)
       showSnackbar.value(error.message || 'Failed to update user', 'error')
     } finally {
       saving.value = false
@@ -178,10 +175,10 @@ export function useUserManagement() {
 
   const handleUpdateRole = async (user, newRole) => {
     if (user.role === newRole) return
-    
+
     try {
       const result = await permissionsStore.updateUserRole(user.id, newRole)
-      
+
       if (result.success) {
         await logEvent('user_role_updated', {
           targetUserId: user.id,
@@ -189,14 +186,13 @@ export function useUserManagement() {
           oldRole: user.role,
           newRole: newRole
         })
-        
+
         showSnackbar.value(`Updated ${user.email} role to ${newRole}`, 'success')
         await refresh()
       } else {
         throw new Error(result.error || 'Failed to update role')
       }
     } catch (error) {
-      console.error('Error updating user role:', error)
       showSnackbar.value(error.message || 'Failed to update user role', 'error')
     }
   }
@@ -204,47 +200,45 @@ export function useUserManagement() {
   const handleToggleStatus = async (user) => {
     const currentStatus = user.status || 'active'
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
-    
+
     try {
       // Call update status function
       const updateStatusFunction = httpsCallable(functions, 'updateUserStatus')
-      await updateStatusFunction({ 
-        userId: user.id, 
-        status: newStatus 
+      await updateStatusFunction({
+        userId: user.id,
+        status: newStatus
       })
-      
+
       await logEvent('user_status_updated', {
         targetUserId: user.id,
         targetUserEmail: user.email,
         oldStatus: currentStatus,
         newStatus: newStatus
       })
-      
+
       showSnackbar.value(`User ${user.email} ${newStatus}`, 'success')
       await refresh()
     } catch (error) {
-      console.error('Error toggling user status:', error)
       showSnackbar.value('Failed to toggle user status', 'error')
     }
   }
 
   const sendPasswordReset = async () => {
     if (!passwordResetUser.value) return
-    
+
     resettingPassword.value = true
     try {
       await sendPasswordResetEmail(auth, passwordResetUser.value.email)
-      
+
       await logEvent('password_reset_sent', {
         targetUserId: passwordResetUser.value.id,
         targetUserEmail: passwordResetUser.value.email
       })
-      
+
       showSnackbar.value(`Password reset email sent to ${passwordResetUser.value.email}`, 'success')
       showPasswordResetDialog.value = false
       passwordResetUser.value = null
     } catch (error) {
-      console.error('Error sending password reset:', error)
       showSnackbar.value('Failed to send password reset email', 'error')
     } finally {
       resettingPassword.value = false

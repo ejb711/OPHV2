@@ -5,7 +5,7 @@
       <v-icon class="mr-2">mdi-cloud-upload</v-icon>
       Upload Files
     </v-card-title>
-    
+
     <v-card-text>
       <!-- Drop zone -->
       <div
@@ -23,13 +23,13 @@
           @change="handleFileSelect"
           style="display: none"
         />
-        
+
         <v-icon size="48" color="grey">mdi-cloud-upload</v-icon>
         <div class="text-h6 mt-2">Drop files here or click to browse</div>
         <div class="text-caption text-grey">
           Maximum file size: {{ formatFileSize(maxFileSize) }}
         </div>
-        
+
         <v-btn
           color="primary"
           variant="tonal"
@@ -40,13 +40,13 @@
           Select Files
         </v-btn>
       </div>
-      
+
       <!-- Selected files list -->
       <div v-if="selectedFiles.length > 0" class="mt-4">
         <div class="text-subtitle-2 mb-2">
           Selected files:
         </div>
-        
+
         <v-list density="compact">
           <v-list-item
             v-for="(file, index) in selectedFiles"
@@ -58,18 +58,18 @@
                 {{ getFileIcon(file.type) }}
               </v-icon>
             </template>
-            
+
             <v-list-item-title>
               {{ file.name }}
             </v-list-item-title>
-            
+
             <v-list-item-subtitle>
               {{ formatFileSize(file.size) }}
               <span v-if="file.error" class="error--text ml-2">
                 {{ file.error }}
               </span>
             </v-list-item-subtitle>
-            
+
             <template v-slot:append>
               <v-btn
                 icon
@@ -82,7 +82,7 @@
             </template>
           </v-list-item>
         </v-list>
-        
+
         <!-- Upload metadata -->
         <div class="mt-4">
           <div class="text-subtitle-2 mb-2">Add description (optional)</div>
@@ -96,7 +96,7 @@
             class="mb-3"
           />
         </div>
-        
+
         <!-- Tags -->
         <div>
           <div class="text-subtitle-2 mb-2">Tags (optional)</div>
@@ -113,7 +113,7 @@
         </div>
       </div>
     </v-card-text>
-    
+
     <v-card-actions v-if="selectedFiles.length > 0">
       <v-spacer />
       <v-btn
@@ -193,12 +193,12 @@ function processFiles(files) {
       })
       return
     }
-    
+
     // Check if file already selected
     if (selectedFiles.value.some(f => f.name === file.name && f.size === file.size)) {
       return
     }
-    
+
     selectedFiles.value.push(file)
   })
 }
@@ -216,7 +216,7 @@ function clearFiles() {
 async function uploadFiles() {
   uploading.value = true
   const errors = []
-  
+
   for (const file of validFiles.value) {
     try {
       await emit('uploaded', file, {
@@ -224,13 +224,12 @@ async function uploadFiles() {
         tags: uploadTags.value
       })
     } catch (error) {
-      console.error('Upload error:', error)
       errors.push({ file: file.name, error: error.message })
     }
   }
-  
+
   uploading.value = false
-  
+
   if (errors.length > 0) {
     emit('error', errors)
   } else {
@@ -240,7 +239,7 @@ async function uploadFiles() {
 
 function getFileIcon(type) {
   if (!type) return 'mdi-file'
-  
+
   if (type.includes('image')) return 'mdi-file-image'
   if (type.includes('pdf')) return 'mdi-file-pdf-box'
   if (type.includes('word') || type.includes('document')) return 'mdi-file-word'
@@ -250,16 +249,16 @@ function getFileIcon(type) {
   if (type.includes('audio')) return 'mdi-file-music'
   if (type.includes('zip') || type.includes('rar')) return 'mdi-folder-zip'
   if (type.includes('text')) return 'mdi-file-document'
-  
+
   return 'mdi-file'
 }
 
 function formatFileSize(bytes) {
   if (!bytes) return '0 B'
-  
+
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  
+
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
 }
 </script>

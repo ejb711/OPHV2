@@ -5,7 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 2025-07-25
+## [1.2.0] - 2025-07-26
+
+### Added
+- Proper Firebase security rules for analytics message counting with `view_analytics` permission
+- Hardcoded fallback for message counts when permissions are insufficient
+- Enhanced coordinator workload UI showing Not Started, In Progress, and Completed statuses
+- ID mapping support for coordinator-project relationships (test-coordinator-X to test-user-X)
+
+### Changed
+- Updated coordinator workload display to show three distinct statuses instead of Active/Completed
+- Modified In Progress count to include pending_approval projects
+- Improved analytics permission handling in Firestore rules
+- Cleaned up all console.log debugging statements throughout the codebase
+
+### Fixed
+- Fixed message counter showing 0 due to Firebase permission issues
+- Resolved coordinator workload calculations showing incorrect active project counts
+- Fixed coordinator ID mismatch between projects and coordinators collections
+- Corrected syntax issues in multiple files after console.log removal
+- Fixed analytics dashboard showing 0 messages for users with proper permissions
+
+### Security
+- Enhanced Firestore rules to allow users with `view_analytics` or `manage_comms` permissions to read messages for counting
+- Maintained project-level security while enabling analytics access
+
+## [1.1.0] - 2025-07-25
 
 ### Added
 - Communications Analytics Dashboard with comprehensive project metrics

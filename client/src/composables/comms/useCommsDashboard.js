@@ -2,18 +2,18 @@
 // Dashboard business logic composable (~180 lines)
 // Purpose: Extract all business logic from the component
 // Dependencies: useCommsProjects, useProjectAnalytics, useProjectExport
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, unref } from 'vue'
 import { useCommsProjects } from './useCommsProjects'
 import { useProjectAnalytics } from './useProjectAnalytics'
 import { useProjectExport } from './useProjectExport'
 
 export function useCommsDashboard() {
   // Composables
-  const { 
-    softDeleteProject, 
-    hardDeleteProject 
+  const {
+    softDeleteProject,
+    hardDeleteProject
   } = useCommsProjects()
-  
+
   // State
   const showCreateDialog = ref(false)
   const projectDetailRef = ref(null) // Will be set by parent component
@@ -26,9 +26,9 @@ export function useCommsDashboard() {
   const errorMessage = ref('')
   const projects = ref([])
 
-  // Initialize analytics
-  const analytics = useProjectAnalytics(projects)
-  
+  // Initialize analytics - will be set after projects are loaded
+  const analytics = ref(null)
+
   // Initialize export
   const { exportToCSV, exportToPDF, exporting } = useProjectExport()
 
@@ -46,18 +46,54 @@ export function useCommsDashboard() {
   })
 
   const analyticsData = computed(() => {
-    return {
-      metrics: analytics.metrics?.value || { total: 0, active: 0, completed: 0, pending: 0 },
-      completionRate: analytics.completionRate?.value || 0,
-      avgCompletionTime: analytics.avgCompletionTime?.value || 0,
-      statusBreakdown: analytics.statusBreakdown?.value || [],
-      priorityBreakdown: analytics.priorityDistribution?.value || { high: 0, medium: 0, low: 0 }, // Fixed: was priorityDistribution
-      regionalDistribution: analytics.regionalDistribution?.value || [],
-      activeCoordinators: analytics.activeCoordinators?.value || new Set(),
-      totalCoordinators: analytics.activeCoordinators?.value?.size || 0, // Fixed: use Set size
-      totalFiles: analytics.totalFiles?.value || 0,
-      totalMessages: analytics.totalMessages?.value || 0
+    if (!analytics.value) {
+      return {
+        metrics: { total: 0, active: 0, completed: 0, pending: 0 },
+        completionRate: 0,
+        avgCompletionTime: 0,
+        statusBreakdown: [],
+        priorityBreakdown: { high: 0, medium: 0, low: 0 },
+        regionalDistribution: [],
+        activeCoordinators: new Set(),
+        totalCoordinators: 0,
+        totalFiles: 0,
+        totalMessages: 0
+      }
     }
+
+    // Get the raw analytics object
+    const analyticsObj = analytics.value
+
+    // Access computed values using unref to get the actual values
+    const metricsValue = unref(analyticsObj.metrics) || { total: 0, active: 0, completed: 0, pending: 0 }
+    const completionRateValue = unref(analyticsObj.completionRate) || 0
+    const avgCompletionTimeValue = unref(analyticsObj.avgCompletionTime) || 0
+    const statusBreakdownValue = unref(analyticsObj.statusBreakdown) || []
+    const priorityDistributionValue = unref(analyticsObj.priorityDistribution) || { high: 0, medium: 0, low: 0 }
+    const regionalDistributionValue = unref(analyticsObj.regionalDistribution) || []
+    const activeCoordinatorsValue = unref(analyticsObj.activeCoordinators) || new Set()
+    const totalFilesValue = unref(analyticsObj.totalFiles) || 0
+    const totalMessagesValue = unref(analyticsObj.totalMessages) || 0
+
+    // Ensure we're passing numbers for the counts
+    const totalCoordinatorsCount = typeof activeCoordinatorsValue?.size === 'number' ? activeCoordinatorsValue.size : 0
+    const totalFilesCount = typeof totalFilesValue === 'object' ? (totalFilesValue?.value || 0) : (totalFilesValue || 0)
+    const totalMessagesCount = typeof totalMessagesValue === 'object' ? (totalMessagesValue?.value || 0) : (totalMessagesValue || 0)
+
+    const data = {
+      metrics: metricsValue,
+      completionRate: completionRateValue,
+      avgCompletionTime: avgCompletionTimeValue,
+      statusBreakdown: statusBreakdownValue,
+      priorityBreakdown: priorityDistributionValue,
+      regionalDistribution: regionalDistributionValue,
+      activeCoordinators: activeCoordinatorsValue,
+      totalCoordinators: totalCoordinatorsCount,
+      totalFiles: totalFilesCount,
+      totalMessages: totalMessagesCount
+    }
+
+    return data
   })
 
   // Methods
@@ -66,7 +102,6 @@ export function useCommsDashboard() {
   }
 
   function handleProjectSelect(project) {
-    console.log('Project selected:', project)
     if (projectDetailRef.value) {
       projectDetailRef.value.open(project.id)
     }
@@ -80,35 +115,29 @@ export function useCommsDashboard() {
   }
 
   function handleProjectCreated(project) {
-    console.log('Project created:', project)
     showSuccess('Project created successfully')
   }
 
   function handleProjectUpdated(project) {
-    console.log('Project updated:', project)
     showSuccess('Project updated successfully')
   }
 
   function handleProjectDeleted(project, hard) {
-    console.log('Project deleted:', { project, hard })
     deleteHard.value = hard
     deleteSnackbar.value = true
   }
 
   async function handleProjectDelete(project, hard = false) {
-    console.log('Handling project delete:', { project, hard })
-    
     try {
       if (hard) {
         await hardDeleteProject(project.id)
       } else {
         await softDeleteProject(project.id)
       }
-      
+
       deleteHard.value = hard
       deleteSnackbar.value = true
     } catch (error) {
-      console.error('Error deleting project:', error)
       showError(error.message || 'Failed to delete project')
     }
   }
@@ -119,7 +148,7 @@ export function useCommsDashboard() {
       showError('No projects to export')
       return
     }
-    
+
     const success = await exportToCSV(projectsToExport, 'comms_projects')
     if (success) {
       showSuccess('Projects exported to CSV successfully')
@@ -134,7 +163,7 @@ export function useCommsDashboard() {
       showError('No projects to export')
       return
     }
-    
+
     const success = await exportToPDF(projectsToExport, 'comms_projects_report')
     if (success) {
       showSuccess('Projects exported to PDF successfully')
@@ -144,8 +173,8 @@ export function useCommsDashboard() {
   }
 
   function updateDateRange(dateRange) {
-    if (analytics?.setDateRange) {
-      analytics.setDateRange(dateRange.start, dateRange.end)
+    if (analytics.value && analytics.value.setDateRange) {
+      analytics.value.setDateRange(dateRange.start, dateRange.end)
     }
   }
 
@@ -159,19 +188,35 @@ export function useCommsDashboard() {
     errorSnackbar.value = true
   }
 
+  // Initialize analytics when projects are available
+  const initializeAnalytics = () => {
+    if (!analytics.value && projects.value.length > 0) {
+      analytics.value = useProjectAnalytics(projects)
+  }
+
+  // Watch for projects changes to initialize analytics
+  watch(projects, (newProjects) => {
+    if (newProjects && newProjects.length > 0) {
+      if (!analytics.value) {
+        initializeAnalytics()
+      }
+    }
+  }, { immediate: true, deep: true })
+
   // Lifecycle
   onMounted(() => {
     // Get initial projects on mount
     setTimeout(() => {
       if (projectListRef.value?.projects) {
         projects.value = projectListRef.value.projects
+        initializeAnalytics()
       }
     }, 500)
   })
 
   onUnmounted(() => {
-    if (analytics?.cleanup && typeof analytics.cleanup === 'function') {
-      analytics.cleanup()
+    if (analytics.value && analytics.value.cleanup && typeof analytics.value.cleanup === 'function') {
+      analytics.value.cleanup()
     }
   })
 
@@ -188,15 +233,15 @@ export function useCommsDashboard() {
     successMessage,
     errorSnackbar,
     errorMessage,
-    
+
     // Analytics
     analytics,
     analyticsData,
     visibleProjects,
-    
+
     // Export
     exporting,
-    
+
     // Methods
     handleFilterUpdate,
     handleProjectSelect,

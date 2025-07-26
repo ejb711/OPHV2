@@ -1,11 +1,11 @@
 // client/src/stores/permissions.js - Enhanced Permission management store
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { 
-  collection, 
-  getDocs, 
-  doc, 
-  updateDoc, 
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
   addDoc,
   deleteDoc,
   serverTimestamp,
@@ -47,16 +47,12 @@ export const usePermissionsStore = defineStore('permissions', () => {
     error.value = ''
 
     try {
-      console.log('[permissions] Loading all data...')
-      
       // Load permissions
       const permissionsSnap = await getDocs(collection(db, 'permissions'))
       allPermissions.value = permissionsSnap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
-      console.log('[permissions] Loaded permissions:', allPermissions.value.length)
-
       // Load roles with proper ordering
       const rolesQuery = query(collection(db, 'roles'), orderBy('hierarchy', 'desc'))
       const rolesSnap = await getDocs(rolesQuery)
@@ -64,7 +60,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
         id: doc.id,
         ...doc.data()
       }))
-      console.log('[permissions] Loaded roles:', allRoles.value.map(r => ({ id: r.id, name: r.name })))
+      ))
 
       // Load users
       const usersSnap = await getDocs(collection(db, 'users'))
@@ -73,16 +69,12 @@ export const usePermissionsStore = defineStore('permissions', () => {
         uid: doc.id, // Ensure both id and uid are available
         ...doc.data()
       }))
-      console.log('[permissions] Loaded users:', allUsers.value.length)
-
       // Initialize default roles if none exist
       if (allRoles.value.length === 0) {
-        console.log('[permissions] No roles found, initializing defaults...')
         await initializeDefaultRoles()
       }
 
     } catch (err) {
-      console.error('[permissions] Error loading permission data:', err)
       error.value = err.message
     } finally {
       loading.value = false
@@ -159,7 +151,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
           updatedAt: serverTimestamp()
         })
       }
-      
+
       // Reload roles after initialization
       const rolesQuery = query(collection(db, 'roles'), orderBy('hierarchy', 'desc'))
       const rolesSnap = await getDocs(rolesQuery)
@@ -167,11 +159,9 @@ export const usePermissionsStore = defineStore('permissions', () => {
         id: doc.id,
         ...doc.data()
       }))
-      
-      console.log('[permissions] Default roles initialized')
-    } catch (error) {
-      console.error('[permissions] Error initializing default roles:', error)
-    }
+
+      } catch (error) {
+      }
   }
 
   async function updateRolePermissions(roleId, permissions) {
@@ -180,16 +170,15 @@ export const usePermissionsStore = defineStore('permissions', () => {
         permissions,
         updatedAt: serverTimestamp()
       })
-      
+
       // Update local state
       const roleIndex = allRoles.value.findIndex(r => r.id === roleId)
       if (roleIndex !== -1) {
         allRoles.value[roleIndex].permissions = permissions
       }
-      
+
       return { success: true }
     } catch (err) {
-      console.error('[permissions] Error updating role permissions:', err)
       return { success: false, error: err.message }
     }
   }
@@ -200,7 +189,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
       if (!roleData.name) {
         throw new Error('Role name is required')
       }
-      
+
       // Check if role name already exists
       const existingRole = allRoles.value.find(
         r => r.name.toLowerCase() === roleData.name.toLowerCase()
@@ -208,7 +197,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
       if (existingRole) {
         throw new Error('A role with this name already exists')
       }
-      
+
       const docRef = await addDoc(collection(db, 'roles'), {
         name: roleData.name,
         description: roleData.description || '',
@@ -218,7 +207,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       })
-      
+
       // Add to local state
       const newRole = {
         id: docRef.id,
@@ -226,10 +215,9 @@ export const usePermissionsStore = defineStore('permissions', () => {
         isSystemRole: false
       }
       allRoles.value.push(newRole)
-      
+
       return { success: true, id: docRef.id }
     } catch (err) {
-      console.error('[permissions] Error creating role:', err)
       return { success: false, error: err.message }
     }
   }
@@ -248,7 +236,7 @@ export const usePermissionsStore = defineStore('permissions', () => {
         hierarchy: roleData.hierarchy,
         updatedAt: serverTimestamp()
       })
-      
+
       // Update local state
       const roleIndex = allRoles.value.findIndex(r => r.id === roleId)
       if (roleIndex !== -1) {
@@ -258,10 +246,9 @@ export const usePermissionsStore = defineStore('permissions', () => {
           updatedAt: new Date()
         }
       }
-      
+
       return { success: true }
     } catch (err) {
-      console.error('[permissions] Error updating role:', err)
       return { success: false, error: err.message }
     }
   }
@@ -280,13 +267,12 @@ export const usePermissionsStore = defineStore('permissions', () => {
       }
 
       await deleteDoc(doc(db, 'roles', roleId))
-      
+
       // Remove from local state
       allRoles.value = allRoles.value.filter(r => r.id !== roleId)
-      
+
       return { success: true }
     } catch (err) {
-      console.error('[permissions] Error deleting role:', err)
       return { success: false, error: err.message }
     }
   }
@@ -304,10 +290,9 @@ export const usePermissionsStore = defineStore('permissions', () => {
       if (userIndex !== -1) {
         allUsers.value[userIndex].role = newRole
       }
-      
+
       return { success: true }
     } catch (err) {
-      console.error('[permissions] Error updating user role:', err)
       return { success: false, error: err.message }
     }
   }
@@ -319,17 +304,16 @@ export const usePermissionsStore = defineStore('permissions', () => {
         deniedPermissions: deniedPermissions || [],
         updatedAt: serverTimestamp()
       })
-      
+
       // Update local state
       const userIndex = allUsers.value.findIndex(u => u.id === userId || u.uid === userId)
       if (userIndex !== -1) {
         allUsers.value[userIndex].customPermissions = customPermissions || []
         allUsers.value[userIndex].deniedPermissions = deniedPermissions || []
       }
-      
+
       return { success: true }
     } catch (err) {
-      console.error('[permissions] Error updating user permissions:', err)
       return { success: false, error: err.message }
     }
   }
@@ -343,10 +327,8 @@ export const usePermissionsStore = defineStore('permissions', () => {
         id: doc.id,
         ...doc.data()
       }))
-      console.log('[permissions] Roles updated via listener:', allRoles.value.length)
-    }, (error) => {
-      console.error('[permissions] Error in roles listener:', error)
-    })
+      }, (error) => {
+      })
 
     // Listen to users changes
     const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
@@ -355,10 +337,8 @@ export const usePermissionsStore = defineStore('permissions', () => {
         uid: doc.id,
         ...doc.data()
       }))
-      console.log('[permissions] Users updated via listener:', allUsers.value.length)
-    }, (error) => {
-      console.error('[permissions] Error in users listener:', error)
-    })
+      }, (error) => {
+      })
 
     // Return cleanup function
     return () => {
@@ -388,26 +368,26 @@ export const usePermissionsStore = defineStore('permissions', () => {
     allUsers,
     loading,
     error,
-    
+
     // Computed
     permissionsByCategory,
     roleHierarchy,
     roles, // Backwards compatibility alias
-    
+
     // Methods
     loadAllData,
     setupRealtimeListeners,
-    
+
     // Role management
     createRole,
     updateRole,
     updateRolePermissions,
     deleteRole,
-    
+
     // User management
     updateUserRole,
     updateUserCustomPermissions,
-    
+
     // Getters
     getRoleById,
     getUserById,

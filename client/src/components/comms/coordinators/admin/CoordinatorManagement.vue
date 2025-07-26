@@ -46,7 +46,7 @@
                     Add Coordinator
                   </v-btn>
                 </v-card-title>
-                
+
                 <v-card-text>
                   <!-- Loading State -->
                   <div v-if="loading" class="text-center py-8">
@@ -227,10 +227,10 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'coordinator-updated'])
 
 // Composables - Management functions
-const { 
-  createCoordinator, 
-  updateCoordinator: updateCoordinatorData, 
-  deleteCoordinator: deleteCoordinatorData 
+const {
+  createCoordinator,
+  updateCoordinator: updateCoordinatorData,
+  deleteCoordinator: deleteCoordinatorData
 } = useCoordinatorManagement()
 
 // Composables - Selection and display (SAME AS ProjectRegionCoordinator)
@@ -267,7 +267,7 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' }
 ]
 
-const existingCoordinatorIds = computed(() => 
+const existingCoordinatorIds = computed(() =>
   coordinators.value.map(c => c.userId || c.id)
 )
 
@@ -310,11 +310,9 @@ function getRegionCoordinatorInfo(regionId) {
 
 async function addNewCoordinator(user) {
   try {
-    console.log('Adding new coordinator:', user)
-    
     // Ensure we have a proper display name
     const displayName = user.displayName || user.name || user.email.split('@')[0]
-    
+
     await createCoordinator({
       userId: user.uid,
       email: user.email,
@@ -323,11 +321,11 @@ async function addNewCoordinator(user) {
       regions: [],
       primaryRegion: null
     })
-    
+
     showSuccess(`${displayName} added as coordinator successfully`)
     emit('coordinator-updated')
     showUserSelection.value = false
-    
+
     // Refresh the coordinator list - USE THE SAME METHOD
     await loadAllCoordinators()
   } catch (error) {
@@ -358,7 +356,7 @@ async function updateCoordinator(updatedData) {
 
 async function deleteCoordinator() {
   if (!selectedCoordinator.value) return
-  
+
   deleting.value = true
   try {
     await deleteCoordinatorData(selectedCoordinator.value.id)

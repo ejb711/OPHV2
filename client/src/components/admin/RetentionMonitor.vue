@@ -47,7 +47,7 @@ const healthIcon = computed(() => {
 const storageEstimate = computed(() => {
   // Rough estimate: ~500 bytes per log
   const totalBytes = (stats.value.totalLogs || 0) * 500
-  
+
   if (totalBytes < 1024) return `${totalBytes} B`
   if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`
   return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
@@ -71,33 +71,30 @@ onMounted(() => {
 async function loadRetentionStats() {
   loading.value = true
   error.value = ''
-  
+
   try {
     // Try to get stats from Cloud Function first
     const getRetentionStats = httpsCallable(functions, 'getRetentionStats')
     const result = await getRetentionStats()
-    console.log('Raw Cloud Function response:', result) // Debug full response
-    console.log('Cloud Function result.data:', result.data) // Debug data property
-    
+    // Debug full response
+    // Debug data property
+
     // Handle different possible response structures
     let statsData = null
-    
+
     // Case 1: Nested structure with success flag and data property
     if (result.data && result.data.success && result.data.data) {
       statsData = result.data.data
-      console.log('Found nested structure with success flag')
-    }
+      }
     // Case 2: Direct data structure
     else if (result.data && result.data.overview) {
       statsData = result.data
-      console.log('Found direct data structure')
-    }
+      }
     // Case 3: Maybe the overview is at the top level
     else if (result.data && result.data.totalLogs !== undefined) {
       statsData = { overview: result.data }
-      console.log('Found flat structure, wrapping in overview')
-    }
-    
+      }
+
     if (statsData && statsData.overview) {
       stats.value = {
         totalLogs: statsData.overview.totalLogs || 0,
@@ -107,15 +104,11 @@ async function loadRetentionStats() {
         retentionHealth: statsData.overview.retentionHealth || 'unknown',
         lastUpdated: statsData.lastUpdated || null
       }
-      console.log('Successfully loaded stats:', stats.value)
-    } else {
-      console.error('Unexpected response structure:', result.data)
+      } else {
       throw new Error('Invalid response structure from Cloud Function')
     }
-    
+
   } catch (e) {
-    console.warn('Cloud Function stats failed, using client-side fallback:', e)
-    
     // Simple client-side fallback - just get basic counts
     try {
       const totalLogs = await getClientSideStats()
@@ -128,9 +121,8 @@ async function loadRetentionStats() {
         lastUpdated: new Date().toISOString()
       }
     } catch (clientError) {
-      console.error('Client stats also failed:', clientError)
       error.value = 'Failed to load retention statistics'
-      
+
       // Set default values to prevent UI errors
       stats.value = {
         totalLogs: 0,
@@ -158,7 +150,6 @@ async function getClientSideStats() {
     const snapshot = await getDocs(recentQuery)
     return snapshot.size
   } catch (error) {
-    console.error('Error getting client-side stats:', error)
     return 0
   }
 }
@@ -167,19 +158,18 @@ async function triggerManualCleanup() {
   cleanupLoading.value = true
   error.value = ''
   success.value = ''
-  
+
   try {
     const manualCleanup = httpsCallable(functions, 'manualCleanupAuditLogs')
     const result = await manualCleanup()
-    
+
     const cleanupStats = result.data.stats || {}
     success.value = `Cleanup completed! Compressed: ${cleanupStats.compressed || 0}, Deleted: ${cleanupStats.deleted || 0}`
-    
+
     // Reload stats to reflect changes
     setTimeout(() => loadRetentionStats(), 2000)
-    
+
   } catch (e) {
-    console.error('Manual cleanup failed:', e)
     error.value = e.message || 'Cleanup failed'
   } finally {
     cleanupLoading.value = false
@@ -200,13 +190,13 @@ function formatDate(dateString) {
       <v-spacer />
       <v-btn
         size="small"
-        variant="outlined" 
+        variant="outlined"
         @click="loadRetentionStats"
         :loading="loading"
         icon="mdi-refresh"
       />
     </v-card-title>
-    
+
     <v-card-text>
       <!-- Health Status -->
       <v-row class="mb-4">
@@ -237,7 +227,7 @@ function formatDate(dateString) {
             <div class="text-caption text-medium-emphasis">Total Logs</div>
           </div>
         </v-col>
-        
+
         <v-col cols="6" md="3">
           <div class="text-center">
             <div class="text-h4 font-weight-bold text-success">
@@ -246,7 +236,7 @@ function formatDate(dateString) {
             <div class="text-caption text-medium-emphasis">Recent (30 days)</div>
           </div>
         </v-col>
-        
+
         <v-col cols="6" md="3">
           <div class="text-center">
             <div class="text-h4 font-weight-bold text-warning">
@@ -255,7 +245,7 @@ function formatDate(dateString) {
             <div class="text-caption text-medium-emphasis">Compressed</div>
           </div>
         </v-col>
-        
+
         <v-col cols="6" md="3">
           <div class="text-center">
             <div class="text-h4 font-weight-bold text-info">
@@ -268,26 +258,26 @@ function formatDate(dateString) {
 
       <!-- Retention Policy Info -->
       <v-divider class="my-4" />
-      
+
       <v-row>
         <v-col cols="12" md="6">
           <v-list density="compact">
             <v-list-subheader>Retention Policy</v-list-subheader>
-            
+
             <v-list-item>
               <v-list-item-title>Full Detail Retention</v-list-item-title>
               <v-list-item-subtitle>
                 {{ RETENTION_CONFIG.FULL_RETENTION_DAYS }} days
               </v-list-item-subtitle>
             </v-list-item>
-            
+
             <v-list-item>
               <v-list-item-title>Compressed Retention</v-list-item-title>
               <v-list-item-subtitle>
                 {{ RETENTION_CONFIG.COMPRESSED_RETENTION_DAYS }} days total
               </v-list-item-subtitle>
             </v-list-item>
-            
+
             <v-list-item>
               <v-list-item-title>Compliance Actions</v-list-item-title>
               <v-list-item-subtitle>
@@ -296,11 +286,11 @@ function formatDate(dateString) {
             </v-list-item>
           </v-list>
         </v-col>
-        
+
         <v-col cols="12" md="6">
           <v-list density="compact">
             <v-list-subheader>Compression Rate</v-list-subheader>
-            
+
             <v-progress-linear
               :model-value="stats.compressionRate || 0"
               :color="healthColor"
@@ -309,7 +299,7 @@ function formatDate(dateString) {
             >
               <strong>{{ stats.compressionRate || 0 }}%</strong>
             </v-progress-linear>
-            
+
             <div class="text-caption text-medium-emphasis">
               Logs older than {{ RETENTION_CONFIG.FULL_RETENTION_DAYS }} days are compressed to save storage
             </div>
@@ -319,7 +309,7 @@ function formatDate(dateString) {
 
       <!-- Actions -->
       <v-divider class="my-4" />
-      
+
       <div class="d-flex justify-space-between align-center">
         <div>
           <v-btn
@@ -337,7 +327,7 @@ function formatDate(dateString) {
             Manually trigger compression and deletion
           </div>
         </div>
-        
+
         <div class="text-caption text-end text-medium-emphasis">
           Automatic cleanup runs weekly on Sundays
         </div>
@@ -408,7 +398,7 @@ function formatDate(dateString) {
                 </tr>
               </tbody>
             </v-table>
-            
+
             <div class="text-caption text-medium-emphasis mt-2">
               * Projections based on 100 users, 1 hour daily usage
             </div>

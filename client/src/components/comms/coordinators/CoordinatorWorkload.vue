@@ -15,18 +15,18 @@
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
     </v-card-title>
-    
+
     <v-card-text>
       <div v-if="loading && coordinators.length === 0" class="text-center py-8">
         <v-progress-circular indeterminate color="primary" />
         <p class="text-caption mt-2">Loading coordinators...</p>
       </div>
-      
+
       <div v-else-if="workloadData.length === 0" class="text-center py-8">
         <v-icon size="48" color="grey">mdi-account-group-outline</v-icon>
         <p class="text-body-2 mt-2">No coordinators found</p>
       </div>
-      
+
       <div v-else>
         <v-list lines="two">
           <template v-for="(coordinator, index) in workloadData" :key="coordinator.id">
@@ -39,11 +39,11 @@
                   <span class="text-h6">{{ coordinator.workload }}</span>
                 </v-avatar>
               </template>
-              
+
               <v-list-item-title>
                 {{ coordinator.name }}
-                <v-chip 
-                  v-for="regionId in coordinator.regions" 
+                <v-chip
+                  v-for="regionId in coordinator.regions"
                   :key="regionId"
                   :color="LOUISIANA_REGIONS[regionId]?.color"
                   size="x-small"
@@ -52,25 +52,29 @@
                   {{ LOUISIANA_REGIONS[regionId]?.abbreviation || `Region ${regionId}` }}
                 </v-chip>
               </v-list-item-title>
-              
+
               <v-list-item-subtitle>
                 {{ coordinator.email }}
               </v-list-item-subtitle>
-              
+
               <template v-slot:append>
                 <div class="text-right">
                   <p class="text-caption mb-0">
-                    <span class="text-medium-emphasis">Active:</span> 
-                    {{ coordinator.activeProjects }}
+                    <span class="text-medium-emphasis">Not Started:</span>
+                    {{ coordinator.notStartedProjects }}
+                  </p>
+                  <p class="text-caption mb-0">
+                    <span class="text-medium-emphasis">In Progress:</span>
+                    {{ coordinator.inProgressProjects }}
                   </p>
                   <p class="text-caption">
-                    <span class="text-medium-emphasis">Completed:</span> 
+                    <span class="text-medium-emphasis">Completed:</span>
                     {{ coordinator.completedProjects }}
                   </p>
                 </div>
               </template>
             </v-list-item>
-            
+
             <v-divider v-if="index < workloadData.length - 1" />
           </template>
         </v-list>
@@ -113,7 +117,7 @@
               <p class="text-body-2">{{ selectedCoordinator.workload }}</p>
             </v-col>
           </v-row>
-          
+
           <p class="text-overline mb-1 mt-3">Assigned Regions</p>
           <v-chip
             v-for="regionId in selectedCoordinator.regions"
@@ -150,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { collection, query, onSnapshot } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
@@ -163,6 +167,11 @@ const props = defineProps({
   }
 })
 
+// Debug props
+watch(() => props.projects, (newProjects) => {
+  // Projects changed
+}, { immediate: true })
+
 // State
 const loading = ref(true)
 const coordinators = ref([])
@@ -172,30 +181,115 @@ const selectedCoordinator = ref(null)
 // Listeners
 let coordinatorsUnsubscribe = null
 
+// Helper function to calculate status based on stages
+const calculateProjectStatus = (project) => {
+  if (!project) return 'unknown'
+
+  // First check if project has an explicit status set
+  if (project.status) {
+    return project.status
+  }
+
+  // If no explicit status, calculate based on stages
+  if (!project.stages || project.stages.length === 0) {
+    return 'not_started'
+  }
+
+  // Count completed stages
+  const completedCount = project.stages.filter(s => s.completed).length
+
+  // All completed
+  if (completedCount === project.stages.length) {
+    return 'completed'
+  }
+
+  // None completed
+  if (completedCount === 0) {
+    return 'not_started'
+  }
+
+  // Some completed - in progress
+  return 'in_progress'
+}
+
 // Computed workload data
 const workloadData = computed(() => {
+  // First, let's see all unique coordinator IDs in projects
+  const projectCoordinatorIds = new Set()
+  props.projects.forEach(p => {
+    if (p.coordinatorId && !p.deleted) {
+      projectCoordinatorIds.add(p.coordinatorId)
+    }
+  })
+
+  // Now let's see all coordinator IDs we have
+  const coordinatorIds = coordinators.value.map(c => ({
+    userId: c.userId,
+    id: c.id,
+    uid: c.uid,
+    name: c.userName || c.name
+  }))
   return coordinators.value.map(coord => {
-    const coordProjects = props.projects.filter(p => 
-      p.coordinatorId === coord.userId && !p.deleted
-    )
-    
+    // Try multiple fields for coordinator ID matching
+    const possibleIds = [coord.userId, coord.id, coord.uid].filter(Boolean)
+
+    // Add mapped IDs to handle test-coordinator-X to test-user-X mapping
+    const mappedIds = [...possibleIds]
+    possibleIds.forEach(id => {
+      // If we have test-user-X, also check for test-coordinator-X
+      if (id && id.startsWith('test-user-')) {
+        const coordinatorId = id.replace('test-user-', 'test-coordinator-')
+        mappedIds.push(coordinatorId)
+      }
+      // If we have test-coordinator-X, also check for test-user-X
+      if (id && id.startsWith('test-coordinator-')) {
+        const userId = id.replace('test-coordinator-', 'test-user-')
+        mappedIds.push(userId)
+      }
+    })
+
+    // Debug: show first few projects and their coordinator IDs
+    // Skip debug logging
+
+    const coordProjects = props.projects.filter(p => {
+      const matches = mappedIds.includes(p.coordinatorId) && !p.deleted
+      return matches
+    })
+
+    // Projects mapped
+
+    // Calculate status for each project
     const statusBreakdown = coordProjects.reduce((acc, p) => {
-      acc[p.status] = (acc[p.status] || 0) + 1
+      const status = calculateProjectStatus(p)
+      acc[status] = (acc[status] || 0) + 1
       return acc
     }, {})
-    
+
+    // Count projects by status - use calculated status
+    const notStartedProjects = coordProjects.filter(p => {
+      const status = calculateProjectStatus(p)
+      return status === 'not_started'
+    }).length
+
+    const inProgressProjects = coordProjects.filter(p => {
+      const status = calculateProjectStatus(p)
+      return status === 'in_progress' || status === 'pending_approval'
+    }).length
+
+    const completedProjects = coordProjects.filter(p => {
+      const status = calculateProjectStatus(p)
+      return status === 'completed'
+    }).length
+
     return {
       id: coord.userId,
       name: coord.userName || coord.name || 'Unknown Coordinator',
       email: coord.userEmail || coord.email || '',
       regions: coord.regions || [],
       workload: coordProjects.length,
-      activeProjects: coordProjects.filter(p => 
-        ['planning', 'in_progress', 'review'].includes(p.status)
-      ).length,
-      completedProjects: coordProjects.filter(p => 
-        p.status === 'completed'
-      ).length,
+      notStartedProjects,
+      inProgressProjects,
+      completedProjects,
       statusBreakdown
     }
   }).sort((a, b) => b.workload - a.workload)
@@ -245,9 +339,9 @@ const setupListener = () => {
   if (coordinatorsUnsubscribe) {
     coordinatorsUnsubscribe()
   }
-  
+
   const q = query(collection(db, 'comms_coordinators'))
-  
+
   coordinatorsUnsubscribe = onSnapshot(q, (snapshot) => {
     coordinators.value = snapshot.docs.map(doc => {
       const data = doc.data()
@@ -261,7 +355,6 @@ const setupListener = () => {
     })
     loading.value = false
   }, (error) => {
-    console.error('Error fetching coordinators:', error)
     loading.value = false
   })
 }

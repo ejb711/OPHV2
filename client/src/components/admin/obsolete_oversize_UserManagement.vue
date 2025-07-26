@@ -80,7 +80,7 @@
             <v-img v-if="item.photoURL" :src="item.photoURL" />
             <span v-else class="text-caption">{{ item.email.charAt(0).toUpperCase() }}</span>
           </v-avatar>
-          
+
           <!-- Clickable email link for users that can be edited -->
           <PermissionGuard permission="edit_users">
             <template #default="{ hasPermission }">
@@ -190,7 +190,7 @@
               </template>
             </v-tooltip>
           </PermissionGuard>
-          
+
           <!-- Delete User Button -->
           <PermissionGuard permission="delete_users">
             <v-tooltip text="Delete User">
@@ -325,7 +325,7 @@
             label="Select Action"
             variant="outlined"
           />
-          
+
           <v-select
             v-if="bulkAction === 'change_role'"
             v-model="bulkRole"
@@ -423,7 +423,7 @@ const filteredUsers = computed(() => {
   // Search filter
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
-    filtered = filtered.filter(user => 
+    filtered = filtered.filter(user =>
       user.email.toLowerCase().includes(search) ||
       (user.displayName && user.displayName.toLowerCase().includes(search))
     )
@@ -515,7 +515,7 @@ function getStatusColor(status) {
 
 function formatDate(date) {
   if (!date) return 'Never'
-  
+
   let dateObj
   if (date.toDate) {
     dateObj = date.toDate()
@@ -524,17 +524,17 @@ function formatDate(date) {
   } else {
     dateObj = new Date(date)
   }
-  
+
   return dateObj.toLocaleDateString()
 }
 
 function canEditUser(user) {
   // Cannot edit yourself
   if (user.id === auth.user?.uid) return false
-  
+
   // Only owners can edit other owners
   if (user.role === 'owner' && auth.role !== 'owner') return false
-  
+
   return true
 }
 
@@ -563,7 +563,7 @@ function confirmDeleteUser(user) {
 async function saveUser() {
   try {
     const userRef = doc(db, 'users', editForm.value.id)
-    
+
     await updateDoc(userRef, {
       role: editForm.value.role,
       customPermissions: editForm.value.customPermissions,
@@ -590,7 +590,6 @@ async function saveUser() {
     }
 
   } catch (error) {
-    console.error('Error updating user:', error)
     snackbar.value = {
       show: true,
       message: 'Failed to update user',
@@ -611,7 +610,7 @@ async function deleteUser() {
 
     showDeleteDialog.value = false
     userToDelete.value = null
-    
+
     snackbar.value = {
       show: true,
       message: 'User deleted successfully',
@@ -619,7 +618,6 @@ async function deleteUser() {
     }
 
   } catch (error) {
-    console.error('Error deleting user:', error)
     snackbar.value = {
       show: true,
       message: 'Failed to delete user',
@@ -639,7 +637,7 @@ async function executeBulkAction() {
       if (!user || !canEditUser(user)) continue
 
       const userRef = doc(db, 'users', userId)
-      
+
       switch (bulkAction.value) {
         case 'change_role':
           await updateDoc(userRef, {
@@ -683,7 +681,6 @@ async function executeBulkAction() {
     }
 
   } catch (error) {
-    console.error('Error executing bulk action:', error)
     snackbar.value = {
       show: true,
       message: 'Failed to execute bulk action',
@@ -695,7 +692,7 @@ async function executeBulkAction() {
 async function loadUsers() {
   try {
     loading.value = true
-    
+
     const usersQuery = query(
       collection(db, 'users'),
       orderBy('createdAt', 'desc')
@@ -708,12 +705,10 @@ async function loadUsers() {
       }))
       loading.value = false
     }, (error) => {
-      console.error('Error loading users:', error)
       loading.value = false
     })
 
   } catch (error) {
-    console.error('Error setting up users listener:', error)
     loading.value = false
   }
 }

@@ -20,8 +20,8 @@
       </v-toolbar>
 
       <!-- Fixed Tabs -->
-      <v-tabs 
-        v-model="activeTab" 
+      <v-tabs
+        v-model="activeTab"
         color="primary"
         class="flex-grow-0 border-b tabs-container"
         density="compact"
@@ -58,7 +58,7 @@
             <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Analytics Overview</h2>
-                
+
                 <!-- Date Range Filter -->
                 <v-card class="mb-3" elevation="1" density="compact">
                   <v-card-title class="text-subtitle-2 pa-2">
@@ -66,33 +66,58 @@
                     Date Range Filter
                   </v-card-title>
                   <v-card-text class="pa-2">
-                    <v-row>
-                      <v-col cols="12" sm="6">
+                    <v-row align="center">
+                      <v-col cols="12" sm="5">
                         <v-text-field
-                          :model-value="analytics?.dateRange?.value?.start"
+                          v-model="localDateRange.start"
                           label="Start Date"
                           type="date"
                           variant="outlined"
                           density="compact"
+                          clearable
                           @update:model-value="handleStartDateChange"
                         />
                       </v-col>
-                      <v-col cols="12" sm="6">
+                      <v-col cols="12" sm="5">
                         <v-text-field
-                          :model-value="analytics?.dateRange?.value?.end"
+                          v-model="localDateRange.end"
                           label="End Date"
                           type="date"
                           variant="outlined"
                           density="compact"
+                          clearable
                           @update:model-value="handleEndDateChange"
                         />
                       </v-col>
+                      <v-col cols="12" sm="2">
+                        <v-btn
+                          size="small"
+                          :variant="isAllTime ? 'elevated' : 'tonal'"
+                          :color="isAllTime ? 'success' : 'primary'"
+                          block
+                          @click="selectAllDates"
+                        >
+                          <v-icon v-if="isAllTime" start size="small">mdi-check</v-icon>
+                          All Time
+                        </v-btn>
+                      </v-col>
                     </v-row>
+                    <v-alert
+                      v-if="dateRangeMessage"
+                      type="info"
+                      variant="tonal"
+                      density="compact"
+                      class="mt-2 text-caption"
+                      closable
+                      @click:close="dateRangeMessage = ''"
+                    >
+                      {{ dateRangeMessage }}
+                    </v-alert>
                   </v-card-text>
                 </v-card>
 
                 <!-- Key Metrics Summary -->
-                <CommsStats 
+                <CommsStats
                   :analytics="analyticsData"
                   :show-distributions="false"
                 />
@@ -105,9 +130,9 @@
             <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Detailed Statistics</h2>
-                
+
                 <!-- Full Stats Display -->
-                <CommsStats 
+                <CommsStats
                   :analytics="analyticsData"
                   :show-distributions="true"
                   class="mb-3"
@@ -138,8 +163,8 @@
             <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Coordinator Workload Analysis</h2>
-                <CoordinatorWorkload 
-                  :projects="projects" 
+                <CoordinatorWorkload
+                  :projects="projects"
                   class="coordinator-workload-card"
                 />
               </v-container>
@@ -151,7 +176,7 @@
             <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Regional Distribution</h2>
-                <CommsRegionalDistribution 
+                <CommsRegionalDistribution
                   :regional-distribution="analyticsData.regionalDistribution"
                   class="regional-card"
                 />
@@ -164,7 +189,7 @@
             <div class="tab-content h-100">
               <v-container fluid class="pa-3">
                 <h2 class="text-h6 mb-2">Export Analytics Data</h2>
-                
+
                 <v-row>
                   <v-col cols="12" md="6">
                     <v-card density="compact">
@@ -229,8 +254,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useCommsDashboard } from '@/composables/comms/useCommsDashboard'
+import { ref, computed, watch } from 'vue'
 import CommsStats from '../CommsStats.vue'
 import CoordinatorWorkload from '../coordinators/CoordinatorWorkload.vue'
 import CommsRegionalDistribution from './CommsRegionalDistribution.vue'
@@ -239,10 +263,30 @@ const props = defineProps({
   modelValue: {
     type: Boolean,
     default: false
+  },
+  projects: {
+    type: Array,
+    default: () => []
+  },
+  analytics: {
+    type: Object,
+    default: null
+  },
+  analyticsData: {
+    type: Object,
+    required: true
+  },
+  visibleProjects: {
+    type: Array,
+    default: () => []
+  },
+  exporting: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'export-csv', 'export-pdf', 'update-date-range'])
 
 const dialog = computed({
   get: () => props.modelValue,
@@ -251,18 +295,47 @@ const dialog = computed({
 
 // State
 const activeTab = ref('overview')
+const dateRangeMessage = ref('')
 
-// Use the dashboard composable for analytics logic
-const {
-  projects,
-  analytics,
-  analyticsData,
-  visibleProjects,
-  exporting,
-  handleExportCSV,
-  handleExportPDF,
-  updateDateRange
-} = useCommsDashboard()
+// Use props instead of creating new instance
+const projects = computed(() => {
+  return props.projects
+})
+const analytics = computed(() => props.analytics)
+const analyticsData = computed(() => props.analyticsData)
+const visibleProjects = computed(() => props.visibleProjects)
+const exporting = computed(() => props.exporting)
+
+// Local date range state
+const localDateRange = ref({
+  start: null,
+  end: null
+})
+
+// Check if showing all time
+const isAllTime = computed(() => !localDateRange.value.start && !localDateRange.value.end)
+
+// Initialize local date range from analytics when available
+watch(() => analytics.value?.dateRange?.value, (newRange) => {
+  if (newRange) {
+    localDateRange.value = { ...newRange }
+  }
+}, { immediate: true })
+
+// Debug analytics data
+watch(() => analyticsData.value, (newData) => {
+  // Analytics data changed
+}, { immediate: true, deep: true })
+
+// Debug projects prop
+watch(() => props.projects, (newProjects) => {
+  // Projects prop changed
+}, { immediate: true, deep: true })
+
+// Debug props
+watch(() => props.analyticsData, (newData) => {
+  // Analytics data prop changed
+}, { immediate: true, deep: true })
 
 function close() {
   dialog.value = false
@@ -270,23 +343,47 @@ function close() {
 
 function refresh() {
   // Trigger analytics refresh
-  if (analytics.value?.refresh) {
+  if (analytics.value && analytics.value.refresh) {
     analytics.value.refresh()
   }
 }
 
 function handleStartDateChange(value) {
-  updateDateRange({
+  localDateRange.value.start = value
+  dateRangeMessage.value = ''
+  emit('update-date-range', {
     start: value,
-    end: analytics.value?.dateRange?.value?.end
+    end: localDateRange.value.end
   })
 }
 
 function handleEndDateChange(value) {
-  updateDateRange({
-    start: analytics.value?.dateRange?.value?.start,
+  localDateRange.value.end = value
+  dateRangeMessage.value = ''
+  emit('update-date-range', {
+    start: localDateRange.value.start,
     end: value
   })
+}
+
+function selectAllDates() {
+  // Clear both dates to show all data
+  localDateRange.value = { start: null, end: null }
+  dateRangeMessage.value = 'Showing all data across all time periods'
+  emit('update-date-range', { start: null, end: null })
+
+  // Clear message after 3 seconds
+  setTimeout(() => {
+    dateRangeMessage.value = ''
+  }, 3000)
+}
+
+function handleExportCSV() {
+  emit('export-csv')
+}
+
+function handleExportPDF() {
+  emit('export-pdf')
 }
 </script>
 
@@ -351,12 +448,12 @@ function handleEndDateChange(value) {
     max-width: 100%;
     padding: 12px;
   }
-  
+
   .tabs-container {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .analytics-card {
     border-radius: 0;
   }
@@ -366,7 +463,7 @@ function handleEndDateChange(value) {
   .v-container {
     padding: 8px;
   }
-  
+
   :deep(.v-tab) {
     min-width: 90px;
     font-size: 0.75rem;

@@ -2,7 +2,7 @@
 <template>
   <div class="field-group stats-group">
     <label class="field-label">Project Statistics</label>
-    
+
     <v-row dense>
       <!-- Views -->
       <v-col cols="6" sm="3">
@@ -11,7 +11,7 @@
           <div class="text-caption text-grey-darken-1">Views</div>
         </div>
       </v-col>
-      
+
       <!-- Files -->
       <v-col cols="6" sm="3">
         <div class="text-center stat-card">
@@ -19,7 +19,7 @@
           <div class="text-caption text-grey-darken-1">Files</div>
         </div>
       </v-col>
-      
+
       <!-- Messages -->
       <v-col cols="6" sm="3">
         <div class="text-center stat-card">
@@ -27,7 +27,7 @@
           <div class="text-caption text-grey-darken-1">Messages</div>
         </div>
       </v-col>
-      
+
       <!-- Days Active -->
       <v-col cols="6" sm="3">
         <div class="text-center stat-card">
@@ -41,11 +41,11 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot
 } from 'firebase/firestore'
 import { db } from '@/firebase'
 
@@ -68,14 +68,14 @@ let messagesUnsubscribe = null
 // Computed properties
 const daysActive = computed(() => {
   if (!props.project?.createdAt) return 0
-  
-  const created = props.project.createdAt.toDate 
-    ? props.project.createdAt.toDate() 
+
+  const created = props.project.createdAt.toDate
+    ? props.project.createdAt.toDate()
     : new Date(props.project.createdAt)
-  
+
   const now = new Date()
   const diff = now - created
-  
+
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 })
 
@@ -85,7 +85,7 @@ watch(() => props.project?.id, (newId, oldId) => {
   if (oldId) {
     cleanupListeners()
   }
-  
+
   // Set up new listeners
   if (newId) {
     setupListeners(newId)
@@ -95,32 +95,30 @@ watch(() => props.project?.id, (newId, oldId) => {
 // Set up real-time listeners for counts
 function setupListeners(projectId) {
   if (!projectId) return
-  
+
   // Listen to files count
   const filesQuery = query(
     collection(db, 'comms_files'),
     where('projectId', '==', projectId),
     where('deleted', '==', false)
   )
-  
+
   filesUnsubscribe = onSnapshot(filesQuery, (snapshot) => {
     fileCount.value = snapshot.size
   }, (error) => {
-    console.error('Error listening to files:', error)
-  })
-  
+    })
+
   // Listen to messages count
   const messagesQuery = query(
     collection(db, 'comms_messages'),
     where('projectId', '==', projectId),
     where('deleted', '==', false)
   )
-  
+
   messagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
     messageCount.value = snapshot.size
   }, (error) => {
-    console.error('Error listening to messages:', error)
-  })
+    })
 }
 
 // Clean up listeners
@@ -129,12 +127,12 @@ function cleanupListeners() {
     filesUnsubscribe()
     filesUnsubscribe = null
   }
-  
+
   if (messagesUnsubscribe) {
     messagesUnsubscribe()
     messagesUnsubscribe = null
   }
-  
+
   // Reset counts
   fileCount.value = 0
   messageCount.value = 0

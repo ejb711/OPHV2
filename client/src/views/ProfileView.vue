@@ -10,7 +10,7 @@
             Manage your account information and preferences
           </p>
         </div>
-        
+
         <!-- Profile Avatar with Louisiana Department of Health Colors -->
         <v-avatar size="64" color="primary">
           <v-icon size="32">mdi-account-circle</v-icon>
@@ -19,15 +19,15 @@
 
       <!-- Profile Tabs -->
       <v-card elevation="2" rounded="lg">
-        <v-tabs 
-          v-model="activeTab" 
-          bg-color="transparent" 
+        <v-tabs
+          v-model="activeTab"
+          bg-color="transparent"
           color="primary"
           density="comfortable"
           class="px-4"
         >
-          <v-tab 
-            v-for="tab in availableTabs" 
+          <v-tab
+            v-for="tab in availableTabs"
             :key="tab.value"
             :value="tab.value"
             class="px-6"
@@ -310,35 +310,35 @@ const userDocument = computed(() => authStore.userDocument)
 // Available tabs based on permissions
 const availableTabs = computed(() => {
   const tabs = [
-    { 
-      value: 'profile', 
-      title: 'Profile', 
+    {
+      value: 'profile',
+      title: 'Profile',
       icon: 'mdi-account',
-      permission: 'view_own_profile' 
+      permission: 'view_own_profile'
     },
-    { 
-      value: 'security', 
-      title: 'Security', 
+    {
+      value: 'security',
+      title: 'Security',
       icon: 'mdi-shield-account',
-      permission: 'manage_own_security' 
+      permission: 'manage_own_security'
     }
   ]
-  
+
   // Special handling for owners - always show all tabs
   if (userRole.value === 'owner') {
     return tabs
   }
-  
+
   // For other users, filter by permissions
   const filteredTabs = tabs.filter(tab => {
     return authStore.hasPermission(tab.permission)
   })
-  
+
   // If no tabs after filtering, but user has a valid role, show at least the profile tab
   if (filteredTabs.length === 0 && userRole.value && userRole.value !== 'pending') {
     return [tabs[0]] // Show at least the profile tab
   }
-  
+
   return filteredTabs
 })
 
@@ -404,7 +404,6 @@ const loadUserData = async () => {
   try {
     const currentUser = user.value
     if (!currentUser) {
-      console.warn('No user logged in')
       return
     }
 
@@ -412,7 +411,7 @@ const loadUserData = async () => {
     const userDocRef = doc(db, 'users', currentUser.uid)
     const userDocSnap = await getDoc(userDocRef)
     const freshUserDoc = userDocSnap.exists() ? userDocSnap.data() : null
-    
+
     if (freshUserDoc) {
       // Populate form with fresh data from Firestore
       form.value = {
@@ -442,9 +441,8 @@ const loadUserData = async () => {
     // Store original form data for comparison
     originalForm.value = { ...form.value }
     isFormDirty.value = false
-    
+
   } catch (error) {
-    console.error('Error loading user data:', error)
     showSnackbar('Failed to load profile data', 'error')
   } finally {
     loading.value = false
@@ -490,7 +488,7 @@ const saveProfile = async () => {
     // Log the update
     await logEvent('profile_updated', {
       userId: currentUser.uid,
-      updatedFields: Object.keys(form.value).filter(key => 
+      updatedFields: Object.keys(form.value).filter(key =>
         form.value[key] !== originalForm.value[key]
       )
     })
@@ -505,7 +503,6 @@ const saveProfile = async () => {
     showSnackbar('Profile updated successfully')
 
   } catch (error) {
-    console.error('Error updating profile:', error)
     if (error.code === 'auth/requires-recent-login') {
       showSnackbar('Please log in again to update your email', 'error')
     } else if (error.code === 'auth/email-already-in-use') {

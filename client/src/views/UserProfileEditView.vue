@@ -20,18 +20,18 @@
             </p>
           </div>
         </div>
-        
+
         <!-- User Role Badge -->
         <div v-if="editUser" class="d-flex align-center justify-space-between">
-          <v-chip 
-            :color="getRoleColor(editUser.role)" 
+          <v-chip
+            :color="getRoleColor(editUser.role)"
             variant="elevated"
             class="text-capitalize"
           >
             <v-icon start>mdi-shield-account</v-icon>
             {{ editUser.role }}
           </v-chip>
-          
+
           <!-- Last Login Info -->
           <div v-if="editUser.lastActive" class="text-caption text-medium-emphasis">
             Last active: {{ formatDate(editUser.lastActive) }}
@@ -75,7 +75,7 @@
                   Update user profile details and contact information
                 </p>
               </div>
-              
+
               <!-- Save Button -->
               <v-btn
                 color="primary"
@@ -98,7 +98,7 @@
                     Basic Information
                   </h3>
                 </v-col>
-                
+
                 <v-col cols="12" md="6">
                   <div class="field-group">
                     <label class="field-label">Display Name</label>
@@ -112,7 +112,7 @@
                     />
                   </div>
                 </v-col>
-                
+
                 <v-col cols="12" md="6">
                   <div class="field-group">
                     <label class="field-label">Email Address</label>
@@ -128,7 +128,7 @@
                     />
                   </div>
                 </v-col>
-                
+
                 <v-col cols="12" md="6">
                   <div class="field-group">
                     <label class="field-label">Phone Number</label>
@@ -142,7 +142,7 @@
                     />
                   </div>
                 </v-col>
-                
+
                 <v-col cols="12" md="6">
                   <div class="field-group">
                     <label class="field-label">Job Title</label>
@@ -155,7 +155,7 @@
                     />
                   </div>
                 </v-col>
-                
+
                 <v-col cols="12" md="6">
                   <div class="field-group">
                     <label class="field-label">Department</label>
@@ -182,7 +182,7 @@
                     />
                   </div>
                 </v-col>
-                
+
                 <v-col cols="12" md="6">
                   <div class="field-group">
                     <label class="field-label">Location</label>
@@ -262,7 +262,7 @@
                     >
                       Reset Changes
                     </v-btn>
-                    
+
                     <v-btn
                       color="primary"
                       variant="flat"
@@ -411,7 +411,7 @@ function formatPhoneNumber(phone) {
 
 function formatDate(date) {
   if (!date) return 'Unknown'
-  
+
   let dateObj
   if (date.toDate) {
     dateObj = date.toDate()
@@ -420,7 +420,7 @@ function formatDate(date) {
   } else {
     dateObj = new Date(date)
   }
-  
+
   return dateObj.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -453,7 +453,7 @@ async function loadUserData() {
   try {
     isLoading.value = true
     error.value = ''
-    
+
     const userId = route.params.userId
     if (!userId) {
       error.value = 'No user ID provided'
@@ -492,7 +492,6 @@ async function loadUserData() {
     isFormDirty.value = false
 
   } catch (err) {
-    console.error('Error loading user data:', err)
     error.value = 'Failed to load user data. Please try again.'
   } finally {
     isLoading.value = false
@@ -546,7 +545,6 @@ async function saveProfile() {
     }
 
   } catch (err) {
-    console.error('Error saving profile:', err)
     snackbar.value = {
       show: true,
       message: 'Failed to save profile. Please try again.',

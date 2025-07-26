@@ -9,7 +9,7 @@
         @error="handleUploadError"
       />
     </div>
-    
+
     <!-- Single Column Layout for Better Responsiveness -->
     <div class="files-layout">
       <!-- Project Files Section -->
@@ -23,7 +23,7 @@
           @show-versions="handleShowVersions"
                   />
         </div>
-        
+
         <!-- External Links Section -->
         <div v-if="hasLinks || canEdit">
           <LinkManager
@@ -35,7 +35,7 @@
           />
         </div>
       </div>
-    
+
     <!-- Version History Dialog -->
     <VersionHistory
       v-model="showVersionDialog"
@@ -46,7 +46,7 @@
       @restore="handleRestoreVersion"
       @delete="handleDeleteVersion"
     />
-    
+
     <!-- Upload Error Snackbar -->
     <v-snackbar
       v-model="errorSnackbar"
@@ -89,7 +89,7 @@ const props = defineProps({
 
 // Composables
 const { hasPermission } = usePermissions()
-const { 
+const {
   files,
   loading: filesLoading,
   filesByVersion,
@@ -123,7 +123,6 @@ async function handleFileUploaded(file, metadata) {
   try {
     await uploadFile(file, metadata)
   } catch (error) {
-    console.error('Upload error:', error)
     throw error
   }
 }
@@ -190,15 +189,14 @@ async function handleRestoreVersion(version) {
     const response = await fetch(version.downloadURL)
     const blob = await response.blob()
     const file = new File([blob], version.originalName, { type: version.type })
-    
+
     await uploadFile(file, {
       description: `Restored from version ${version.version}`,
       tags: version.tags || []
     })
-    
+
     showVersionDialog.value = false
   } catch (error) {
-    console.error('Failed to restore version:', error)
     errorMessage.value = 'Failed to restore version'
     errorSnackbar.value = true
   }
@@ -207,11 +205,11 @@ async function handleRestoreVersion(version) {
 async function handleDeleteVersion(versionId) {
   try {
     await hardDeleteFile(versionId)
-    
+
     // Refresh versions
     const versions = filesByVersion.value[selectedFileName.value] || []
     selectedVersions.value = versions.filter(v => v.id !== versionId)
-    
+
     if (selectedVersions.value.length === 0) {
       showVersionDialog.value = false
     }

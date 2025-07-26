@@ -7,7 +7,7 @@
     <h1 style="color: #ffffff; font-size: 30px; margin-bottom: 20px;">
       🚨 USERFILTERS DIAGNOSTIC VERSION - IF YOU SEE THIS, COMPONENT IS LOADING 🚨
     </h1>
-    
+
     <v-row class="filter-row">
       <!-- Role Filter with BRIGHT YELLOW BACKGROUND -->
       <v-col cols="12" sm="6" md="3">
@@ -124,7 +124,7 @@
         </v-btn>
       </v-col>
     </v-row>
-    
+
     <!-- DIAGNOSTIC INFO -->
     <div style="background-color: #ffffff; padding: 10px; margin-top: 20px; border: 2px solid #000000;">
       <h3 style="color: #ff0000;">Diagnostic Info:</h3>
@@ -140,7 +140,7 @@
 <script>
 export default {
   name: 'UserFilters',
-  
+
   props: {
     role: {
       type: String,
@@ -155,9 +155,9 @@ export default {
       default: 'all'
     }
   },
-  
+
   emits: ['update:role', 'update:search', 'update:status', 'clear'],
-  
+
   data() {
     return {
       selectedRole: this.role,
@@ -166,7 +166,7 @@ export default {
       searchTimeout: null
     }
   },
-  
+
   computed: {
     roleOptions() {
       return [
@@ -178,7 +178,7 @@ export default {
         { value: 'pending', title: 'Pending' }
       ]
     },
-    
+
     statusOptions() {
       return [
         { value: 'all', title: 'All Statuses' },
@@ -187,14 +187,14 @@ export default {
         { value: 'suspended', title: 'Suspended' }
       ]
     },
-    
+
     hasActiveFilters() {
-      return this.selectedRole !== 'all' || 
-             this.searchQuery !== '' || 
+      return this.selectedRole !== 'all' ||
+             this.searchQuery !== '' ||
              this.selectedStatus !== 'all'
     }
   },
-  
+
   watch: {
     role(newVal) {
       this.selectedRole = newVal
@@ -206,21 +206,12 @@ export default {
       this.selectedStatus = newVal
     }
   },
-  
+
   mounted() {
-    console.log('🚨 USERFILTERS DIAGNOSTIC VERSION MOUNTED 🚨');
-    console.log('If you see the red banner, the component is loading correctly.');
-    console.log('If you do NOT see the red banner, the component file is not being used.');
-    console.log('Current filter values:', {
-      role: this.selectedRole,
-      search: this.searchQuery,
-      status: this.selectedStatus
-    });
-    
     // Alert to make it impossible to miss
     alert('UserFilters Diagnostic Version is loaded! You should see a RED banner with labels.');
   },
-  
+
   methods: {
     getRoleColor(role) {
       const colors = {
@@ -232,7 +223,7 @@ export default {
       }
       return colors[role] || 'grey'
     },
-    
+
     getStatusColor(status) {
       const colors = {
         active: 'success',
@@ -241,14 +232,14 @@ export default {
       }
       return colors[status] || 'grey'
     },
-    
+
     handleSearchUpdate(value) {
       clearTimeout(this.searchTimeout)
       this.searchTimeout = setTimeout(() => {
         this.$emit('update:search', value)
       }, 300)
     },
-    
+
     clearFilters() {
       this.selectedRole = 'all'
       this.searchQuery = ''

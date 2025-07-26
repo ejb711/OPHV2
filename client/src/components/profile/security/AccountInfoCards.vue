@@ -5,9 +5,9 @@
       <v-card variant="outlined" class="pa-4 brand-info-card">
         <h3 class="text-subtitle-1 font-weight-bold mb-2">Account Status</h3>
         <div class="d-flex align-center gap-2 mb-2">
-          <v-chip 
-            :color="getRoleColor(authStore.userRole)" 
-            size="small" 
+          <v-chip
+            :color="getRoleColor(authStore.userRole)"
+            size="small"
             variant="flat"
           >
             {{ authStore.userRole?.toUpperCase() || 'Unknown' }}
@@ -26,7 +26,7 @@
       <v-card variant="outlined" class="pa-4 brand-info-card">
         <h3 class="text-subtitle-1 font-weight-bold mb-2">Email Verification</h3>
         <div class="d-flex align-center gap-2 mb-2">
-          <v-icon 
+          <v-icon
             :color="currentUser?.emailVerified ? 'success' : 'warning'"
             size="small"
           >
@@ -68,11 +68,10 @@ const sendVerificationEmail = async () => {
   try {
     const user = auth.currentUser
     if (!user) throw new Error('No authenticated user')
-    
+
     await sendEmailVerification(user)
     emit('show-snackbar', 'Verification email sent', 'success')
   } catch (error) {
-    console.error('Error sending verification email:', error)
     emit('show-snackbar', 'Failed to send verification email', 'error')
   } finally {
     loading.value = false

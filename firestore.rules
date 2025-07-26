@@ -163,10 +163,17 @@ service cloud.firestore {
     
     // Communications Messages collection (forum posts)
     match /comms_messages/{messageId} {
-      allow read: if request.auth != null && 
-        hasPermission('view_comms') &&
-        exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
-        canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data);
+      // Allow read for analytics purposes if user has view_analytics permission
+      // OR manage_comms permission (for counting/analytics)
+      // OR if they have view_comms and can view the specific project
+      allow read: if request.auth != null && (
+        hasPermission('view_analytics') ||
+        hasPermission('manage_comms') ||
+        (hasPermission('view_comms') &&
+         resource.data.projectId != null &&
+         exists(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)) &&
+         canViewProject(get(/databases/$(database)/documents/comms_projects/$(resource.data.projectId)).data))
+      );
       
       allow create: if request.auth != null && 
         hasPermission('view_comms') &&  // Allow anyone with view_comms to post

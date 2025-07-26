@@ -13,7 +13,7 @@
           </p>
           <p class="text-h4 font-weight-bold">
             {{ analytics?.metrics?.total || 0 }}
-            <v-icon 
+            <v-icon
               size="small"
               color="primary"
               class="ml-1"
@@ -33,7 +33,7 @@
           </p>
           <p class="text-h4 font-weight-bold">
             {{ analytics?.metrics?.active || 0 }}
-            <v-icon 
+            <v-icon
               size="small"
               color="warning"
               class="ml-1"
@@ -53,7 +53,7 @@
           </p>
           <p class="text-h4 font-weight-bold">
             {{ analytics?.completionRate || 0 }}%
-            <v-icon 
+            <v-icon
               size="small"
               color="success"
               class="ml-1"
@@ -74,7 +74,7 @@
           <p class="text-h4 font-weight-bold">
             {{ analytics?.avgCompletionTime || 0 }}
             <span class="text-body-2 text-medium-emphasis">days</span>
-            <v-icon 
+            <v-icon
               size="small"
               :color="getCompletionTimeColor(analytics?.avgCompletionTime)"
               class="ml-1"
@@ -90,6 +90,7 @@
 
 <script setup>
 import { useCommsStatsHelpers } from '@/composables/comms/useCommsStatsHelpers'
+import { watch } from 'vue'
 
 // Props
 const props = defineProps({
@@ -98,6 +99,10 @@ const props = defineProps({
     default: () => ({})
   }
 })
+
+// Debug analytics data
+watch(() => props.analytics, (newAnalytics) => {
+  }, { immediate: true, deep: true })
 
 // Composable
 const { getCompletionTimeColor } = useCommsStatsHelpers()

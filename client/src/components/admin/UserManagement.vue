@@ -72,12 +72,12 @@ const handleUserCreated = async (userData) => {
         <v-card-title class="text-h5">
           Confirm Delete
         </v-card-title>
-        
+
         <v-card-text>
-          Are you sure you want to delete the user "{{ userToDelete?.email }}"? 
+          Are you sure you want to delete the user "{{ userToDelete?.email }}"?
           This action cannot be undone.
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer />
           <v-btn
@@ -105,14 +105,14 @@ const handleUserCreated = async (userData) => {
         <v-card-title class="text-h5">
           Reset Password
         </v-card-title>
-        
+
         <v-card-text>
           <p>Send a password reset email to <strong>{{ passwordResetUser?.email }}</strong>?</p>
           <p class="text-body-2 mt-2 text-medium-emphasis">
             The user will receive an email with instructions to reset their password.
           </p>
         </v-card-text>
-        
+
         <v-card-actions>
           <v-spacer />
           <v-btn
@@ -207,10 +207,8 @@ showSnackbar.value = (message, type = 'success') => {
 
 // Handle add user button click
 const handleAddUser = () => {
-  console.log('handleAddUser called, setting showCreateDialog to true')
   showCreateDialog.value = true
-  console.log('showCreateDialog value:', showCreateDialog.value)
-}
+  }
 
 // Handle snackbar from CreateUserDialog
 const handleShowSnackbar = (message) => {

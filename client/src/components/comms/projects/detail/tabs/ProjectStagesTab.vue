@@ -7,18 +7,18 @@
       :total-stages="totalStages"
       :progress-percentage="progressPercentage"
     />
-    
+
     <!-- Approval Settings -->
-    <v-card 
+    <v-card
       v-if="editing || localRequiresApproval"
-      variant="outlined" 
+      variant="outlined"
       class="mb-6"
     >
       <v-card-text class="pa-4">
         <div class="d-flex align-center justify-space-between">
           <div class="flex-grow-1">
             <div class="font-weight-medium mb-1">Approval Settings</div>
-            
+
             <!-- Edit mode: show toggle -->
             <v-switch
               v-if="editing"
@@ -32,13 +32,13 @@
                 <span class="text-body-2">Project requires approval before completion</span>
               </template>
             </v-switch>
-            
+
             <!-- View mode: show status and approve button if needed -->
             <div v-else>
               <div class="text-body-2 text-grey-darken-1">
                 {{ localRequiresApproval ? 'This project requires approval before completion' : 'No approval required' }}
               </div>
-              
+
               <!-- Approve toggle for projects requiring approval -->
               <v-switch
                 v-if="canToggleApproval"
@@ -54,10 +54,10 @@
                 </template>
               </v-switch>
             </div>
-            
+
             <!-- No manual pending approval toggle in edit mode -->
           </div>
-          
+
           <div class="ml-3">
             <v-chip
               v-if="calculatedStatus === 'pending_approval' && localRequiresApproval"
@@ -81,7 +81,7 @@
         </div>
       </v-card-text>
     </v-card>
-    
+
     <!-- Stages Timeline -->
     <StageTimeline
       :stages="displayedStages"
@@ -91,7 +91,7 @@
       @toggle-complete="toggleStageComplete"
       @move-next="moveToNextStage"
     />
-    
+
     <!-- Stage Editor (Edit Mode) -->
     <StageEditor
       v-if="editing && canEdit"
@@ -152,22 +152,20 @@ const {
 const projectRef = computed(() => props.project)
 
 // Use the project status composable for consistent status calculation
-const { 
+const {
   calculatedStatus,
   pendingApprovalCompleted
 } = useProjectStatus(projectRef)
 
 // Local state for approval
 const localRequiresApproval = ref(props.editedProject.requiresApproval)
-console.log('Initial localRequiresApproval:', localRequiresApproval.value, 'from editedProject:', props.editedProject.requiresApproval)
-
 // Check if project is approved - based on isApproved field or status
 const isApproved = computed(() => {
   // First check the explicit isApproved field
   if (props.project.isApproved !== undefined) {
     return props.project.isApproved
   }
-  
+
   // Fallback to status-based check for backward compatibility
   if (localRequiresApproval.value) {
     // If requires approval and status is not pending_approval, consider it approved
@@ -180,12 +178,6 @@ const isApproved = computed(() => {
 const canToggleApproval = computed(() => {
   // Can toggle approval when project requires approval and user can edit
   const result = localRequiresApproval.value && props.canEdit && !props.editing
-  console.log('canToggleApproval:', {
-    result,
-    localRequiresApproval: localRequiresApproval.value,
-    canEdit: props.canEdit,
-    editing: props.editing
-  })
   return result
 })
 
@@ -195,17 +187,11 @@ function handleRequiresApprovalChange(value) {
 }
 
 function handleProjectApprovedChange(value) {
-  console.log('handleProjectApprovedChange called with value:', value)
-  console.log('Current project:', props.project)
-  console.log('localRequiresApproval:', localRequiresApproval.value)
-  console.log('progressPercentage:', progressPercentage.value)
-  
   // When toggling approval, we update the isApproved field and status
   const updates = { isApproved: value, direct: !props.editing }
-  
+
   if (value) {
     // Approving: set appropriate status based on progress
-    console.log('Approving project')
     if (progressPercentage.value === 100) {
       // If 100% complete, set to completed
       updates.status = 'completed'
@@ -218,11 +204,10 @@ function handleProjectApprovedChange(value) {
   } else {
     // Rejecting/removing approval: always set to pending_approval if requires approval
     if (localRequiresApproval.value) {
-      console.log('Setting project to pending_approval')
       updates.status = 'pending_approval'
     }
   }
-  
+
   emit('update', updates)
 }
 

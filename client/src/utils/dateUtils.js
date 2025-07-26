@@ -9,35 +9,32 @@
  */
 export function toDate(date) {
   if (!date) return null
-  
+
   // Already a Date object
   if (date instanceof Date) {
     return isNaN(date.getTime()) ? null : date
   }
-  
+
   // Firestore Timestamp object
   if (date?.toDate && typeof date.toDate === 'function') {
     try {
       return date.toDate()
     } catch (e) {
-      console.error('Error converting Firestore timestamp:', e)
       return null
     }
   }
-  
+
   // String or number representation
   if (typeof date === 'string' || typeof date === 'number') {
     try {
       const converted = new Date(date)
       return isNaN(converted.getTime()) ? null : converted
     } catch (e) {
-      console.error('Error converting date string/number:', e)
       return null
     }
   }
-  
+
   // Unsupported format
-  console.warn('Unsupported date format:', date)
   return null
 }
 
@@ -49,14 +46,13 @@ export function toDate(date) {
 export function formatDateForInput(date) {
   const dateObj = toDate(date)
   if (!dateObj) return ''
-  
+
   try {
     const year = dateObj.getFullYear()
     const month = String(dateObj.getMonth() + 1).padStart(2, '0')
     const day = String(dateObj.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
   } catch (error) {
-    console.error('Error formatting date for input:', error)
     return ''
   }
 }
@@ -70,10 +66,10 @@ export function formatDateForInput(date) {
 export function areDatesEqual(date1, date2) {
   const d1 = toDate(date1)
   const d2 = toDate(date2)
-  
+
   if (!d1 && !d2) return true
   if (!d1 || !d2) return false
-  
+
   // Compare dates without time
   return d1.toDateString() === d2.toDateString()
 }
@@ -86,16 +82,15 @@ export function areDatesEqual(date1, date2) {
  */
 export function createDateFromInput(dateString) {
   if (!dateString) return null
-  
+
   try {
     const date = new Date(dateString)
     if (isNaN(date.getTime())) return null
-    
+
     // Set to start of day
     date.setHours(0, 0, 0, 0)
     return date
   } catch (error) {
-    console.error('Error creating date from input:', error)
     return null
   }
 }

@@ -16,39 +16,39 @@ export const useAuthStore = defineStore('auth', () => {
   const userDocument = ref(null)
   const ready = ref(false)
   const error = ref(null)
-  
+
   // Permission state
   const rolePermissions = ref(new Set())
   const customPermissions = ref([])
   const deniedPermissions = ref([])
-  
+
   // ========== Computed Properties ==========
   const effectivePermissions = computed(() => {
     const permissions = new Set([
       ...rolePermissions.value,
       ...customPermissions.value
     ])
-    
+
     // Remove explicitly denied permissions
     for (const denied of deniedPermissions.value) {
       permissions.delete(denied)
     }
-    
+
     return permissions
   })
-  
+
   // Role checks
   const isOwner = computed(() => role.value === 'owner')
   const isAdmin = computed(() => role.value === 'admin' || role.value === 'owner')
   const isUser = computed(() => ['user', 'admin', 'owner'].includes(role.value))
   const isPending = computed(() => role.value === 'pending')
   const isAuthenticated = computed(() => !!user.value)
-  
+
   // Backward compatibility
   const userRole = computed(() => role.value)
-  
+
   // ========== Create Module Handlers ==========
-  
+
   // Permission handling
   const {
     hasPermission,
@@ -63,14 +63,14 @@ export const useAuthStore = defineStore('auth', () => {
     effectivePermissions,
     rolePermissions
   })
-  
+
   // Authentication actions
   const {
     login: loginAction,
     signup,
     logout: logoutAction
   } = createAuthActions({ auth, error })
-  
+
   // User management
   const {
     fetchUserPermissions,
@@ -88,12 +88,12 @@ export const useAuthStore = defineStore('auth', () => {
     fetchRolePermissions,
     clearPermissionCache
   })
-  
+
   // ========== Enhanced Login with Audit Logging ==========
   async function login(email, password) {
     try {
       const result = await loginAction(email, password)
-      
+
       if (result.success) {
         // Log successful login
         try {
@@ -105,13 +105,11 @@ export const useAuthStore = defineStore('auth', () => {
             browser: navigator.userAgent,
             timestamp: new Date().toISOString()
           })
-          console.log('[auth] Login event logged successfully')
         } catch (auditError) {
-          console.warn('[auth] Failed to log login event:', auditError)
           // Don't fail the login if audit logging fails
         }
       }
-      
+
       return result
     } catch (err) {
       // Log failed login attempt
@@ -124,14 +122,14 @@ export const useAuthStore = defineStore('auth', () => {
           timestamp: new Date().toISOString()
         })
       } catch (auditError) {
-        console.warn('[auth] Failed to log failed login attempt:', auditError)
+        // Don't fail if audit logging fails
       }
-      
+
       error.value = err.message
       return { success: false, error: err.message, errorCode: err.code }
     }
   }
-  
+
   // ========== Enhanced Logout ==========
   async function logout() {
     try {
@@ -145,16 +143,16 @@ export const useAuthStore = defineStore('auth', () => {
             timestamp: new Date().toISOString()
           })
         } catch (auditError) {
-          console.warn('[auth] Failed to log logout event:', auditError)
+          // Don't fail if audit logging fails
         }
       }
-      
+
       // Clean up listeners first
       cleanupListeners()
-      
+
       // Perform logout
       await logoutAction()
-      
+
       // Clear all state
       user.value = null
       role.value = null
@@ -165,7 +163,7 @@ export const useAuthStore = defineStore('auth', () => {
       clearPermissionCache()
       ready.value = false
       error.value = null
-      
+
       // Return success for compatibility with AppLayout
       return { success: true }
     } catch (err) {
@@ -174,21 +172,18 @@ export const useAuthStore = defineStore('auth', () => {
       return { success: false, error: err.message }
     }
   }
-  
+
   // ========== Auth State Listener ==========
   let authUnsubscribe = null
-  
+
   function initAuthListener() {
     if (authUnsubscribe) {
-      console.warn('[auth] Auth listener already initialized')
       return
     }
-    
+
     authUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('[auth] Auth state changed:', firebaseUser?.email || 'null')
-      
       user.value = firebaseUser
-      
+
       if (firebaseUser) {
         // User is signed in
         await fetchUserPermissions(firebaseUser.uid)
@@ -202,17 +197,17 @@ export const useAuthStore = defineStore('auth', () => {
         clearPermissionCache()
         cleanupListeners()
       }
-      
+
       ready.value = true
     })
   }
-  
+
   // Initialize on store creation
   initAuthListener()
-  
+
   // ========== Alias logout for compatibility ==========
   const signOut = logout
-  
+
   // ========== Public API ==========
   return {
     // State
@@ -222,7 +217,7 @@ export const useAuthStore = defineStore('auth', () => {
     userDocument,
     ready,
     error,
-    
+
     // Computed
     effectivePermissions,
     isOwner,
@@ -230,19 +225,19 @@ export const useAuthStore = defineStore('auth', () => {
     isUser,
     isPending,
     isAuthenticated,
-    
+
     // Permission methods
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
     canManageRole,
-    
+
     // Auth methods
     login,
     signup,
     logout,
     signOut, // Alias for compatibility
-    
+
     // User methods
     refreshPermissions: () => fetchUserPermissions(user.value?.uid),
     getUserDocument,

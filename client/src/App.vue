@@ -17,12 +17,10 @@ watch(
   (ready) => {
     if (ready && !timerStarted) {
       timerStarted = true
-      console.log('[App.vue] Auth is ready, showing app in 5 seconds...')
       // Display the beautiful loading screen for 5 seconds
       setTimeout(() => {
-        console.log('[App.vue] Hiding splash screen')
         hideSplash.value = true
-      }, 2750) 
+      }, 2750)
     }
   },
   { immediate: true }
@@ -32,7 +30,6 @@ watch(
 onMounted(() => {
   setTimeout(() => {
     if (!hideSplash.value && !timerStarted) {
-      console.log('[App.vue] Fallback: Force showing app after 10 seconds')
       hideSplash.value = true
     }
   }, 10000)
@@ -83,6 +80,5 @@ onMounted(() => {
   opacity: 0;
   transform: translateY(20px);
 }
-
 
 </style>

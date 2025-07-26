@@ -6,6 +6,14 @@ A comprehensive web application for managing communications projects, user admin
 
 OPHV2 is a full-stack application built with Vue 3 and Firebase, designed to streamline project management and communications for health operations across Louisiana. The system provides robust features for project tracking, user management, document handling, and analytics.
 
+## Recent Updates (July 2025)
+
+- **Analytics Dashboard**: Fixed coordinator workload calculations and message counter permissions
+- **UI Improvements**: Enhanced coordinator workload display with Not Started, In Progress, and Completed status breakdowns
+- **Firebase Security**: Updated rules to properly handle analytics permissions for message counting
+- **Code Cleanup**: Removed all debugging console.log statements for production readiness
+- **Bug Fixes**: Resolved coordinator ID mapping issues between test data formats
+
 ## Key Features
 
 ### Communications Module

@@ -56,10 +56,9 @@ export function useCommsStatsHelpers() {
   const formatStatus = (status) => {
     // Handle edge cases where status might not be a string
     if (!status || typeof status !== 'string') {
-      console.warn('formatStatus received non-string value:', status)
       return 'Unknown'
     }
-    
+
     return status
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))

@@ -53,7 +53,7 @@
               <v-list-item-title>
                 {{ user.displayName || user.name || user.email }}
               </v-list-item-title>
-              
+
               <v-list-item-subtitle>
                 <div>{{ user.email }}</div>
                 <div v-if="user.role" class="text-caption">
@@ -126,7 +126,7 @@ const dialogOpen = computed({
 
 const filteredUsers = computed(() => {
   if (!search.value) return users.value
-  
+
   const searchLower = search.value.toLowerCase()
   return users.value.filter(user => {
     const name = (user.displayName || user.email || '').toLowerCase()
@@ -160,20 +160,16 @@ function selectUser(user) {
 async function fetchUsers() {
   loading.value = true
   try {
-    console.log('Fetching users for coordinator selection...')
-    
     // Try to get all users first, then filter client-side
     const usersQuery = query(collection(db, 'users'))
-    
+
     const snapshot = await getDocs(usersQuery)
-    console.log(`Found ${snapshot.size} total users`)
-    
     // Map and filter users
     const allUsers = snapshot.docs.map(doc => ({
       uid: doc.id,
       ...doc.data()
     }))
-    
+
     // Filter for active users (consider users active if isActive is not explicitly false)
     users.value = allUsers
       .filter(user => {
@@ -182,10 +178,10 @@ async function fetchUsers() {
         // - isActive doesn't exist (assume active)
         // - isActive is not explicitly false
         const isActive = user.isActive !== false
-        
+
         // Also filter out users with pending role
         const isNotPending = user.role !== 'pending'
-        
+
         return isActive && isNotPending
       })
       .sort((a, b) => {
@@ -193,11 +189,8 @@ async function fetchUsers() {
         const nameB = (b.displayName || b.name || b.email || '').toLowerCase()
         return nameA.localeCompare(nameB)
       })
-    
-    console.log(`Filtered to ${users.value.length} active users`)
-    
-  } catch (error) {
-    console.error('Error fetching users:', error)
+
+    } catch (error) {
     users.value = []
   } finally {
     loading.value = false

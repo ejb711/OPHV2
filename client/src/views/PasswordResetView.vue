@@ -121,13 +121,13 @@
                 Password Requirements:
               </div>
               <div class="password-requirements">
-                <div 
-                  v-for="req in passwordRequirements" 
+                <div
+                  v-for="req in passwordRequirements"
                   :key="req.text"
                   class="requirement"
                   :class="{ 'met': req.test(password) }"
                 >
-                  <v-icon 
+                  <v-icon
                     :icon="req.test(password) ? 'mdi-check-circle' : 'mdi-circle-outline'"
                     :color="req.test(password) ? 'success' : 'grey'"
                     size="small"
@@ -259,18 +259,15 @@ async function verifyResetCode() {
     // Verify the password reset code is valid
     const userEmail = await verifyPasswordResetCode(auth, actionCode.value)
     email.value = userEmail
-    console.log('[PasswordReset] Reset code verified for:', userEmail)
-  } catch (error) {
-    console.error('[PasswordReset] Verification error:', error)
-    
+    } catch (error) {
     if (error.code === 'auth/expired-action-code') {
       verificationError.value = 'This password reset link has expired. Please request a new one.'
     } else if (error.code === 'auth/invalid-action-code') {
       verificationError.value = 'This password reset link is invalid. Please request a new one.'
     } else {
-      const errorObj = handleError(error, { 
-        component: 'PasswordResetView', 
-        action: 'verify_code' 
+      const errorObj = handleError(error, {
+        component: 'PasswordResetView',
+        action: 'verify_code'
       })
       verificationError.value = errorObj.message
     }
@@ -282,40 +279,37 @@ async function verifyResetCode() {
 async function handlePasswordReset() {
   // Clear previous errors
   errorMsg.value = ''
-  
+
   // Validate form
   const { valid } = await resetForm.value.validate()
   if (!valid) return
-  
+
   // Double-check passwords match
   if (password.value !== confirmPassword.value) {
     errorMsg.value = 'Passwords do not match'
     return
   }
-  
+
   loading.value = true
-  
+
   try {
     // Confirm the password reset
     await confirmPasswordReset(auth, actionCode.value, password.value)
-    
-    console.log('[PasswordReset] Password reset successful')
+
     success.value = true
-    
+
     // Log the event
     await logEvent('password_reset_completed', {
       email: email.value,
       source: 'custom_reset_page'
     })
-    
+
     // Redirect to login after 2 seconds
     setTimeout(() => {
       router.push('/login')
     }, 2000)
-    
+
   } catch (error) {
-    console.error('[PasswordReset] Reset error:', error)
-    
     if (error.code === 'auth/expired-action-code') {
       errorMsg.value = 'This reset link has expired. Please request a new one.'
     } else if (error.code === 'auth/invalid-action-code') {
@@ -323,9 +317,9 @@ async function handlePasswordReset() {
     } else if (error.code === 'auth/weak-password') {
       errorMsg.value = 'Password is too weak. Please choose a stronger password.'
     } else {
-      const errorObj = handleError(error, { 
-        component: 'PasswordResetView', 
-        action: 'reset_password' 
+      const errorObj = handleError(error, {
+        component: 'PasswordResetView',
+        action: 'reset_password'
       })
       errorMsg.value = errorObj.message
     }
@@ -349,7 +343,7 @@ onMounted(() => {
 .password-reset-screen {
   position: relative;
   min-height: 100vh;
-  background: linear-gradient(135deg, 
+  background: linear-gradient(135deg,
     #003057 0%,     /* LDH Dark Blue */
     #426DA9 50%,    /* LDH Medium Blue */
     #63B1BC 80%,    /* LDH Light Blue/Teal */
@@ -588,16 +582,16 @@ onMounted(() => {
   .reset-container {
     max-width: 100%;
   }
-  
+
   .reset-card {
     padding: 2rem 1.5rem;
     margin: 0 0.5rem;
   }
-  
+
   .platform-title {
     font-size: 2rem;
   }
-  
+
   .reset-title {
     font-size: 1.5rem;
   }

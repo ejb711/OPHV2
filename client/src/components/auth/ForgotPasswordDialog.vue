@@ -9,12 +9,12 @@
       <v-card-title class="text-h5 pa-5">
         Reset Your Password
       </v-card-title>
-      
+
       <v-card-text class="px-5 pb-2">
         <p class="text-body-1 mb-4">
           Enter your email address and we'll send you a link to reset your password.
         </p>
-        
+
         <v-text-field
           v-model="resetEmail"
           label="Email Address"
@@ -27,7 +27,7 @@
           hide-details="auto"
           class="mb-2"
         />
-        
+
         <!-- Success Message -->
         <v-alert
           v-if="resetSuccess"
@@ -38,7 +38,7 @@
         >
           Password reset email sent! Check your inbox.
         </v-alert>
-        
+
         <!-- Error Message -->
         <v-alert
           v-if="resetError"
@@ -50,7 +50,7 @@
           {{ resetError }}
         </v-alert>
       </v-card-text>
-      
+
       <v-card-actions class="pa-5 pt-0">
         <v-spacer />
         <v-btn
@@ -108,54 +108,49 @@ const resetError = ref('')
 
 // Methods
 async function handlePasswordReset() {
-  console.log('[ForgotPasswordDialog] Password reset requested for:', resetEmail.value)
-  
   // Clear previous messages
   resetEmailError.value = ''
   resetError.value = ''
   resetSuccess.value = false
-  
+
   // Validate email
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailPattern.test(resetEmail.value)) {
     resetEmailError.value = 'Please enter a valid email address'
     return
   }
-  
+
   resetLoading.value = true
-  
+
   try {
     // Send password reset email
     await sendPasswordResetEmail(auth, resetEmail.value.trim())
-    
-    console.log('[ForgotPasswordDialog] Password reset email sent successfully')
+
     resetSuccess.value = true
-    
+
     // Log the event
     await logEvent('password_reset_requested', {
       email: resetEmail.value.trim(),
       source: 'login_page'
     })
-    
+
     // Auto-close dialog after 3 seconds
     setTimeout(() => {
       if (resetSuccess.value) {
         closeDialog()
       }
     }, 3000)
-    
+
   } catch (err) {
-    console.error('[ForgotPasswordDialog] Password reset error:', err)
-    
     // Handle specific Firebase errors
     if (err.code === 'auth/user-not-found') {
       resetError.value = 'No account found with this email address'
     } else if (err.code === 'auth/invalid-email') {
       resetEmailError.value = 'Please enter a valid email address'
     } else {
-      const errorObj = handleError(err, { 
-        component: 'ForgotPasswordDialog', 
-        action: 'password_reset' 
+      const errorObj = handleError(err, {
+        component: 'ForgotPasswordDialog',
+        action: 'password_reset'
       })
       resetError.value = errorObj.message
     }

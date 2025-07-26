@@ -93,7 +93,7 @@
             </p>
           </div>
         </v-col>
-        
+
         <v-col cols="12" md="6">
           <div class="field-group">
             <label class="field-label">
@@ -149,7 +149,7 @@ const localDeadline = ref(null)
 // Removed showNonDefaultAlert and nonDefaultCoordinatorName - no longer needed with radio list
 
 // Options
-const regionOptions = computed(() => 
+const regionOptions = computed(() =>
   Object.entries(LOUISIANA_REGIONS).map(([id, region]) => ({
     id,
     name: region.name
@@ -207,9 +207,8 @@ function handleRegionChange() {
 
 // Handle coordinator selection from radio list
 function handleCoordinatorSelected(coordinator) {
-  console.log('Coordinator selected:', coordinator)
   emitUpdate()
-  
+
   // Emit event for parent component if needed
   emit('coordinator-auto-selected', {
     coordinatorId: coordinator.id,
@@ -307,7 +306,7 @@ defineExpose({
     padding-left: 8px;
     padding-right: 8px;
   }
-  
+
   .step-content {
     padding: 24px 16px !important;
   }

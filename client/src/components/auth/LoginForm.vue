@@ -2,7 +2,7 @@
   <div class="sign-in-card">
     <h2 class="sign-in-title">Sign In</h2>
     <p class="sign-in-subtitle">Access your BRCO dashboard</p>
-    
+
     <form @submit.prevent="handleSubmit" class="sign-in-form">
       <!-- Email Field -->
       <div class="field-group">
@@ -88,7 +88,7 @@
     </form>
 
     <!-- Forgot Password Dialog -->
-    <ForgotPasswordDialog 
+    <ForgotPasswordDialog
       v-model="forgotPasswordDialog"
       :prefill-email="email"
     />
@@ -114,31 +114,28 @@ const forgotPasswordDialog = ref(false)
 
 // Methods
 async function handleSubmit() {
-  console.log('[LoginForm] Submitting login form')
-  
   // Clear any previous errors
   errorMsg.value = ''
-  
+
   // Basic validation
   if (!email.value || !password.value) {
     errorMsg.value = 'Please fill in all fields'
     return
   }
-  
+
   // Email validation
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailPattern.test(email.value)) {
     errorMsg.value = 'Please enter a valid email address'
     return
   }
-  
+
   // Attempt login
   const result = await login(email.value.trim(), password.value)
-  
+
   if (result.success) {
     // Redirect based on role
     const targetRoute = result.role === 'pending' ? '/awaiting' : '/dash'
-    console.log('[LoginForm] Login successful, redirecting to:', targetRoute)
     router.push(targetRoute)
   } else {
     // Show error message
@@ -285,7 +282,7 @@ watch(loginError, (newError) => {
     padding: 2rem 1.5rem;
     margin: 0 0.5rem;
   }
-  
+
   .sign-in-title {
     font-size: 1.5rem;
   }

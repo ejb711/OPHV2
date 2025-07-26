@@ -11,7 +11,7 @@
         <v-icon left color="primary">mdi-key-change</v-icon>
         Reset User Password
       </v-card-title>
-      
+
       <!-- User Info -->
       <v-card-subtitle class="mt-2">
         <div class="text-body-1">
@@ -44,7 +44,7 @@
               @click:append-inner="showPassword = !showPassword"
               @input="checkPasswordStrength"
             />
-            
+
             <!-- Password Strength Indicator -->
             <div v-if="password" class="mt-2">
               <v-progress-linear
@@ -255,7 +255,6 @@ const handleResetPassword = async () => {
       dialogVisible.value = false
     }
   } catch (error) {
-    console.error('Error resetting password:', error)
     throw error // Let parent handle the error display
   } finally {
     resetting.value = false

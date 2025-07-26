@@ -2,7 +2,7 @@
 <template>
   <div>
     <!-- Stage List -->
-    <v-list 
+    <v-list
       v-if="stages.length > 0"
       lines="two"
       density="comfortable"
@@ -19,22 +19,22 @@
         <template #item="{ element: stage, index }">
           <v-list-item>
             <template v-slot:prepend>
-              <v-icon 
+              <v-icon
                 class="drag-handle cursor-move"
                 :disabled="isDefaultStages"
               >
                 mdi-drag-vertical
               </v-icon>
             </template>
-            
+
             <v-list-item-title>
               {{ stage.name }}
             </v-list-item-title>
-            
+
             <v-list-item-subtitle>
               Stage {{ index + 1 }} of {{ stages.length }}
             </v-list-item-subtitle>
-            
+
             <template v-slot:append>
               <v-btn
                 v-if="!isDefaultStages"
@@ -171,7 +171,7 @@ const stages = computed({
 // Check if using default stages
 const isDefaultStages = computed(() => {
   if (stages.value.length !== defaultStages.length) return false
-  return stages.value.every((stage, index) => 
+  return stages.value.every((stage, index) =>
     stage.name === defaultStages[index].name
   )
 })
@@ -180,12 +180,12 @@ const isDefaultStages = computed(() => {
 function addStage() {
   const name = newStageName.value.trim()
   if (!name || stages.value.length >= 10) return
-  
+
   const newStage = {
     id: `custom-${Date.now()}`,
     name: name
   }
-  
+
   stages.value = [...stages.value, newStage]
   newStageName.value = ''
 }
@@ -214,8 +214,7 @@ onMounted(() => {
 watch(() => props.templateId, (newTemplateId) => {
   if (newTemplateId) {
     // In the future, load stages from template
-    console.log('Template selected:', newTemplateId)
-  }
+    }
 })
 </script>
 
