@@ -13,10 +13,13 @@
     item-value="id"
     item-title="displayName"
     no-data-text="No coordinators available"
+    hide-details="auto"
+    :persistent-placeholder="false"
   >
-    <!-- Custom selection to show coordinator name -->
+    <!-- Custom selection template -->
     <template v-slot:selection="{ item }">
-      {{ getCoordinatorDisplayName(selectedCoordinator) }}
+      <span v-if="loading">Loading...</span>
+      <span v-else>{{ getSelectionDisplay(item) }}</span>
     </template>
     
     <template v-slot:item="{ item, props: itemProps }">
@@ -140,7 +143,7 @@ const props = defineProps({
   },
   label: {
     type: String,
-    default: 'Coordinator'
+    default: undefined
   },
   rules: {
     type: Array,
@@ -183,6 +186,7 @@ const selectedCoordinator = computed({
       const selectedCoord = coordinators.value.find(c => c.id === value)
       const defaultCoord = getDefaultCoordinatorForRegion(props.region)
       
+      
       if (selectedCoord && defaultCoord) {
         if (selectedCoord.id !== defaultCoord.id) {
           // User selected a non-default coordinator
@@ -200,6 +204,7 @@ const selectedCoordinator = computed({
         }
       }
     }
+    
     
     emit('update:modelValue', value)
   }
@@ -229,28 +234,38 @@ const coordinatorItems = computed(() => {
           .join(', ')
       : ''
     
-    return {
+    // Ensure we use displayName as the primary display field
+    const displayName = coord.displayName || coord.name || coord.userName || coord.email
+    
+    const item = {
       id: coord.id,
-      displayName: coord.name || coord.displayName || coord.email,
-      email: coord.email,
+      displayName: displayName,
+      email: coord.email || coord.userEmail,
       regions: coord.regions || [],
       primaryRegion: coord.primaryRegion,
       regionNames,
       additionalRegions: otherRegions,
       isForCurrentRegion,
       isPrimary,
-      raw: coord
+      raw: {
+        ...coord,
+        displayName: displayName // Ensure raw always has displayName
+      }
     }
+    
+    return item
   })
   
   // Sort: primary first, then by region assignment, then alphabetically
-  return items.sort((a, b) => {
+  const sorted = items.sort((a, b) => {
     if (a.isPrimary && !b.isPrimary) return -1
     if (!a.isPrimary && b.isPrimary) return 1
     if (a.isForCurrentRegion && !b.isForCurrentRegion) return -1
     if (!a.isForCurrentRegion && b.isForCurrentRegion) return 1
     return a.displayName.localeCompare(b.displayName)
   })
+  
+  return sorted
 })
 
 const noDataText = computed(() => {
@@ -268,11 +283,42 @@ const showNonDefaultWarning = computed(() => {
   return selected && defaultCoord && selected.id !== defaultCoord.id
 })
 
+
 // Methods
+function getSelectionDisplay(item) {
+  // If we have a proper item object from v-select
+  if (item && item.raw && item.raw.displayName) {
+    return item.raw.displayName
+  }
+  
+  // If we have an item with title
+  if (item && item.title) {
+    return item.title
+  }
+  
+  // If no item but we have a selected value, look it up
+  if (selectedCoordinator.value && coordinators.value.length > 0) {
+    const found = coordinators.value.find(c => c.id === selectedCoordinator.value)
+    if (found) {
+      return found.name || found.displayName || found.email
+    }
+  }
+  
+  // Final fallback - return the ID if we have one
+  return selectedCoordinator.value || ''
+}
+
+
 function getCoordinatorDisplayName(coordinatorId) {
   if (!coordinatorId) return ''
   const coordinator = coordinators.value.find(c => c.id === coordinatorId)
-  return coordinator ? (coordinator.name || coordinator.displayName || coordinator.email) : coordinatorId
+  if (!coordinator) {
+    console.warn(`⚠️ Coordinator not found for ID: ${coordinatorId}`)
+    return coordinatorId
+  }
+  const displayName = coordinator.displayName || coordinator.name || coordinator.userName || coordinator.email || coordinatorId
+  console.log(`📋 Getting display name for ${coordinatorId}: ${displayName}`)
+  return displayName
 }
 
 function getDefaultCoordinatorForRegion(regionId) {
@@ -289,19 +335,57 @@ function getDefaultCoordinatorForRegion(regionId) {
 async function fetchCoordinators() {
   loading.value = true
   try {
+    console.log('🔄 Fetching coordinators...')
     const coordinatorsQuery = query(
       collection(db, 'comms_coordinators'),
-      orderBy('name')
+      orderBy('displayName')
     )
     
     const snapshot = await getDocs(coordinatorsQuery)
-    coordinators.value = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    console.log(`📊 Found ${snapshot.size} coordinators`)
+    
+    coordinators.value = snapshot.docs.map(doc => {
+      const data = doc.data()
+      // Ensure we have a displayName field
+      const displayName = data.displayName || data.name || data.userName || data.email || doc.id
+      
+      console.log(`👤 Coordinator: ${doc.id} - displayName: ${displayName}`)
+      
+      return {
+        id: doc.id,
+        ...data,
+        displayName: displayName, // Always ensure displayName exists
+        name: data.name || displayName,
+        email: data.email || data.userEmail
+      }
+    })
   } catch (error) {
-    console.error('Error fetching coordinators:', error)
-    coordinators.value = []
+    console.error('❌ Error fetching coordinators:', error)
+    // Try without orderBy if index doesn't exist
+    try {
+      const snapshot = await getDocs(collection(db, 'comms_coordinators'))
+      console.log(`📊 Found ${snapshot.size} coordinators (fallback query)`)
+      
+      coordinators.value = snapshot.docs
+        .map(doc => {
+          const data = doc.data()
+          const displayName = data.displayName || data.name || data.userName || data.email || doc.id
+          
+          console.log(`👤 Coordinator: ${doc.id} - displayName: ${displayName}`)
+          
+          return {
+            id: doc.id,
+            ...data,
+            displayName: displayName,
+            name: data.name || displayName,
+            email: data.email || data.userEmail
+          }
+        })
+        .sort((a, b) => a.displayName.localeCompare(b.displayName))
+    } catch (fallbackError) {
+      console.error('❌ Fallback query also failed:', fallbackError)
+      coordinators.value = []
+    }
   } finally {
     loading.value = false
   }
@@ -358,6 +442,14 @@ watch(coordinators, () => {
   }
 }, { immediate: false })
 
+
+// Force refresh coordinators
+async function refreshCoordinators() {
+  console.log('🔄 Force refreshing coordinators...')
+  coordinators.value = []
+  await fetchCoordinators()
+}
+
 // Lifecycle
 onMounted(async () => {
   await fetchCoordinators()
@@ -370,12 +462,36 @@ onMounted(async () => {
     await autoSelectCoordinator()
   }
 })
+
+// Re-fetch coordinators when component becomes visible (in case they were updated)
+watch(() => props.modelValue, async (newValue) => {
+  if (newValue !== undefined) {
+    await refreshCoordinators()
+  }
+}, { immediate: false })
 </script>
 
 <style scoped>
 .coordinator-item {
   min-height: 64px !important;
   padding: 8px 16px !important;
+}
+
+/* Ensure proper spacing for the select field */
+:deep(.v-field__details) {
+  padding-top: 4px !important;
+  min-height: auto !important;
+}
+
+/* Fix text overlap in selection */
+:deep(.v-field__input) {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.v-select__selection) {
+  margin: 0 !important;
 }
 
 /* Ensure consistent spacing */

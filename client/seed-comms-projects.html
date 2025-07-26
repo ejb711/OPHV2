@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seed Communications Projects</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #1976d2;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #e3f2fd;
+      color: #0d47a1;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      border: 1px solid #90caf9;
+    }
+    .log {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+    }
+    button {
+      background: #1976d2;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #1565c0;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .stats {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      display: none;
+    }
+    .stats h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 10px;
+    }
+    .stat-item {
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+    }
+    .stat-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Seed Communications Projects</h1>
+    
+    <div class="info">
+      <strong>ℹ️ Info:</strong> This will create 50 new communications projects with:
+      <ul style="margin: 10px 0 0 20px;">
+        <li>Random assignment to current coordinators</li>
+        <li>Varied stages, priorities, and progress</li>
+        <li>Diverse tags and categories</li>
+        <li>Different approval requirements</li>
+        <li>Realistic deadlines and timelines</li>
+      </ul>
+    </div>
+    
+    <button id="seedBtn" onclick="startSeeding()">Create 50 Test Projects</button>
+    
+    <div id="stats" class="stats">
+      <h3>📊 Seeding Statistics</h3>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+    
+    <div id="log" class="log"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'firebase/app'
+    import { getFirestore, collection, getDocs, addDoc, Timestamp } from 'firebase/firestore'
+    import { db } from './src/firebase.js'
+
+    const logElement = document.getElementById('log')
+    const seedBtn = document.getElementById('seedBtn')
+    const statsElement = document.getElementById('stats')
+    const statGrid = document.getElementById('statGrid')
+    
+    // Project data templates
+    const projectTemplates = [
+      { title: "Hurricane Season Public Safety Campaign", description: "Develop comprehensive public awareness campaign for hurricane preparedness including social media, print materials, and radio PSAs" },
+      { title: "COVID-19 Vaccine Booster Outreach", description: "Create targeted messaging to encourage booster shot uptake in underserved communities across Louisiana" },
+      { title: "Small Business Recovery Grant Program", description: "Design and implement communication strategy for new state grant program supporting small business recovery" },
+      { title: "Infrastructure Bill Community Forums", description: "Organize and promote series of town halls to gather public input on infrastructure spending priorities" },
+      { title: "Youth Mental Health Awareness Initiative", description: "Develop multimedia campaign targeting teens and young adults with mental health resources and support information" },
+      { title: "Coastal Restoration Project Updates", description: "Create ongoing communication materials to keep communities informed about coastal restoration progress" },
+      { title: "State Park Summer Programs", description: "Promote summer recreational and educational programs across Louisiana state parks system" },
+      { title: "Tax Season Assistance Campaign", description: "Inform residents about free tax preparation services and important filing deadline changes" },
+      { title: "Workforce Development Initiative", description: "Communicate new job training and apprenticeship opportunities in growing industries" },
+      { title: "Emergency Alert System Upgrade", description: "Public education campaign about improvements to state emergency notification systems" },
+      { title: "Healthcare Enrollment Period", description: "Comprehensive outreach for annual healthcare marketplace open enrollment period" },
+      { title: "Road Work Safety Awareness", description: "Safety campaign for major highway construction projects across multiple parishes" },
+      { title: "Environmental Protection Updates", description: "Communicate new environmental regulations and compliance requirements to businesses" },
+      { title: "Education Budget Town Halls", description: "Series of public meetings to discuss proposed education budget changes" },
+      { title: "Tourism Recovery Campaign", description: "Multi-channel marketing initiative to boost Louisiana tourism post-pandemic" },
+      { title: "Disaster Preparedness Workshops", description: "Promote and organize community disaster preparedness training sessions statewide" },
+      { title: "Senior Services Expansion", description: "Inform elderly residents about expanded services and benefits available to them" },
+      { title: "Agricultural Support Programs", description: "Outreach to farmers about new state and federal agricultural assistance programs" },
+      { title: "Public Transportation Updates", description: "Communicate changes to bus routes, schedules, and new transit options" },
+      { title: "Voting Rights Information Campaign", description: "Ensure all citizens understand their voting rights and registration requirements" },
+      { title: "Child Care Assistance Program", description: "Promote expanded child care subsidy program for working families" },
+      { title: "Broadband Expansion Initiative", description: "Keep rural communities informed about high-speed internet infrastructure projects" },
+      { title: "Housing Assistance Resources", description: "Comprehensive guide to available housing assistance and rental support programs" },
+      { title: "Veterans Benefits Outreach", description: "Connect veterans with expanded healthcare and education benefits" },
+      { title: "Clean Energy Incentives", description: "Educate businesses and homeowners about renewable energy tax credits and rebates" },
+      { title: "Flood Insurance Requirements", description: "Critical information campaign about updated flood insurance regulations" },
+      { title: "Summer Food Program", description: "Promote free summer meal programs for children when school is out" },
+      { title: "State Budget Public Input", description: "Gather citizen feedback on state budget priorities through multiple channels" },
+      { title: "Prescription Drug Savings Program", description: "Inform seniors about new prescription drug discount programs" },
+      { title: "Career Fair Series", description: "Promote regional career fairs connecting job seekers with employers" },
+      { title: "Water Quality Reports", description: "Regular updates on water quality testing and infrastructure improvements" },
+      { title: "Crime Prevention Initiative", description: "Community partnership program to reduce crime through awareness and engagement" },
+      { title: "Arts and Culture Grants", description: "Announce new funding opportunities for arts organizations and cultural events" },
+      { title: "Disability Services Awareness", description: "Improve awareness of services and accommodations for people with disabilities" },
+      { title: "Economic Development Zones", description: "Communicate benefits of new opportunity zones to potential investors" },
+      { title: "Health Screening Programs", description: "Promote free health screening events in underserved communities" },
+      { title: "Storm Debris Cleanup", description: "Coordinate communication about debris removal schedules and procedures" },
+      { title: "School Safety Updates", description: "Keep parents informed about new school safety measures and protocols" },
+      { title: "Public Records Modernization", description: "Announce improvements to online access for public records and documents" },
+      { title: "Wildlife Conservation Campaign", description: "Educate public about endangered species protection and habitat preservation" },
+      { title: "Business License Simplification", description: "Promote streamlined process for obtaining business licenses and permits" },
+      { title: "Maternal Health Initiative", description: "Comprehensive campaign to improve maternal health outcomes statewide" },
+      { title: "Digital Literacy Training", description: "Promote free computer and internet skills training for all ages" },
+      { title: "Historic Preservation Grants", description: "Inform property owners about funding for historic building restoration" },
+      { title: "Substance Abuse Prevention", description: "Multi-faceted campaign addressing opioid crisis and addiction resources" },
+      { title: "Emergency Shelter Information", description: "Ensure all residents know locations and procedures for emergency shelters" },
+      { title: "State Fair Promotion", description: "Comprehensive marketing campaign for annual Louisiana State Fair" },
+      { title: "Consumer Protection Alerts", description: "Regular updates about scams, recalls, and consumer safety issues" },
+      { title: "Green Jobs Training", description: "Promote training programs for careers in renewable energy and sustainability" },
+      { title: "Census Data Applications", description: "Help communities understand and utilize new census data for planning" }
+    ]
+
+    const tags = [
+      "public-safety", "healthcare", "education", "infrastructure", "economic-development",
+      "environment", "tourism", "disaster-preparedness", "social-services", "veterans",
+      "youth", "seniors", "workforce", "housing", "transportation", "technology",
+      "agriculture", "arts-culture", "small-business", "emergency-response"
+    ]
+
+    const stages = [
+      { value: "planning", label: "Planning", weight: 20 },
+      { value: "in_progress", label: "In Progress", weight: 40 },
+      { value: "review", label: "Review", weight: 20 },
+      { value: "approved", label: "Approved", weight: 10 },
+      { value: "completed", label: "Completed", weight: 10 }
+    ]
+
+    const priorities = [
+      { value: "low", weight: 20 },
+      { value: "normal", weight: 50 },
+      { value: "high", weight: 25 },
+      { value: "urgent", weight: 5 }
+    ]
+
+    let currentCoordinators = []
+    let stats = {
+      total: 0,
+      byStage: {},
+      byPriority: {},
+      byCoordinator: {},
+      byRegion: {}
+    }
+    
+    function log(message, isError = false) {
+      const timestamp = new Date().toLocaleTimeString()
+      const prefix = isError ? '❌' : '📝'
+      const line = `[${timestamp}] ${prefix} ${message}\n`
+      logElement.textContent += line
+      console.log(message)
+      logElement.scrollTop = logElement.scrollHeight
+    }
+
+    function weightedRandom(items) {
+      const weights = items.map(item => item.weight)
+      const totalWeight = weights.reduce((a, b) => a + b, 0)
+      let random = Math.random() * totalWeight
+      
+      for (let i = 0; i < items.length; i++) {
+        random -= weights[i]
+        if (random <= 0) {
+          return items[i].value || items[i]
+        }
+      }
+      return items[items.length - 1].value || items[items.length - 1]
+    }
+
+    function randomElement(array) {
+      return array[Math.floor(Math.random() * array.length)]
+    }
+
+    function randomElements(array, min, max) {
+      const count = Math.floor(Math.random() * (max - min + 1)) + min
+      const shuffled = [...array].sort(() => 0.5 - Math.random())
+      return shuffled.slice(0, count)
+    }
+
+    function generateProgress(stage) {
+      switch(stage) {
+        case "planning": return Math.floor(Math.random() * 25)
+        case "in_progress": return Math.floor(Math.random() * 50) + 25
+        case "review": return Math.floor(Math.random() * 20) + 70
+        case "approved": return Math.floor(Math.random() * 10) + 85
+        case "completed": return 100
+        default: return 0
+      }
+    }
+
+    function generateDeadline() {
+      const daysAhead = Math.floor(Math.random() * 180) + 30 // 30-210 days from now
+      const deadline = new Date()
+      deadline.setDate(deadline.getDate() + daysAhead)
+      return deadline.toISOString().split('T')[0]
+    }
+
+    function updateStats(project) {
+      stats.total++
+      stats.byStage[project.stage] = (stats.byStage[project.stage] || 0) + 1
+      stats.byPriority[project.priority] = (stats.byPriority[project.priority] || 0) + 1
+      stats.byCoordinator[project.coordinatorName] = (stats.byCoordinator[project.coordinatorName] || 0) + 1
+      stats.byRegion[project.region] = (stats.byRegion[project.region] || 0) + 1
+    }
+
+    function displayStats() {
+      statsElement.style.display = 'block'
+      statGrid.innerHTML = `
+        <div class="stat-item">
+          <div class="stat-label">Total Projects</div>
+          <div class="stat-value">${stats.total}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">By Stage</div>
+          <div class="stat-value" style="font-size: 14px;">
+            ${Object.entries(stats.byStage).map(([k, v]) => `${k}: ${v}`).join('<br>')}
+          </div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">By Priority</div>
+          <div class="stat-value" style="font-size: 14px;">
+            ${Object.entries(stats.byPriority).map(([k, v]) => `${k}: ${v}`).join('<br>')}
+          </div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">By Coordinator</div>
+          <div class="stat-value" style="font-size: 14px;">
+            ${Object.entries(stats.byCoordinator).map(([k, v]) => `${k}: ${v}`).join('<br>')}
+          </div>
+        </div>
+      `
+    }
+
+    window.startSeeding = async function() {
+      seedBtn.disabled = true
+      seedBtn.textContent = 'Seeding...'
+      logElement.textContent = ''
+      stats = { total: 0, byStage: {}, byPriority: {}, byCoordinator: {}, byRegion: {} }
+      
+      try {
+        // First, get current coordinators
+        log('🔍 Fetching current coordinators...')
+        const coordSnapshot = await getDocs(collection(db, 'comms_coordinators'))
+        currentCoordinators = coordSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }))
+          .filter(coord => !coord.id.includes('test-coordinator')) // Extra safety check
+        
+        if (currentCoordinators.length === 0) {
+          log('❌ No coordinators found! Please add coordinators first.', true)
+          seedBtn.textContent = 'No Coordinators Found'
+          seedBtn.disabled = false
+          return
+        }
+        
+        log(`✅ Found ${currentCoordinators.length} active coordinators`)
+        currentCoordinators.forEach(coord => {
+          log(`   - ${coord.displayName || coord.name || coord.email} (Regions: ${(coord.regions || []).join(', ')})`)
+        })
+        
+        log('\n🌱 Creating 50 communications projects...\n')
+        
+        const projectsRef = collection(db, 'comms_projects')
+        let successCount = 0
+        
+        for (let i = 0; i < 50; i++) {
+          try {
+            // Select a random project template
+            const template = randomElement(projectTemplates)
+            
+            // Select a random coordinator
+            const coordinator = randomElement(currentCoordinators)
+            const coordinatorRegions = coordinator.regions || []
+            const region = coordinatorRegions.length > 0 
+              ? randomElement(coordinatorRegions)
+              : Math.floor(Math.random() * 8 + 1).toString() // Random region 1-8 if none assigned
+            
+            // Generate project data
+            const stage = weightedRandom(stages)
+            const priority = weightedRandom(priorities)
+            const projectTags = randomElements(tags, 1, 4)
+            const progress = generateProgress(stage)
+            const requiresApproval = Math.random() > 0.7 // 30% require approval
+            const deadline = generateDeadline()
+            
+            const projectData = {
+              title: template.title,
+              description: template.description,
+              coordinatorId: coordinator.id,
+              coordinatorName: coordinator.displayName || coordinator.name || coordinator.email,
+              region: region,
+              stage: stage,
+              priority: priority,
+              tags: projectTags,
+              progress: progress,
+              requiresApproval: requiresApproval,
+              deadline: deadline,
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now(),
+              createdBy: 'seeding-script',
+              status: 'active',
+              attachments: [],
+              comments: []
+            }
+            
+            // Add approval fields if required
+            if (requiresApproval) {
+              projectData.approvalStatus = stage === 'approved' || stage === 'completed' ? 'approved' : 'pending'
+              if (projectData.approvalStatus === 'approved') {
+                projectData.approvedAt = Timestamp.now()
+                projectData.approvedBy = 'admin'
+              }
+            }
+            
+            // Add to Firestore
+            const docRef = await addDoc(projectsRef, projectData)
+            successCount++
+            updateStats(projectData)
+            
+            log(`✅ Created project ${i + 1}/50: "${template.title}" 
+               Coordinator: ${projectData.coordinatorName}, Region: ${region}, Stage: ${stage}, Priority: ${priority}`)
+            
+          } catch (error) {
+            log(`❌ Failed to create project ${i + 1}: ${error.message}`, true)
+          }
+        }
+        
+        log(`\n🎉 Seeding complete! Created ${successCount}/50 projects`)
+        displayStats()
+        
+        seedBtn.textContent = 'Seeding Complete!'
+        setTimeout(() => {
+          seedBtn.textContent = 'Create Another 50 Projects'
+          seedBtn.disabled = false
+        }, 3000)
+        
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, true)
+        seedBtn.textContent = 'Error - Check Console'
+        seedBtn.disabled = false
+      }
+    }
+  </script>
+</body>
+</html>

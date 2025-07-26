@@ -83,7 +83,9 @@ export function useCoordinatorSelection() {
   // Get display name for a coordinator
   function getCoordinatorDisplayName(coordinatorId) {
     if (!coordinatorId) return 'Not assigned'
+    console.log('Looking for coordinator ID:', coordinatorId, 'in', allCoordinators.value.length, 'coordinators')
     const coordinator = allCoordinators.value.find(c => c.id === coordinatorId)
+    console.log('Found coordinator:', coordinator)
     return coordinator ? (coordinator.displayName || coordinator.name || coordinator.email) : 'Loading...'
   }
   

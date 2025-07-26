@@ -38,6 +38,8 @@ export function useCommsProjectsCrud(
     setCreating(true)
     clearError()
     
+    // console.log('Creating project with data:', projectData)
+    
     try {
       // Validate required fields
       if (!projectData.title) throw new Error('Project title is required')
@@ -59,8 +61,32 @@ export function useCommsProjectsCrud(
         updatedAt: serverTimestamp()
       }
       
+      // Handle coordinator data
+      if (projectData.coordinatorId) {
+        // console.log('Fetching coordinator details for ID:', projectData.coordinatorId)
+        newProject.coordinatorId = projectData.coordinatorId
+        // We'll need to fetch coordinator name from the coordinators collection
+        try {
+          const coordDoc = await getDoc(doc(db, 'comms_coordinators', projectData.coordinatorId))
+          if (coordDoc.exists()) {
+            const coordData = coordDoc.data()
+            newProject.coordinatorName = coordData.name || coordData.displayName || coordData.email
+            newProject.coordinatorEmail = coordData.email
+            // console.log('Coordinator data found:', { name: newProject.coordinatorName, email: newProject.coordinatorEmail })
+          } else {
+            console.warn('Coordinator document not found for ID:', projectData.coordinatorId)
+          }
+        } catch (err) {
+          console.warn('Could not fetch coordinator details:', err)
+        }
+      } else {
+        console.warn('No coordinatorId provided in project data')
+      }
+      
       // Create in Firestore
       const docRef = await addDoc(collection(db, 'comms_projects'), newProject)
+      
+      // console.log('Project data being saved to Firestore:', newProject)
       
       // Log the action
       await logEvent('create_comms_project', {
@@ -69,9 +95,21 @@ export function useCommsProjectsCrud(
         region: newProject.region
       })
       
+      // Fetch the created project to get the actual timestamp values
+      const createdDoc = await getDoc(docRef)
+      const createdData = createdDoc.data()
+      const returnedProject = {
+        id: docRef.id,
+        ...createdData,
+        createdAt: safeConvertToDate(createdData.createdAt),
+        updatedAt: safeConvertToDate(createdData.updatedAt),
+        deadline: safeConvertToDate(createdData.deadline)
+      }
+      
+      // console.log('Returning created project:', returnedProject)
       showSuccess('Project created successfully')
       
-      return { id: docRef.id, ...newProject }
+      return returnedProject
       
     } catch (error) {
       console.error('Error creating project:', error)

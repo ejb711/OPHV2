@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Test Coordinators</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #d32f2f;
+      margin-bottom: 20px;
+    }
+    .log {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+      border: 1px solid #ddd;
+    }
+    .warning {
+      background: #fff3cd;
+      color: #856404;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      border: 1px solid #ffeaa7;
+    }
+    button {
+      background: #d32f2f;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #b71c1c;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗑️ Delete Test Coordinators</h1>
+    
+    <div class="warning">
+      <strong>⚠️ Warning:</strong> This will permanently delete all test coordinators from the Firebase database. This action cannot be undone.
+    </div>
+    
+    <p>This tool will delete all coordinators with IDs matching the pattern "test-coordinator-*" and those with test emails.</p>
+    
+    <button id="deleteBtn" onclick="startDeletion()">Delete All Test Coordinators</button>
+    
+    <div id="log" class="log"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'firebase/app'
+    import { getFirestore, collection, getDocs, deleteDoc, doc } from 'firebase/firestore'
+    import { db } from './src/firebase.js'
+
+    const logElement = document.getElementById('log')
+    const deleteBtn = document.getElementById('deleteBtn')
+    
+    function log(message, isError = false) {
+      const timestamp = new Date().toLocaleTimeString()
+      const prefix = isError ? '❌' : '✅'
+      const line = `[${timestamp}] ${prefix} ${message}\n`
+      logElement.textContent += line
+      console.log(message)
+      logElement.scrollTop = logElement.scrollHeight
+    }
+
+    // Test coordinator patterns
+    const testPatterns = {
+      ids: /^test-coordinator-\d+$/,
+      emails: [
+        'sarah.johnson@la.gov',
+        'james.wilson@la.gov',
+        'maria.rodriguez@la.gov',
+        'michael.chen@la.gov',
+        'john.smith@la.gov',
+        'maria.garcia@la.gov',
+        'robert.brown@la.gov'
+      ]
+    }
+
+    window.startDeletion = async function() {
+      deleteBtn.disabled = true
+      deleteBtn.textContent = 'Deleting...'
+      logElement.textContent = ''
+      
+      try {
+        log('🔍 Searching for test coordinators in Firebase...')
+        
+        const coordinatorsRef = collection(db, 'comms_coordinators')
+        const snapshot = await getDocs(coordinatorsRef)
+        
+        log(`📊 Found ${snapshot.size} total coordinators in database`)
+        
+        const toDelete = []
+        
+        snapshot.docs.forEach(doc => {
+          const data = doc.data()
+          const id = doc.id
+          const email = data.email || data.userEmail || ''
+          const name = data.displayName || data.name || data.userName || ''
+          
+          // Check if this is a test coordinator
+          let isTest = false
+          let reason = ''
+          
+          // Check by ID pattern
+          if (testPatterns.ids.test(id)) {
+            isTest = true
+            reason = 'Test ID pattern'
+          }
+          
+          // Check by email
+          if (testPatterns.emails.includes(email.toLowerCase())) {
+            isTest = true
+            reason = 'Test email'
+          }
+          
+          if (isTest) {
+            toDelete.push({
+              id: id,
+              name: name || 'Unknown',
+              email: email || 'No email',
+              reason: reason
+            })
+            log(`Found test coordinator: ${name || id} (${email}) - Reason: ${reason}`)
+          }
+        })
+        
+        if (toDelete.length === 0) {
+          log('✅ No test coordinators found in the database!')
+          deleteBtn.textContent = 'No Test Coordinators Found'
+          return
+        }
+        
+        log(`\n🗑️ Deleting ${toDelete.length} test coordinators...\n`)
+        
+        let successCount = 0
+        let errorCount = 0
+        
+        for (const coord of toDelete) {
+          try {
+            await deleteDoc(doc(db, 'comms_coordinators', coord.id))
+            log(`Deleted: ${coord.name} (${coord.id})`)
+            successCount++
+          } catch (error) {
+            log(`Failed to delete ${coord.name} (${coord.id}): ${error.message}`, true)
+            errorCount++
+          }
+        }
+        
+        log(`\n🎉 Deletion complete!`)
+        log(`✅ Successfully deleted: ${successCount} coordinators`)
+        if (errorCount > 0) {
+          log(`❌ Failed to delete: ${errorCount} coordinators`, true)
+        }
+        
+        deleteBtn.textContent = 'Deletion Complete'
+        
+        // Refresh page after 3 seconds
+        setTimeout(() => {
+          log('🔄 Refreshing page in 3 seconds...')
+          setTimeout(() => location.reload(), 3000)
+        }, 2000)
+        
+      } catch (error) {
+        log(`Error: ${error.message}`, true)
+        deleteBtn.textContent = 'Error - Check Console'
+        deleteBtn.disabled = false
+      }
+    }
+  </script>
+</body>
+</html>

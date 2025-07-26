@@ -63,7 +63,7 @@ export function usePermissions() {
   const canCreateCommsProjects = computed(() => hasPermission('create_comms_projects') || canManageComms.value)
   const canEditCommsProjects = computed(() => hasPermission('edit_comms_projects') || canManageComms.value)
   const canDeleteCommsProjects = computed(() => hasPermission('delete_comms_projects') || canManageComms.value)
-  const canManageCommsCoordinators = computed(() => hasPermission('manage_comms_coordinators') || canManageComms.value)
+  const canManageCommsCoordinators = computed(() => hasPermission('manage_comms_coordinators'))
   const canViewAllRegions = computed(() => hasPermission('view_all_regions') || canManageComms.value)
   const canManageCommsTemplates = computed(() => hasPermission('manage_comms_templates') || canManageComms.value)
   const canExportCommsData = computed(() => hasPermission('export_comms_data') || canManageComms.value)

@@ -1,164 +1,277 @@
 <!-- Standard Filters Component -->
 <template>
-  <v-row align="center">
-    <!-- Search -->
-    <v-col cols="12" md="3">
-      <v-text-field
-        :model-value="filters.search"
-        label="Search projects"
-        prepend-inner-icon="mdi-magnify"
-        density="comfortable"
-        hide-details
-        clearable
-        variant="outlined"
-        @update:model-value="updateSearch"
-      >
-        <template v-slot:append-inner>
-          <v-menu
-            v-if="searchHistory.length > 0"
-            location="bottom"
-          >
+  <div class="filters-container">
+    <!-- Main Filter Bar -->
+    <div class="filter-bar">
+      <!-- Search -->
+      <div class="filter-item search-field">
+        <v-text-field
+          :model-value="filters.search"
+          placeholder="Search projects..."
+          prepend-inner-icon="mdi-magnify"
+          density="compact"
+          hide-details
+          clearable
+          variant="solo"
+          flat
+          class="flex-grow-1"
+          @update:model-value="updateSearch"
+        >
+          <template v-slot:append-inner>
+            <v-menu
+              v-if="searchHistory.length > 0"
+              location="bottom"
+            >
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon
+                  size="x-small"
+                  variant="text"
+                >
+                  <v-icon size="small">mdi-menu-down</v-icon>
+                </v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-subheader>Recent Searches</v-list-subheader>
+                <v-list-item
+                  v-for="(term, index) in searchHistory.slice(0, 5)"
+                  :key="index"
+                  @click="selectSearchHistory(term)"
+                >
+                  <v-list-item-title>{{ term }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </template>
+        </v-text-field>
+      </div>
+
+      <v-divider vertical class="mx-2 d-none d-sm-flex" />
+
+      <!-- Filters Group -->
+      <div class="filter-group">
+        <!-- Region -->
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="tonal"
+              size="small"
+              class="filter-btn"
+              :color="filters.region ? 'primary' : undefined"
+            >
+              <v-icon start size="small">mdi-map-marker</v-icon>
+              {{ filters.region ? getRegionName(filters.region) : 'All Regions' }}
+              <v-icon end size="small">mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item
+              @click="updateFilter('region', null)"
+              :active="!filters.region"
+            >
+              <v-list-item-title>All Regions</v-list-item-title>
+            </v-list-item>
+            <v-divider />
+            <v-list-item
+              v-for="region in regionOptions"
+              :key="region.value"
+              @click="updateFilter('region', region.value)"
+              :active="filters.region === region.value"
+            >
+              <v-list-item-title>{{ region.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
+        <!-- Status -->
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="tonal"
+              size="small"
+              class="filter-btn"
+              :color="filters.status ? 'primary' : undefined"
+            >
+              <v-icon start size="small">mdi-list-status</v-icon>
+              {{ filters.status ? getStatusName(filters.status) : 'All Status' }}
+              <v-icon end size="small">mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item
+              @click="updateFilter('status', null)"
+              :active="!filters.status"
+            >
+              <v-list-item-title>All Status</v-list-item-title>
+            </v-list-item>
+            <v-divider />
+            <v-list-item
+              v-for="status in statusOptions"
+              :key="status.value"
+              @click="updateFilter('status', status.value)"
+              :active="filters.status === status.value"
+            >
+              <v-list-item-title>{{ status.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
+        <!-- Priority -->
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="tonal"
+              size="small"
+              class="filter-btn"
+              :color="filters.priority ? 'primary' : undefined"
+            >
+              <v-icon start size="small">mdi-alert-circle</v-icon>
+              {{ filters.priority ? getPriorityName(filters.priority) : 'All Priorities' }}
+              <v-icon end size="small">mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item
+              @click="updateFilter('priority', null)"
+              :active="!filters.priority"
+            >
+              <v-list-item-title>All Priorities</v-list-item-title>
+            </v-list-item>
+            <v-divider />
+            <v-list-item
+              v-for="priority in priorityOptions"
+              :key="priority.value"
+              @click="updateFilter('priority', priority.value)"
+              :active="filters.priority === priority.value"
+            >
+              <v-list-item-title>{{ priority.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
+        <!-- Coordinator -->
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="tonal"
+              size="small"
+              class="filter-btn"
+              :color="filters.coordinator ? 'primary' : undefined"
+              :loading="loadingCoordinators"
+            >
+              <v-icon start size="small">mdi-account</v-icon>
+              {{ filters.coordinator ? getCoordinatorName(filters.coordinator) : 'All Coordinators' }}
+              <v-icon end size="small">mdi-menu-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item
+              @click="updateFilter('coordinator', null)"
+              :active="!filters.coordinator"
+            >
+              <v-list-item-title>All Coordinators</v-list-item-title>
+            </v-list-item>
+            <v-divider />
+            <v-list-item
+              v-for="coord in coordinatorOptions"
+              :key="coord.value"
+              @click="updateFilter('coordinator', coord.value)"
+              :active="filters.coordinator === coord.value"
+            >
+              <v-list-item-title>{{ coord.title }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </div>
+
+      <v-divider vertical class="mx-2 d-none d-sm-flex" />
+
+      <!-- Sort -->
+      <div class="sort-section">
+        <v-btn-group variant="outlined" size="small" divided>
+          <v-menu>
             <template v-slot:activator="{ props }">
               <v-btn
                 v-bind="props"
-                icon
-                size="x-small"
-                variant="text"
+                class="sort-btn"
               >
-                <v-icon size="small">mdi-menu-down</v-icon>
+                <v-icon start size="small">mdi-sort</v-icon>
+                {{ getCurrentSortName() }}
+                <v-icon end size="small">mdi-menu-down</v-icon>
               </v-btn>
             </template>
-            <v-list density="compact">
-              <v-list-subheader>Recent Searches</v-list-subheader>
+            <v-list>
               <v-list-item
-                v-for="(term, index) in searchHistory.slice(0, 5)"
-                :key="index"
-                @click="selectSearchHistory(term)"
+                v-for="option in sortOptions"
+                :key="option.value"
+                @click="updateSort(option.value)"
+                :active="(filters.sortBy || 'updatedAt') === option.value"
               >
-                <v-list-item-title>{{ term }}</v-list-item-title>
+                <template v-slot:prepend>
+                  <v-icon :icon="option.props.prependIcon" />
+                </template>
+                <v-list-item-title>{{ option.title }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
-        </template>
-      </v-text-field>
-    </v-col>
-
-    <!-- Region Filter -->
-    <v-col cols="6" sm="4" md="2">
-      <div class="field-group">
-        <label class="field-label">Region</label>
-        <v-select
-          :model-value="filters.region"
-          :items="regionOptions"
-          placeholder="All regions"
-          density="comfortable"
-          hide-details
-          clearable
-          variant="outlined"
-          @update:model-value="updateFilter('region', $event)"
-        />
-      </div>
-    </v-col>
-
-    <!-- Status Filter -->
-    <v-col cols="6" sm="4" md="2">
-      <div class="field-group">
-        <label class="field-label">Status</label>
-        <v-select
-          :model-value="filters.status"
-          :items="statusOptions"
-          placeholder="All statuses"
-          density="comfortable"
-          hide-details
-          clearable
-          variant="outlined"
-          @update:model-value="updateFilter('status', $event)"
-        />
-      </div>
-    </v-col>
-
-    <!-- Priority Filter -->
-    <v-col cols="6" sm="4" md="2">
-      <div class="field-group">
-        <label class="field-label">Priority</label>
-        <v-select
-          :model-value="filters.priority"
-          :items="priorityOptions"
-          placeholder="All priorities"
-          density="comfortable"
-          hide-details
-          clearable
-          variant="outlined"
-          @update:model-value="updateFilter('priority', $event)"
-        />
-      </div>
-    </v-col>
-
-    <!-- Coordinator Filter -->
-    <v-col cols="6" sm="4" md="2">
-      <div class="field-group">
-        <label class="field-label">Coordinator</label>
-        <v-select
-          :model-value="filters.coordinator"
-          :items="coordinatorOptions"
-          :loading="loadingCoordinators"
-          placeholder="All coordinators"
-          density="comfortable"
-          hide-details
-          clearable
-          variant="outlined"
-          @update:model-value="updateFilter('coordinator', $event)"
-        />
-      </div>
-    </v-col>
-
-    <!-- Actions -->
-    <v-col cols="12" sm="6" md="1" class="text-right">
-      <v-menu>
-        <template v-slot:activator="{ props }">
+          
           <v-btn
-            v-bind="props"
-            variant="text"
-            size="small"
-            :disabled="!hasActiveFilters"
+            icon
+            @click="toggleSortDirection"
+            :title="`Sort ${filters.sortDirection === 'asc' ? 'Ascending' : 'Descending'}`"
           >
-            <v-badge
-              :content="activeFilterCount"
-              :model-value="activeFilterCount > 0"
-              color="primary"
-              inline
-            >
-              <span>Filters</span>
-            </v-badge>
-            <v-icon end>mdi-menu-down</v-icon>
+            <v-icon>
+              {{ filters.sortDirection === 'asc' ? 'mdi-sort-ascending' : 'mdi-sort-descending' }}
+            </v-icon>
           </v-btn>
-        </template>
-        <v-list density="compact">
-          <v-list-item @click="$emit('save-filters')">
-            <template v-slot:prepend>
-              <v-icon size="small">mdi-content-save</v-icon>
-            </template>
-            <v-list-item-title>Save Filters</v-list-item-title>
-          </v-list-item>
-          <v-list-item @click="$emit('show-saved-filters')">
-            <template v-slot:prepend>
-              <v-icon size="small">mdi-folder-open</v-icon>
-            </template>
-            <v-list-item-title>Load Saved</v-list-item-title>
-          </v-list-item>
-          <v-divider class="my-1" />
-          <v-list-item @click="$emit('clear-all')">
-            <template v-slot:prepend>
-              <v-icon size="small" color="error">mdi-close</v-icon>
-            </template>
-            <v-list-item-title class="text-error">
-              Clear All
-            </v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </v-col>
-  </v-row>
+        </v-btn-group>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-section">
+        <v-btn
+          v-if="hasActiveFilters"
+          variant="text"
+          size="small"
+          @click="$emit('clear-all')"
+          class="clear-btn"
+        >
+          <v-icon start size="small">mdi-close</v-icon>
+          Clear
+        </v-btn>
+        
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon="mdi-dots-vertical"
+              variant="text"
+              size="small"
+            />
+          </template>
+          <v-list density="compact">
+            <v-list-item @click="$emit('save-filters')">
+              <template v-slot:prepend>
+                <v-icon size="small">mdi-content-save</v-icon>
+              </template>
+              <v-list-item-title>Save Filters</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="$emit('show-saved-filters')">
+              <template v-slot:prepend>
+                <v-icon size="small">mdi-folder-open</v-icon>
+              </template>
+              <v-list-item-title>Load Saved</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -199,6 +312,43 @@ const { allCoordinators, loadingCoordinators, loadAllCoordinators } = useCoordin
 const regionOptions = computed(() => getRegionOptions())
 const statusOptions = STATUS_OPTIONS
 const priorityOptions = PRIORITY_OPTIONS
+const sortOptions = [
+  { 
+    title: 'Last Updated', 
+    value: 'updatedAt',
+    props: { prependIcon: 'mdi-clock-edit-outline' }
+  },
+  { 
+    title: 'Date Created', 
+    value: 'createdAt',
+    props: { prependIcon: 'mdi-calendar-plus' }
+  },
+  { 
+    title: 'Title', 
+    value: 'title',
+    props: { prependIcon: 'mdi-format-title' }
+  },
+  { 
+    title: 'Priority', 
+    value: 'priority',
+    props: { prependIcon: 'mdi-alert-circle' }
+  },
+  { 
+    title: 'Due Date', 
+    value: 'deadline',
+    props: { prependIcon: 'mdi-calendar-clock' }
+  },
+  { 
+    title: 'Progress', 
+    value: 'progress',
+    props: { prependIcon: 'mdi-percent' }
+  },
+  { 
+    title: 'Status', 
+    value: 'status',
+    props: { prependIcon: 'mdi-list-status' }
+  }
+]
 
 // Coordinator options formatted for v-select
 const coordinatorOptions = computed(() => {
@@ -233,6 +383,47 @@ function selectSearchHistory(term) {
   updateFilter('search', term)
 }
 
+function updateSort(value) {
+  emit('update:filters', {
+    ...props.filters,
+    sortBy: value
+  })
+}
+
+function toggleSortDirection() {
+  emit('update:filters', {
+    ...props.filters,
+    sortDirection: props.filters.sortDirection === 'asc' ? 'desc' : 'asc'
+  })
+}
+
+// Helper methods for display names
+function getRegionName(value) {
+  const region = regionOptions.value.find(r => r.value === value)
+  return region?.title || value
+}
+
+function getStatusName(value) {
+  const status = statusOptions.find(s => s.value === value)
+  return status?.title || value
+}
+
+function getPriorityName(value) {
+  const priority = priorityOptions.find(p => p.value === value)
+  return priority?.title || value
+}
+
+function getCoordinatorName(value) {
+  const coord = coordinatorOptions.value.find(c => c.value === value)
+  return coord?.title || 'Unknown'
+}
+
+function getCurrentSortName() {
+  const sortBy = props.filters.sortBy || 'updatedAt'
+  const option = sortOptions.find(s => s.value === sortBy)
+  return option?.title || 'Last Updated'
+}
+
 // Load coordinators on mount
 onMounted(() => {
   loadAllCoordinators()
@@ -240,18 +431,146 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* External label styling - matching UserManagementFilters pattern */
-.field-group {
+.filters-container {
   width: 100%;
 }
 
-.field-label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #003057;
-  margin-bottom: 8px;
-  font-family: 'Cambria', Georgia, serif;
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  text-transform: none;
+  font-weight: 400;
+}
+
+.sort-section {
+  display: flex;
+  align-items: center;
+}
+
+.sort-btn {
+  text-transform: none;
+}
+
+/* Sort button group styling */
+:deep(.v-btn-group) {
+  box-shadow: none;
+}
+
+:deep(.v-btn-group .v-btn) {
+  border-radius: 0;
+}
+
+:deep(.v-btn-group .v-btn:first-child) {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+:deep(.v-btn-group .v-btn:last-child) {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.actions-section {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.clear-btn {
+  text-transform: none;
+}
+
+/* Search field styling */
+.search-field :deep(.v-field) {
+  background-color: white;
+}
+
+.search-field :deep(.v-field__input) {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+/* Button hover effects */
+.filter-btn:hover,
+.sort-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Active filter button styling */
+.filter-btn[color="primary"] {
+  font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 960px) {
+  .filter-bar {
+    gap: 8px;
+  }
+  
+  .filter-group {
+    flex: 1;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 600px) {
+  .filter-bar {
+    padding: 4px;
+  }
+  
+  .search-field {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .filter-btn,
+  .sort-btn {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .filter-btn .v-btn__content,
+  .sort-btn .v-btn__content {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  
+  .filter-btn span,
+  .sort-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  /* Hide icons on very small screens */
+  @media (max-width: 400px) {
+    .filter-btn .v-icon--start,
+    .sort-btn .v-icon--start {
+      display: none;
+    }
+  }
 }
 
 /* Hide Vuetify's built-in labels */

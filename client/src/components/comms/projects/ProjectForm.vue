@@ -4,7 +4,6 @@
     v-model="dialogOpen"
     max-width="800"
     persistent
-    scrollable
     class="create-project-dialog"
   >
     <v-card class="create-project-dialog">
@@ -40,7 +39,7 @@
       <v-divider />
 
       <!-- Form Content -->
-      <div class="form-container">
+      <v-card-text class="form-container">
         <ProjectFormStep1
           v-show="currentStep === 1"
           ref="step1Ref"
@@ -65,7 +64,7 @@
           :form-data="formData"
           @update:form-data="updateFormData"
         />
-      </div>
+      </v-card-text>
 
       <v-divider />
 
@@ -167,7 +166,7 @@ const createInitialFormData = () => ({
   title: '', 
   description: '', 
   region: '', 
-  coordinator: '', 
+  coordinatorId: '', 
   priority: 'normal',
   deadline: null, 
   stages: [], 
@@ -337,6 +336,11 @@ watch(dialogOpen, (isOpen) => {
   max-height: 60vh;
   overflow-y: auto;
   position: relative;
+}
+
+/* Ensure dropdowns are visible */
+.form-container :deep(.v-overlay__content) {
+  z-index: 2000 !important;
 }
 
 /* Actions footer */

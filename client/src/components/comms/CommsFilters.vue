@@ -1,16 +1,17 @@
 <!-- Communications Filters - Main Coordinator Component -->
 <template>
-  <v-card elevation="0" class="rounded-lg">
+  <div class="filters-wrapper">
     <!-- Quick Filters Bar -->
     <CommsQuickFilters
       :current-filters="localFilters"
       @toggle-filter="toggleQuickFilter"
       @advanced-search="handleAdvancedSearch"
       @advanced-filter="handleAdvancedFilter"
+      class="mb-3"
     />
 
     <!-- Standard Filters -->
-    <v-card-text class="pa-4">
+    <div>
       <CommsStandardFilters
         :filters="localFilters"
         :has-active-filters="hasActiveFilters"
@@ -23,19 +24,39 @@
 
       <!-- Active Filters Summary -->
       <v-expand-transition>
-        <div v-if="activeFilterSummary" class="mt-3">
-          <v-chip
-            size="small"
-            closable
-            class="mr-2 mb-1"
-            @click:close="clearAllFilters"
-          >
-            <v-icon start size="small">mdi-filter</v-icon>
-            {{ activeFilterSummary }}
-          </v-chip>
+        <div v-if="activeFilterSummary" class="mt-3 pa-3 active-filters-container">
+          <div class="d-flex align-center justify-space-between flex-wrap">
+            <div class="text-caption text-medium-emphasis mb-1">
+              Active Filters:
+            </div>
+            <v-chip
+              size="small"
+              closable
+              color="primary"
+              variant="tonal"
+              class="ml-2"
+              @click:close="clearAllFilters"
+            >
+              <v-icon start size="small">mdi-filter-remove</v-icon>
+              Clear All ({{ totalActiveFilters }})
+            </v-chip>
+          </div>
+          <div class="mt-2">
+            <v-chip
+              v-for="(filter, index) in getActiveFilterChips()"
+              :key="index"
+              size="small"
+              variant="outlined"
+              class="mr-2 mb-1"
+              closable
+              @click:close="clearSingleFilter(filter.field)"
+            >
+              {{ filter.label }}: {{ filter.value }}
+            </v-chip>
+          </div>
         </div>
       </v-expand-transition>
-    </v-card-text>
+    </div>
 
     <!-- Saved Filters Dialog -->
     <v-dialog v-model="showSavedFilters" max-width="600">
@@ -44,7 +65,7 @@
         @close="showSavedFilters = false"
       />
     </v-dialog>
-  </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -64,7 +85,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['update:filters'])
+const emit = defineEmits(['update'])
 
 // Composables
 const { clearAllFilters: clearFilters } = useProjectFilters()
@@ -110,14 +131,14 @@ const activeFilterSummary = computed(() => {
 // Methods
 function updateFilters(filters) {
   localFilters.value = filters
-  emit('update:filters', filters)
+  emit('update', filters)
 }
 
 function clearAllFilters() {
   localFilters.value = { ...DEFAULT_FILTERS }
   hasAdvancedSearch.value = false
   clearFilters()
-  emit('update:filters', { ...DEFAULT_FILTERS })
+  emit('update', { ...DEFAULT_FILTERS })
 }
 
 function toggleQuickFilter(filter) {
@@ -135,7 +156,7 @@ function toggleQuickFilter(filter) {
 
 function handleAdvancedSearch(searchParams) {
   hasAdvancedSearch.value = !!searchParams
-  emit('update:filters', {
+  emit('update', {
     ...localFilters.value,
     advancedSearch: searchParams
   })
@@ -164,4 +185,49 @@ function loadSavedFilter(filterSet) {
   }
   showSavedFilters.value = false
 }
+
+function getActiveFilterChips() {
+  const chips = []
+  if (localFilters.value.region) {
+    chips.push({ field: 'region', label: 'Region', value: localFilters.value.region })
+  }
+  if (localFilters.value.status) {
+    chips.push({ field: 'status', label: 'Status', value: localFilters.value.status })
+  }
+  if (localFilters.value.priority) {
+    chips.push({ field: 'priority', label: 'Priority', value: localFilters.value.priority })
+  }
+  if (localFilters.value.coordinator) {
+    chips.push({ field: 'coordinator', label: 'Coordinator', value: localFilters.value.coordinator })
+  }
+  if (localFilters.value.search) {
+    chips.push({ field: 'search', label: 'Search', value: localFilters.value.search })
+  }
+  return chips
+}
+
+function clearSingleFilter(field) {
+  const newFilters = { ...localFilters.value }
+  newFilters[field] = field === 'search' ? '' : null
+  updateFilters(newFilters)
+}
 </script>
+
+<style scoped>
+.filters-wrapper {
+  margin-bottom: 20px;
+}
+
+/* Active filter chip styling */
+:deep(.v-chip) {
+  font-weight: 500;
+}
+
+/* Active filters container */
+.active-filters-container {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin-top: 12px;
+}
+</style>

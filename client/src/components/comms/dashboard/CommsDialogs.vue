@@ -6,16 +6,11 @@
 <template>
   <div>
     <!-- Create Project Dialog -->
-    <v-dialog
-      v-model="createDialog"
-      max-width="900"
-      persistent
-    >
-      <ProjectForm
-        @close="createDialog = false"
-        @project-created="handleProjectCreated"
-      />
-    </v-dialog>
+    <ProjectForm
+      :model-value="createDialog"
+      @update:model-value="createDialog = $event"
+      @created="handleProjectCreated"
+    />
 
     <!-- Project Detail Dialog -->
     <ProjectDetail
@@ -49,7 +44,7 @@ const emit = defineEmits([
 
 // Methods
 function handleProjectCreated(project) {
-  createDialog.value = false
+  // Dialog will close automatically via v-model
   emit('project-created', project)
 }
 

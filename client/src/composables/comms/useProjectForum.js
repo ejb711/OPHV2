@@ -107,6 +107,13 @@ export function useProjectForum(projectId) {
       }
       
       await addDoc(collection(db, 'comms_messages'), messageData)
+      
+      // Update project's updatedAt timestamp
+      const projectRef = doc(db, 'comms_projects', projectId.value)
+      await updateDoc(projectRef, {
+        updatedAt: serverTimestamp()
+      })
+      
       return true
     } catch (err) {
       console.error('Error sending message:', err)

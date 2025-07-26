@@ -14,10 +14,9 @@
     <div v-else-if="project.priority === 'high'" class="priority-indicator high" />
     
     <v-card-item>
-      <v-card-title class="d-flex align-center">
-        <span class="text-h6">{{ project.title }}</span>
-        <v-spacer />
-        <v-menu location="bottom end">
+      <v-card-title class="d-flex align-center project-header">
+        <span class="text-h6 project-title text-truncate">{{ project.title }}</span>
+        <v-menu location="bottom end" class="ml-2">
           <template v-slot:activator="{ props }">
             <v-btn
               v-bind="props"
@@ -57,9 +56,18 @@
         </v-menu>
       </v-card-title>
       
-      <v-card-subtitle class="d-flex align-center ga-2 mt-1">
+      <v-card-subtitle class="d-flex align-center flex-wrap ga-2 mt-1">
         <RegionBadge :region="project.region" size="small" />
         <StatusBadge :status="displayStatus" size="small" />
+        <v-chip
+          v-if="project.priority"
+          :color="getPriorityColor(project.priority)"
+          size="small"
+          variant="tonal"
+        >
+          <v-icon start size="x-small">mdi-alert-circle</v-icon>
+          {{ project.priority }}
+        </v-chip>
       </v-card-subtitle>
     </v-card-item>
 
@@ -116,17 +124,30 @@
       </div>
     </v-card-text>
     
-    <v-card-actions class="pt-0 mt-auto">
+    <v-card-actions class="pt-0 mt-auto flex-column align-start">
+      <!-- Dates Row -->
+      <div class="d-flex justify-space-between align-center w-100 text-caption text-medium-emphasis mb-2">
+        <div>
+          <v-icon size="x-small">mdi-calendar-plus</v-icon>
+          {{ formatDate(project.createdAt) }}
+        </div>
+        <div>
+          <v-icon size="x-small">mdi-update</v-icon>
+          Updated: {{ formatRelativeTime(project.updatedAt) }}
+        </div>
+      </div>
+      
+      <!-- Deadline -->
       <v-chip
         v-if="project.deadline"
         :color="getDeadlineColor(project.deadline)"
         size="small"
-        prepend-icon="mdi-clock-outline"
+        prepend-icon="mdi-calendar-clock"
         variant="tonal"
+        class="mt-auto"
       >
         Due: {{ formatDeadline(project.deadline) }}
       </v-chip>
-      <v-spacer v-else />
     </v-card-actions>
   </v-card>
 </template>
@@ -181,6 +202,46 @@ function handleClick() {
   emit('view', props.project)
 }
 
+function getPriorityColor(priority) {
+  switch (priority) {
+    case 'urgent': return 'error'
+    case 'high': return 'warning'
+    case 'medium': return 'info'
+    case 'low': return 'success'
+    default: return 'grey'
+  }
+}
+
+function formatDate(date) {
+  if (!date) return 'Unknown'
+  const dateObj = date.toDate ? date.toDate() : new Date(date)
+  return dateObj.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+function formatRelativeTime(date) {
+  if (!date) return 'Never'
+  const dateObj = date.toDate ? date.toDate() : new Date(date)
+  const now = new Date()
+  const diffMs = now - dateObj
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  
+  if (diffMinutes < 1) return 'Just now'
+  if (diffMinutes < 60) return `${diffMinutes}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  
+  return dateObj.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  })
+}
+
 function getDeadlineColor(deadline) {
   if (!deadline) return 'grey'
   
@@ -223,9 +284,20 @@ function formatDeadline(deadline) {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  height: 420px;
+  height: 460px;
   display: flex;
   flex-direction: column;
+}
+
+.project-header {
+  gap: 8px;
+  min-height: 48px;
+}
+
+.project-title {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
 }
 
 .project-card:hover {
@@ -297,5 +369,26 @@ function formatDeadline(deadline) {
   color: white;
   font-weight: bold;
   font-size: 14px;
+}
+
+/* Card actions styling */
+.v-card-actions {
+  padding: 12px 16px;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Priority chip in subtitle */
+.v-card-subtitle .v-chip {
+  height: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Date icons */
+.v-card-actions .v-icon {
+  opacity: 0.7;
+  margin-right: 2px;
 }
 </style>

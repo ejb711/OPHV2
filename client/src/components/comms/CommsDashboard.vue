@@ -8,6 +8,7 @@
     <!-- Header Component -->
     <CommsDashboardHeader 
       @create-project="showCreateDialog = true"
+      @manage-coordinators="showCoordinatorManagement = true"
     />
 
     <!-- Analytics Tab (only visible with permission) -->
@@ -59,8 +60,10 @@
       ref="projectListRef"
       :filters="filters"
       @select="handleProjectSelectCustom"
+      @edit="handleProjectEdit"
       @delete="handleProjectDelete"
       @stats-update="handleStatsUpdate"
+      @update:filters="handleFilterUpdate"
     />
 
     <!-- Dialogs Component -->
@@ -86,6 +89,12 @@
     <CommsAnalyticsWindow 
       v-model="showAnalyticsWindow"
     />
+
+    <!-- Coordinator Management Dialog -->
+    <CoordinatorManagement 
+      v-model="showCoordinatorManagement"
+      @coordinator-updated="handleCoordinatorUpdated"
+    />
   </v-container>
 </template>
 
@@ -102,6 +111,7 @@ import CommsFilters from './CommsFilters.vue'
 import ProjectList from './projects/ProjectList.vue'
 import CommsDialogs from './dashboard/CommsDialogs.vue'
 import CommsNotifications from './dashboard/CommsNotifications.vue'
+import CoordinatorManagement from './coordinators/admin/CoordinatorManagement.vue'
 
 // Composables
 const { hasPermission } = usePermissions()
@@ -109,6 +119,7 @@ const { hasPermission } = usePermissions()
 // Refs
 const commsDialogsRef = ref(null)
 const showAnalyticsWindow = ref(false)
+const showCoordinatorManagement = ref(false)
 
 // Use the dashboard composable for business logic
 const {
@@ -159,6 +170,28 @@ function handleProjectSelectCustom(project) {
       console.error('ProjectDetail ref not available')
     }
   })
+}
+
+// Handle project edit
+function handleProjectEdit(project) {
+  console.log('Edit project:', project)
+  // Open project detail in edit mode
+  nextTick(() => {
+    if (commsDialogsRef.value && commsDialogsRef.value.projectDetailRef) {
+      commsDialogsRef.value.projectDetailRef.open(project.id, true) // true for edit mode
+    } else {
+      console.error('ProjectDetail ref not available')
+    }
+  })
+}
+
+// Handle coordinator update
+function handleCoordinatorUpdated() {
+  // The project list will automatically refresh due to Firestore listeners
+  // Just show success message
+  showSuccess('Coordinator updated successfully')
+  
+  // Don't close the dialog - let user close it manually
 }
 
 // Watch for project list changes

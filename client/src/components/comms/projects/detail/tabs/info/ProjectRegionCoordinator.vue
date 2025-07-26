@@ -133,6 +133,13 @@ const autoSelected = ref(false)
 const showNonDefaultAlert = ref(false)
 const nonDefaultCoordinatorName = ref('')
 
+// Debug logging
+console.log('ProjectRegionCoordinator props:', {
+  region: props.region,
+  coordinatorId: props.coordinatorId,
+  editing: props.editing
+})
+
 // Region options with proper formatting
 const regionOptions = computed(() => {
   const options = formatRegionOptions(LOUISIANA_REGIONS)
@@ -152,10 +159,13 @@ const displayedRegion = computed(() => {
 })
 
 const displayedCoordinator = computed(() => {
+  console.log('Computing displayed coordinator for ID:', localCoordinatorId.value)
   if (!localCoordinatorId.value) return 'Not assigned'
   
   // Use the composable's function to get the display name
-  return getCoordinatorDisplayName(localCoordinatorId.value)
+  const displayName = getCoordinatorDisplayName(localCoordinatorId.value)
+  console.log('Display name:', displayName)
+  return displayName
 })
 
 // Format coordinators for v-select with all coordinators visible
@@ -241,6 +251,7 @@ watch(() => props.region, (newValue) => {
 })
 
 watch(() => props.coordinatorId, (newValue) => {
+  console.log('Coordinator prop changed:', newValue, 'current:', localCoordinatorId.value)
   if (newValue !== localCoordinatorId.value) {
     localCoordinatorId.value = newValue
   }

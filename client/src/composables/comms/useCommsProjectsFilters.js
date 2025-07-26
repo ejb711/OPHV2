@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCommsProjectPermissions } from './commsProjectPermissions'
+import { calculateProjectStatus } from './utils/calculateProjectStatus'
 
 /**
  * Filtering logic for communications projects
@@ -30,6 +31,8 @@ export function useCommsProjectsFilters(
     return []
   })
   
+  // Use the shared status calculation utility
+
   const filteredProjects = computed(() => {
     return projects.value.filter(project => {
       // Permission check
@@ -38,11 +41,17 @@ export function useCommsProjectsFilters(
       // Region filter
       if (filterRegion.value && project.region !== filterRegion.value) return false
       
-      // Status filter
-      if (filterStatus.value && project.status !== filterStatus.value) return false
+      // Status filter - use calculated status
+      if (filterStatus.value) {
+        const calculatedStatus = calculateProjectStatus(project)
+        if (calculatedStatus !== filterStatus.value) return false
+      }
       
-      // Priority filter
-      if (filterPriority.value && project.priority !== filterPriority.value) return false
+      // Priority filter - handle 'normal' as 'medium'
+      if (filterPriority.value) {
+        const projectPriority = project.priority === 'normal' ? 'medium' : project.priority
+        if (projectPriority !== filterPriority.value) return false
+      }
       
       // Coordinator filter
       if (filterCoordinator.value && project.coordinatorId !== filterCoordinator.value) return false
@@ -74,11 +83,13 @@ export function useCommsProjectsFilters(
     }
     
     filteredProjects.value.forEach(project => {
-      // Status stats
-      stats.byStatus[project.status] = (stats.byStatus[project.status] || 0) + 1
+      // Status stats - use calculated status
+      const status = calculateProjectStatus(project)
+      stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
       
-      // Priority stats
-      stats.byPriority[project.priority] = (stats.byPriority[project.priority] || 0) + 1
+      // Priority stats - handle 'normal' as 'medium'
+      const priority = project.priority === 'normal' ? 'medium' : project.priority
+      stats.byPriority[priority] = (stats.byPriority[priority] || 0) + 1
       
       // Region stats
       stats.byRegion[project.region] = (stats.byRegion[project.region] || 0) + 1
@@ -89,15 +100,19 @@ export function useCommsProjectsFilters(
   
   // Additional computed properties for UI
   const activeProjectsCount = computed(() => {
-    return projects.value.filter(p => 
-      canViewProject(p) && !p.deleted && p.status !== 'completed'
-    ).length
+    return projects.value.filter(p => {
+      if (!canViewProject(p) || p.deleted) return false
+      const status = calculateProjectStatus(p)
+      return status !== 'completed'
+    }).length
   })
   
   const completedProjectsCount = computed(() => {
-    return projects.value.filter(p => 
-      canViewProject(p) && !p.deleted && p.status === 'completed'
-    ).length
+    return projects.value.filter(p => {
+      if (!canViewProject(p) || p.deleted) return false
+      const status = calculateProjectStatus(p)
+      return status === 'completed'
+    }).length
   })
   
   const myProjectsCount = computed(() => {
@@ -110,7 +125,11 @@ export function useCommsProjectsFilters(
   
   const highPriorityProjects = computed(() => {
     return filteredProjects.value
-      .filter(p => p.priority === 'high' && p.status !== 'completed')
+      .filter(p => {
+        const priority = p.priority === 'normal' ? 'medium' : p.priority
+        const status = calculateProjectStatus(p)
+        return (priority === 'high' || priority === 'urgent') && status !== 'completed'
+      })
       .sort((a, b) => {
         // Sort by deadline if available
         if (a.deadline && b.deadline) {
@@ -126,7 +145,9 @@ export function useCommsProjectsFilters(
     
     return filteredProjects.value
       .filter(p => {
-        if (!p.deadline || p.status === 'completed') return false
+        if (!p.deadline) return false
+        const status = calculateProjectStatus(p)
+        if (status === 'completed') return false
         const deadline = new Date(p.deadline)
         return deadline >= now && deadline <= weekFromNow
       })

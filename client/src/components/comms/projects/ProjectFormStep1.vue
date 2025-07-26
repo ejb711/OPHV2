@@ -37,47 +37,40 @@
         />
       </div>
 
-      <!-- Region and Coordinator Row -->
-      <v-row>
-        <v-col cols="12" md="6">
-          <div class="field-group">
-            <label class="field-label">
-              Region <span class="text-error">*</span>
-            </label>
-            <v-select
-              v-model="localRegion"
-              :items="regionOptions"
-              item-title="name"
-              item-value="id"
-              :rules="[rules.required]"
-              placeholder="Select region"
-              variant="outlined"
-              density="comfortable"
-              @update:model-value="handleRegionChange"
-            />
-          </div>
-        </v-col>
-        
-        <v-col cols="12" md="6">
-          <div class="field-group">
-            <label class="field-label">
-              Coordinator <span class="text-error">*</span>
-            </label>
-            <v-text-field
-              v-model="localCoordinator"
-              :rules="[rules.required]"
-              placeholder="Coordinator will be assigned"
-              variant="outlined"
-              density="comfortable"
-              readonly
-              @update:model-value="emitUpdate"
-            />
-            <p class="field-hint">
-              Project coordinator will be automatically selected based on region
-            </p>
-          </div>
-        </v-col>
-      </v-row>
+      <!-- Region Selection -->
+      <div class="field-group">
+        <label class="field-label">
+          Region <span class="text-error">*</span>
+        </label>
+        <v-select
+          v-model="localRegion"
+          :items="regionOptions"
+          item-title="name"
+          item-value="id"
+          :rules="[rules.required]"
+          placeholder="Select region"
+          variant="outlined"
+          density="comfortable"
+          :menu-props="{ maxHeight: 400 }"
+          @update:model-value="handleRegionChange"
+        />
+      </div>
+
+      <!-- Coordinator Selection with Radio Buttons -->
+      <div class="field-group">
+        <CoordinatorRadioList
+          v-model="localCoordinator"
+          :region="localRegion"
+          :rules="[rules.required]"
+          :disabled="!localRegion"
+          required
+          @coordinator-selected="handleCoordinatorSelected"
+        />
+        <p v-if="!localRegion" class="field-hint text-warning">
+          <v-icon size="small">mdi-information</v-icon>
+          Please select a region first to see available coordinators
+        </p>
+      </div>
 
       <!-- Priority and Deadline Row -->
       <v-row>
@@ -128,6 +121,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
+import CoordinatorRadioList from '@/components/comms/coordinators/CoordinatorRadioList.vue'
 
 // Props & Emits
 const props = defineProps({
@@ -152,8 +146,7 @@ const localPriority = ref('normal')
 const localDeadline = ref(null)
 
 // UI state
-const showNonDefaultAlert = ref(false)
-const nonDefaultCoordinatorName = ref('')
+// Removed showNonDefaultAlert and nonDefaultCoordinatorName - no longer needed with radio list
 
 // Options
 const regionOptions = computed(() => 
@@ -188,7 +181,7 @@ function initializeFromProps() {
   localTitle.value = props.formData.title || ''
   localDescription.value = props.formData.description || ''
   localRegion.value = props.formData.region || ''
-  localCoordinator.value = props.formData.coordinator || ''
+  localCoordinator.value = props.formData.coordinatorId || props.formData.coordinator || ''
   localPriority.value = props.formData.priority || 'normal'
   localDeadline.value = props.formData.deadline || null
 }
@@ -199,7 +192,7 @@ function emitUpdate() {
     title: localTitle.value,
     description: localDescription.value,
     region: localRegion.value,
-    coordinator: localCoordinator.value,
+    coordinatorId: localCoordinator.value,
     priority: localPriority.value,
     deadline: localDeadline.value
   })
@@ -207,39 +200,22 @@ function emitUpdate() {
 
 // Handle region change
 function handleRegionChange() {
-  // Auto-assign coordinator placeholder when region changes
-  if (localRegion.value) {
-    const region = LOUISIANA_REGIONS[localRegion.value]
-    if (region) {
-      localCoordinator.value = `${region.name} Coordinator`
-    }
-  } else {
-    localCoordinator.value = ''
-  }
+  // Clear coordinator when region changes so the CoordinatorSelect can auto-assign the default
+  localCoordinator.value = ''
   emitUpdate()
 }
 
-// Handle coordinator selection
-function handleCoordinatorAutoSelected(event) {
-  console.log('Default coordinator selected:', event)
-  const coordinator = event.coordinator
-  const isDefault = event.isDefault !== undefined ? event.isDefault : true
+// Handle coordinator selection from radio list
+function handleCoordinatorSelected(coordinator) {
+  console.log('Coordinator selected:', coordinator)
+  emitUpdate()
   
-  if (isDefault && coordinator) {
-    showNonDefaultAlert.value = false
-    nonDefaultCoordinatorName.value = ''
-  }
-  
-  emit('coordinator-auto-selected', event)
-}
-
-function handleNonDefaultSelected(event) {
-  console.log('Non-default coordinator selected:', event)
-  if (event.coordinator) {
-    nonDefaultCoordinatorName.value = event.coordinator.name || event.coordinator.displayName || event.coordinator.email
-    showNonDefaultAlert.value = true
-  }
-  emit('coordinator-auto-selected', event)
+  // Emit event for parent component if needed
+  emit('coordinator-auto-selected', {
+    coordinatorId: coordinator.id,
+    coordinator: coordinator,
+    region: localRegion.value
+  })
 }
 
 // Watch for prop changes and reinitialize
@@ -272,7 +248,7 @@ defineExpose({
 
 /* Field Group Styling */
 .field-group {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .field-label {
@@ -287,8 +263,10 @@ defineExpose({
 .field-hint {
   font-size: 0.75rem;
   color: #666;
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
   font-family: 'Cambria', Georgia, serif;
+  line-height: 1.2;
 }
 
 /* Required field indicator */

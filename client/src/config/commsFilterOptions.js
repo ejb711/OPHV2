@@ -38,5 +38,7 @@ export const DEFAULT_FILTERS = {
   coordinator: null,
   search: '',
   quickFilters: [],
-  advancedSearch: null
+  advancedSearch: null,
+  sortBy: 'updatedAt',
+  sortDirection: 'desc'
 }

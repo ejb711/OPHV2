@@ -53,31 +53,37 @@ export function useProjectAnalytics(projects = ref([])) {
     })
   })
   
-  // Helper function to normalize status values
-  const normalizeStatus = (status) => {
-    if (!status) return 'unknown';
+  // Helper function to calculate status based on stages
+  const calculateProjectStatus = (project) => {
+    if (!project) return 'unknown';
     
-    // Convert to lowercase and replace spaces with underscores
-    const normalized = status.toString().toLowerCase().replace(/\s+/g, '_');
+    // If manually set to pending_approval, keep that
+    if (project.status === 'pending_approval') {
+      return 'pending_approval';
+    }
     
-    // Handle specific variations
-    const statusMap = {
-      'draft': 'planning',
-      'pending': 'pending_approval',
-      'approved': 'review',
-      'under_review': 'review',
-      'not_started': 'not_started',
-      'planning': 'planning',
-      'in_progress': 'in_progress',
-      'review': 'review',
-      'pending_approval': 'pending_approval',
-      'completed': 'completed',
-      'on_hold': 'on_hold',
-      'cancelled': 'cancelled'
-    };
+    // If no stages, it's not started
+    if (!project.stages || project.stages.length === 0) {
+      return 'not_started';
+    }
     
-    return statusMap[normalized] || normalized;
+    // Count completed stages
+    const completedCount = project.stages.filter(s => s.completed).length;
+    
+    // All completed
+    if (completedCount === project.stages.length) {
+      return 'completed';
+    }
+    
+    // None completed
+    if (completedCount === 0) {
+      return 'not_started';
+    }
+    
+    // Some completed - in progress
+    return 'in_progress';
   }
+  
   
   // Basic metrics
   const metrics = computed(() => {
@@ -92,16 +98,16 @@ export function useProjectAnalytics(projects = ref([])) {
     return {
       total: nonDeletedProjects.length,
       active: nonDeletedProjects.filter(p => {
-        const normalizedStatus = normalizeStatus(p.status);
-        return ['planning', 'in_progress', 'review'].includes(normalizedStatus);
+        const status = calculateProjectStatus(p);
+        return ['not_started', 'in_progress'].includes(status);
       }).length,
       completed: nonDeletedProjects.filter(p => {
-        const normalizedStatus = normalizeStatus(p.status);
-        return normalizedStatus === 'completed';
+        const status = calculateProjectStatus(p);
+        return status === 'completed';
       }).length,
       pending: nonDeletedProjects.filter(p => {
-        const normalizedStatus = normalizeStatus(p.status);
-        return normalizedStatus === 'pending_approval';
+        const status = calculateProjectStatus(p);
+        return status === 'pending_approval';
       }).length,
       deleted: filtered.filter(p => p && p.deleted).length
     }
@@ -116,9 +122,9 @@ export function useProjectAnalytics(projects = ref([])) {
       : projectsArray
       
     filtered.forEach(project => {
-      if (project && !project.deleted && project.status) {
-        const normalizedStatus = normalizeStatus(project.status)
-        breakdown[normalizedStatus] = (breakdown[normalizedStatus] || 0) + 1
+      if (project && !project.deleted) {
+        const status = calculateProjectStatus(project)
+        breakdown[status] = (breakdown[status] || 0) + 1
       }
     })
     
@@ -135,15 +141,19 @@ export function useProjectAnalytics(projects = ref([])) {
   
   // Priority distribution
   const priorityDistribution = computed(() => {
-    const distribution = { high: 0, medium: 0, low: 0 }
+    const distribution = { high: 0, medium: 0, low: 0, urgent: 0 }
     const projectsArray = filteredProjects.value || []
     const filtered = selectedRegion.value 
       ? projectsArray.filter(p => p && p.region === selectedRegion.value)
       : projectsArray
       
     filtered.forEach(project => {
-      if (project && !project.deleted && project.priority && distribution.hasOwnProperty(project.priority)) {
-        distribution[project.priority]++
+      if (project && !project.deleted && project.priority) {
+        // Handle 'normal' priority from seeded data
+        const priority = project.priority === 'normal' ? 'medium' : project.priority
+        if (distribution.hasOwnProperty(priority)) {
+          distribution[priority]++
+        }
       }
     })
     
@@ -213,8 +223,8 @@ export function useProjectAnalytics(projects = ref([])) {
     if (nonDeleted.length === 0) return 0
     
     const completed = nonDeleted.filter(p => {
-      const normalizedStatus = normalizeStatus(p.status)
-      return normalizedStatus === 'completed'
+      const status = calculateProjectStatus(p)
+      return status === 'completed'
     }).length
     
     return Math.round((completed / nonDeleted.length) * 100)
@@ -225,8 +235,8 @@ export function useProjectAnalytics(projects = ref([])) {
     const projectsArray = filteredProjects.value || []
     const completed = projectsArray.filter(p => {
       if (!p || p.deleted) return false
-      const normalizedStatus = normalizeStatus(p.status)
-      return normalizedStatus === 'completed' && p.createdAt && p.completedAt
+      const status = calculateProjectStatus(p)
+      return status === 'completed' && p.createdAt && p.completedAt
     })
     
     if (completed.length === 0) return 0

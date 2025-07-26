@@ -5,23 +5,18 @@
       <span class="text-body-2 text-grey-darken-1 mr-3">
         Quick Filters:
       </span>
-      <v-chip-group
-        v-model="localActiveFilters"
-        multiple
-        color="primary"
-        class="flex-grow-1"
-      >
+      <div class="d-flex flex-wrap gap-2 flex-grow-1">
         <v-chip
           v-for="filter in quickFilters"
           :key="filter.id"
-          :value="filter.id"
+          :color="isFilterActive(filter) ? 'primary' : undefined"
+          :variant="isFilterActive(filter) ? 'flat' : 'outlined'"
           size="small"
-          variant="outlined"
           @click="toggleQuickFilter(filter)"
         >
           {{ filter.label }}
         </v-chip>
-      </v-chip-group>
+      </div>
       
       <!-- Advanced Search Button -->
       <CommsSearch
@@ -40,20 +35,17 @@ import CommsSearch from './CommsSearch.vue'
 
 // Props
 const props = defineProps({
-  activeFilters: {
-    type: Array,
-    default: () => []
+  currentFilters: {
+    type: Object,
+    default: () => ({})
   }
 })
 
 // Emits
-const emit = defineEmits(['update:activeFilters', 'toggle-filter', 'advanced-search', 'advanced-filter'])
+const emit = defineEmits(['toggle-filter', 'advanced-search', 'advanced-filter'])
 
 // Composables
 const { quickFilters } = useProjectFilters()
-
-// Local state
-const localActiveFilters = ref([...props.activeFilters])
 
 // Methods
 function toggleQuickFilter(filter) {
@@ -68,15 +60,14 @@ function handleAdvancedFilter(filterParams) {
   emit('advanced-filter', filterParams)
 }
 
-// Watch for external changes
-watch(() => props.activeFilters, (newVal) => {
-  localActiveFilters.value = [...newVal]
-})
-
-// Update parent when local changes
-watch(localActiveFilters, (newVal) => {
-  emit('update:activeFilters', newVal)
-})
+function isFilterActive(filter) {
+  if (filter.field === 'status') {
+    return props.currentFilters.status === filter.value
+  } else if (filter.field === 'priority') {
+    return props.currentFilters.priority === filter.value
+  }
+  return false
+}
 </script>
 
 <style scoped>

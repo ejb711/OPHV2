@@ -159,6 +159,12 @@ export function useProjectFiles(projectId) {
       
       const docRef = await addDoc(collection(db, 'comms_files'), fileData)
       
+      // Update project's updatedAt timestamp
+      const projectRef = doc(db, 'comms_projects', projectId)
+      await updateDoc(projectRef, {
+        updatedAt: serverTimestamp()
+      })
+      
       // Log the action
       await logEvent('upload_comms_file', {
         projectId,
@@ -200,6 +206,12 @@ export function useProjectFiles(projectId) {
       }
       
       const docRef = await addDoc(collection(db, 'comms_files'), link)
+      
+      // Update project's updatedAt timestamp
+      const projectRef = doc(db, 'comms_projects', projectId)
+      await updateDoc(projectRef, {
+        updatedAt: serverTimestamp()
+      })
       
       await logEvent('add_comms_link', {
         projectId,

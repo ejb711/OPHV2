@@ -8,7 +8,7 @@ export function createProjectOperations(state, computed, editOperations, {
   logEvent, 
   showError 
 }) {
-  async function open(projectId) {
+  async function open(projectId, startInEditMode = false) {
     if (!projectId) return
     
     state.loading.value = true
@@ -19,6 +19,11 @@ export function createProjectOperations(state, computed, editOperations, {
       const projectData = await getProject(projectId)
       state.project.value = projectData
       editOperations.resetEditedProject()
+      
+      // Start in edit mode if requested
+      if (startInEditMode && computed.canEdit?.value) {
+        editOperations.startEdit()
+      }
       
       state.unsubscribe = onSnapshot(doc(db, 'comms_projects', projectId), (doc) => {
         if (doc.exists()) {
