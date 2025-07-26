@@ -2,13 +2,33 @@
 <template>
   <v-dialog
     v-model="dialogOpen"
-    max-width="600"
+    :max-width="$vuetify.display.smAndDown ? '100%' : '600'"
+    :fullscreen="$vuetify.display.smAndDown"
+    transition="dialog-bottom-transition"
   >
     <v-card>
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-account-edit</v-icon>
-        Edit Coordinator
-      </v-card-title>
+      <v-toolbar
+        :color="$vuetify.display.smAndDown ? 'primary' : 'transparent'"
+        :dark="$vuetify.display.smAndDown"
+        flat
+      >
+        <v-btn
+          v-if="$vuetify.display.smAndDown"
+          icon="mdi-arrow-left"
+          @click="close"
+        />
+        <v-toolbar-title>
+          <v-icon v-if="!$vuetify.display.smAndDown" start>mdi-account-edit</v-icon>
+          Edit Coordinator
+        </v-toolbar-title>
+        <v-spacer />
+        <v-btn
+          v-if="!$vuetify.display.smAndDown"
+          icon="mdi-close"
+          variant="text"
+          @click="close"
+        />
+      </v-toolbar>
 
       <v-divider />
 

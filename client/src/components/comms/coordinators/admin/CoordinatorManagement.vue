@@ -1,6 +1,15 @@
 <!-- client/src/components/comms/coordinators/admin/CoordinatorManagement.vue -->
 <template>
+  <!-- Use mobile version on small screens -->
+  <CoordinatorManagementMobile
+    v-if="$vuetify.display.smAndDown"
+    v-model="dialogOpen"
+    @coordinator-updated="handleCoordinatorUpdated"
+  />
+  
+  <!-- Desktop version for larger screens -->
   <v-dialog
+    v-else
     v-model="dialogOpen"
     max-width="1200"
     fullscreen
@@ -214,6 +223,7 @@ import { useCoordinatorSelection } from '@/composables/comms/useCoordinatorSelec
 import { LOUISIANA_REGIONS } from '@/config/louisiana-regions'
 import UserSelectionDialog from './UserSelectionDialog.vue'
 import CoordinatorEditDialog from './CoordinatorEditDialog.vue'
+import CoordinatorManagementMobile from './CoordinatorManagementMobile.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 
 // Props & Emits
@@ -368,6 +378,12 @@ async function deleteCoordinator() {
   } finally {
     deleting.value = false
   }
+}
+
+// Handle updates from mobile component
+function handleCoordinatorUpdated() {
+  emit('coordinator-updated')
+  loadAllCoordinators()
 }
 
 // Lifecycle - LOAD COORDINATORS THE SAME WAY AS ProjectRegionCoordinator

@@ -2,18 +2,38 @@
 <template>
   <v-dialog
     v-model="dialogOpen"
-    max-width="800"
+    :max-width="$vuetify.display.smAndDown ? '100%' : '800'"
+    :fullscreen="$vuetify.display.smAndDown"
     scrollable
+    transition="dialog-bottom-transition"
   >
     <v-card>
-      <v-card-title class="d-flex align-center">
-        <v-icon start>mdi-account-search</v-icon>
-        Select User to Add as Coordinator
-      </v-card-title>
+      <v-toolbar
+        :color="$vuetify.display.smAndDown ? 'primary' : 'transparent'"
+        :dark="$vuetify.display.smAndDown"
+        flat
+      >
+        <v-btn
+          v-if="$vuetify.display.smAndDown"
+          icon="mdi-close"
+          @click="close"
+        />
+        <v-toolbar-title>
+          <v-icon v-if="!$vuetify.display.smAndDown" start>mdi-account-search</v-icon>
+          Select User
+        </v-toolbar-title>
+        <v-spacer />
+        <v-btn
+          v-if="!$vuetify.display.smAndDown"
+          icon="mdi-close"
+          variant="text"
+          @click="close"
+        />
+      </v-toolbar>
 
       <v-divider />
 
-      <v-card-text class="pa-0" style="height: 500px;">
+      <v-card-text class="pa-0" :style="$vuetify.display.smAndDown ? '' : 'height: 500px;'">
         <!-- Search -->
         <div class="pa-4 pb-0">
           <v-text-field
