@@ -20,7 +20,10 @@ export function usePermissions() {
   /* ---------- feature-specific permissions ---------- */
   
   // Dashboard & Navigation
-  const canViewDashboard = computed(() => hasPermission('view_dashboard') || isUser.value || isAdmin.value || isOwner.value)
+  const canViewDashboard = computed(() => {
+    // Dashboard should be visible to all authenticated users except pending
+    return !isPending.value && auth.isAuthenticated
+  })
   const canViewSystemStatus = computed(() => hasPermission('view_system_status') || isAdmin.value || isOwner.value)
   
   // User Management
